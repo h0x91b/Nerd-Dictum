@@ -116,6 +116,33 @@
   white-space: nowrap;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   animation: fadeIn 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.flash-message.success {
+  background: #2e7d32;
+  color: #fff;
+}
+
+.flash-message.error {
+  background: #c62828;
+  color: #fff;
+}
+
+.flash-message.error.retryable {
+  cursor: pointer;
+}
+
+.flash-message.error.retryable:hover {
+  background: #d32f2f;
+}
+
+.retry-hint {
+  font-size: 10px;
+  opacity: 0.8;
+  margin-left: 4px;
 }
 
 @keyframes fadeIn {
