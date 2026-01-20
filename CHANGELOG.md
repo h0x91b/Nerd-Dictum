@@ -22,3 +22,4 @@
 [2026-01-20 19:30] Bug — Fix settings to open in separate window instead of inside tiny widget, fix gear icon clickable area
 [2026-01-20 19:34] Feature — Add custom system prompt and multi-language selection in settings for better transcription
 [2026-01-20 19:29] Feature — Add system tray integration with Show/Hide, Settings, Quit menu; app runs in tray when window closed
+[2026-01-20 21:05] Feature — Remember window position across restarts (ignores saved position if monitor configuration changed)

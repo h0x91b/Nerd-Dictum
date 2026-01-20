@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, clipboard, globalShortcut, Tray, Menu, nativeImage } from 'electron';
+import { app, BrowserWindow, ipcMain, clipboard, globalShortcut, Tray, Menu, nativeImage, screen } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -12,6 +12,13 @@ interface AppSettings {
   model: string;
   customPrompt: string;
   languages: string[];
+}
+
+// Window position persistence
+interface WindowPosition {
+  x: number;
+  y: number;
+  displayCount: number;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -52,6 +59,58 @@ function saveSettings(settings: AppSettings): boolean {
 }
 
 let appSettings: AppSettings = DEFAULT_SETTINGS;
+
+// Window position persistence
+function getWindowPositionPath(): string {
+  return path.join(app.getPath('userData'), 'window-position.json');
+}
+
+function loadWindowPosition(): WindowPosition | null {
+  try {
+    const positionPath = getWindowPositionPath();
+    if (fs.existsSync(positionPath)) {
+      const data = fs.readFileSync(positionPath, 'utf-8');
+      const parsed = JSON.parse(data) as WindowPosition;
+
+      // Validate that display count matches current configuration
+      const currentDisplayCount = screen.getAllDisplays().length;
+      if (parsed.displayCount !== currentDisplayCount) {
+        console.log('[WindowPosition] Display configuration changed:', parsed.displayCount, '->', currentDisplayCount, '- ignoring saved position');
+        return null;
+      }
+
+      // Validate that position is within visible bounds
+      const displays = screen.getAllDisplays();
+      const isPositionVisible = displays.some(display => {
+        const { x, y, width, height } = display.bounds;
+        return parsed.x >= x && parsed.x < x + width && parsed.y >= y && parsed.y < y + height;
+      });
+
+      if (!isPositionVisible) {
+        console.log('[WindowPosition] Saved position is outside visible bounds - ignoring');
+        return null;
+      }
+
+      console.log('[WindowPosition] Loaded position:', parsed.x, parsed.y);
+      return parsed;
+    }
+  } catch (error) {
+    console.error('[WindowPosition] Failed to load position:', error);
+  }
+  return null;
+}
+
+function saveWindowPosition(x: number, y: number): void {
+  try {
+    const displayCount = screen.getAllDisplays().length;
+    const position: WindowPosition = { x, y, displayCount };
+    const positionPath = getWindowPositionPath();
+    fs.writeFileSync(positionPath, JSON.stringify(position, null, 2), 'utf-8');
+    console.log('[WindowPosition] Saved position:', x, y, 'displays:', displayCount);
+  } catch (error) {
+    console.error('[WindowPosition] Failed to save position:', error);
+  }
+}
 
 let mainWindow: BrowserWindow | null = null;
 let settingsWindow: BrowserWindow | null = null;
@@ -97,9 +156,13 @@ function createSettingsWindow() {
 }
 
 function createWindow() {
+  // Try to restore saved window position
+  const savedPosition = loadWindowPosition();
+
   mainWindow = new BrowserWindow({
     width: 80,
     height: 100,
+    ...(savedPosition && { x: savedPosition.x, y: savedPosition.y }),
     frame: false,
     transparent: false,
     backgroundColor: '#2a2a2a',
@@ -121,9 +184,17 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
 
+  // Save window position when moved
+  mainWindow.on('move', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      const [x, y] = mainWindow.getPosition();
+      saveWindowPosition(x, y);
+    }
+  });
+
   // Hide to tray instead of closing on macOS/Windows
   mainWindow.on('close', (event) => {
-    if (tray && !app.isQuitting) {
+    if (tray && !(app as any).isQuitting) {
       event.preventDefault();
       mainWindow?.hide();
     }
