@@ -34,6 +34,9 @@ const mockElectronAPI = {
   getApiKey: mock(() => Promise.resolve('test-api-key')),
   getModel: mock(() => Promise.resolve('gemini-3-flash-preview')),
   copyToClipboard: mock(() => Promise.resolve()),
+  onToggleRecording: mock((callback: () => void) => {
+    return () => {};
+  }),
 };
 
 describe('App', () => {
@@ -381,6 +384,50 @@ describe('App', () => {
 
       await waitFor(() => {
         expect(screen.getByText('No microphone found')).toBeDefined();
+      });
+    });
+  });
+
+  describe('keyboard shortcut', () => {
+    it('should register toggle-recording listener on mount', () => {
+      const mockOnToggleRecording = mock((callback: () => void) => {
+        return () => {};
+      });
+      (window as unknown as { electronAPI: typeof mockElectronAPI }).electronAPI = {
+        ...mockElectronAPI,
+        onToggleRecording: mockOnToggleRecording,
+      };
+
+      render(<App />);
+
+      expect(mockOnToggleRecording).toHaveBeenCalled();
+    });
+
+    it('should toggle recording when global shortcut is triggered', async () => {
+      let capturedCallback: (() => void) | null = null;
+      const mockOnToggleRecording = mock((callback: () => void) => {
+        capturedCallback = callback;
+        return () => {};
+      });
+      (window as unknown as { electronAPI: typeof mockElectronAPI }).electronAPI = {
+        ...mockElectronAPI,
+        onToggleRecording: mockOnToggleRecording,
+      };
+
+      render(<App />);
+
+      // Verify button is in idle state
+      const button = screen.getByRole('button', { name: /start recording/i });
+      expect(button.className).toContain('idle');
+
+      // Simulate global shortcut trigger
+      expect(capturedCallback).not.toBeNull();
+      capturedCallback!();
+
+      // Verify button switches to recording state
+      await waitFor(() => {
+        const recordingButton = screen.getByRole('button', { name: /stop recording/i });
+        expect(recordingButton.className).toContain('recording');
       });
     });
   });

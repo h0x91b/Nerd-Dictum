@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, clipboard } from 'electron';
+import { app, BrowserWindow, ipcMain, clipboard, globalShortcut } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -37,12 +37,37 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(createWindow);
+// Default shortcut: Cmd+Shift+R on macOS, Ctrl+Shift+R on other platforms
+const TOGGLE_RECORDING_SHORTCUT = process.platform === 'darwin' ? 'CommandOrControl+Shift+R' : 'CommandOrControl+Shift+R';
+
+function registerGlobalShortcuts() {
+  const registered = globalShortcut.register(TOGGLE_RECORDING_SHORTCUT, () => {
+    console.log('[Shortcut] Toggle recording shortcut triggered');
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('toggle-recording');
+    }
+  });
+
+  if (!registered) {
+    console.error('[Shortcut] Failed to register global shortcut:', TOGGLE_RECORDING_SHORTCUT);
+  } else {
+    console.log('[Shortcut] Registered global shortcut:', TOGGLE_RECORDING_SHORTCUT);
+  }
+}
+
+app.whenReady().then(() => {
+  createWindow();
+  registerGlobalShortcuts();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
 });
 
 app.on('activate', () => {

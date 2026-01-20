@@ -17,3 +17,4 @@
 [2026-01-20 17:15] Feature — Add audio validation (min 250ms, max 15 minutes) with user-facing error messages
 [2026-01-20 16:55] Feature — Add error handling with user-friendly messages, error/success flash styling, and retry capability for transient errors
 [2026-01-20 17:35] Test — Add comprehensive unit tests (errors.test.ts, App.test.tsx) and E2E tests (voice-widget.spec.ts) for error handling feature
+[2026-01-20 16:30] Feature — Add global keyboard shortcut (Cmd/Ctrl+Shift+R) to toggle recording

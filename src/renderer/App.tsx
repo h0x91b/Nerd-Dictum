@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import './styles/App.css';
 import { AudioRecorder, AudioRecordingError } from '../lib/audio';
 import { transcribeAudio } from '../lib/gemini';
@@ -84,7 +84,7 @@ export function App() {
     }
   }, [state, transcribeWithRetry]);
 
-  const handleClick = async () => {
+  const handleToggleRecording = useCallback(async () => {
     if (state === 'idle') {
       // Clear any pending retry audio when starting new recording
       lastAudioRef.current = null;
@@ -110,7 +110,20 @@ export function App() {
         setState('idle');
       }
     }
-  };
+  }, [state]);
+
+  // Listen for global keyboard shortcut
+  useEffect(() => {
+    console.log('[TEST] Registering toggle-recording listener');
+    const unsubscribe = window.electronAPI.onToggleRecording(() => {
+      console.log('[TEST] Global shortcut triggered, current state:', state);
+      handleToggleRecording();
+    });
+    return () => {
+      console.log('[TEST] Unregistering toggle-recording listener');
+      unsubscribe();
+    };
+  }, [handleToggleRecording, state]);
 
   return (
     <div className="widget">
@@ -119,7 +132,7 @@ export function App() {
       </div>
       <button
         className={`mic-button ${state}`}
-        onClick={handleClick}
+        onClick={handleToggleRecording}
         disabled={state === 'transcribing'}
         aria-label={
           state === 'idle'
