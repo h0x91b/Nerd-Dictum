@@ -14,3 +14,4 @@
 [2026-01-20 15:45] Refactor — Replace text title with grip dots drag handle for better UX
 [2026-01-20 15:50] Bug — Fix widget to fill window, remove side borders, resize window to 80x100
 [2026-01-20 16:05] Feature — Integrate audio recording with transcription API, copy result to clipboard
+[2026-01-20 17:15] Feature — Add audio validation (min 250ms, max 15 minutes) with user-facing error messages

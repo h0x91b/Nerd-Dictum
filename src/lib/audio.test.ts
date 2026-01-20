@@ -163,6 +163,29 @@ describe('AudioRecorder', () => {
       );
     });
 
+    it('should throw error if recording is too long', async () => {
+      const { deps } = createMockDeps();
+      const recorder = new AudioRecorder(deps);
+
+      await recorder.start();
+
+      // Manually override the recording start time to simulate a long recording
+      // Access private field for testing purposes
+      (recorder as unknown as { recordingStartTime: number }).recordingStartTime =
+        Date.now() - MAX_RECORDING_MS - 1000; // 15 minutes + 1 second ago
+
+      try {
+        await recorder.stop();
+        // Should not reach here
+        expect(true).toBe(false);
+      } catch (error) {
+        expect(error).toBeInstanceOf(AudioRecordingError);
+        expect((error as Error).message).toBe(
+          `Recording too long (maximum ${MAX_RECORDING_MS / 60000} minutes)`
+        );
+      }
+    });
+
     it('should return base64-encoded WAV data on successful recording', async () => {
       const { deps, mockContext } = createMockDeps();
       const recorder = new AudioRecorder(deps);
