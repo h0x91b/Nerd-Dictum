@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
 import { App } from './App';
 
 // Mock audio infrastructure
@@ -407,6 +407,83 @@ describe('App', () => {
 
       await waitFor(() => {
         expect(screen.getByText('No microphone found')).toBeDefined();
+      });
+    });
+  });
+
+  describe('silence auto-stop', () => {
+    it('should not auto-stop if user is still speaking', async () => {
+      const mockProcessor = {
+        connect: mock(() => {}),
+        disconnect: mock(() => {}),
+        onaudioprocess: null as ((event: AudioProcessingEvent) => void) | null,
+      };
+
+      const mockSource = {
+        connect: mock(() => {}),
+        disconnect: mock(() => {}),
+      };
+
+      let capturedAudioProcessor: ((event: AudioProcessingEvent) => void) | null = null;
+
+      const mockAudioContext = {
+        sampleRate: 16000,
+        createMediaStreamSource: mock(() => mockSource),
+        createScriptProcessor: mock(() => {
+          return new Proxy(mockProcessor, {
+            set(target, prop, value) {
+              if (prop === 'onaudioprocess') {
+                capturedAudioProcessor = value as (event: AudioProcessingEvent) => void;
+              }
+              (target as Record<string, unknown>)[prop as string] = value;
+              return true;
+            },
+          });
+        }),
+        destination: {},
+        close: mock(() => Promise.resolve()),
+      };
+
+      (window as unknown as { AudioContext: unknown }).AudioContext = mock(
+        () => mockAudioContext
+      );
+
+      render(<App />);
+
+      // Start recording
+      const button = screen.getByRole('button', { name: /start recording/i });
+      fireEvent.click(button);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /stop recording/i })).toBeDefined();
+      });
+
+      expect(capturedAudioProcessor).not.toBeNull();
+
+      // Simulate continuous speech (non-silent audio)
+      const nonSilentBuffer = new Float32Array(4096).fill(0.5);
+      const mockNonSilentEvent = {
+        inputBuffer: {
+          getChannelData: () => nonSilentBuffer,
+        },
+      } as unknown as AudioProcessingEvent;
+
+      const originalDateNow = Date.now;
+      let currentTime = originalDateNow();
+      Date.now = () => currentTime;
+
+      // Process many chunks of non-silent audio
+      for (let i = 0; i < 20; i++) {
+        currentTime += 200;
+        capturedAudioProcessor!(mockNonSilentEvent);
+      }
+
+      Date.now = originalDateNow;
+
+      // Should still be in recording state
+      await waitFor(() => {
+        const recordingButton = screen.getByRole('button', { name: /stop recording/i });
+        expect(recordingButton.className).toContain('recording');
       });
     });
   });

@@ -23,3 +23,7 @@
 [2026-01-20 19:34] Feature — Add custom system prompt and multi-language selection in settings for better transcription
 [2026-01-20 19:29] Feature — Add system tray integration with Show/Hide, Settings, Quit menu; app runs in tray when window closed
 [2026-01-20 21:05] Feature — Remember window position across restarts (ignores saved position if monitor configuration changed)
+[2026-01-20 20:15] Feature — Auto-stop recording after 1.5 seconds of silence (silence detection)
+[2026-01-20 20:30] Bug — Fix silence callback firing multiple times
+[2026-01-20 20:45] Feature — Change silence duration from 1.5s to 2.5s for more natural pauses
+[2026-01-20 21:00] Bug — Fix silence auto-stop not working (stale closure issue with state); add unit tests for silence detection

@@ -98,6 +98,22 @@ export function App() {
     }
   }, [state, transcribeWithRetry]);
 
+  const stopRecordingAndTranscribe = useCallback(async () => {
+    // Use recorder's internal state to avoid stale closure issues
+    if (!recorderRef.current || !recorderRef.current.getIsRecording()) return;
+
+    try {
+      const audioBase64 = await recorderRef.current.stop();
+      console.log('[TEST] Recording stopped, audio length:', audioBase64.length, 'chars');
+      await transcribeWithRetry(audioBase64);
+    } catch (error) {
+      // Recording stop error (too short, etc.)
+      showError(error);
+      console.error('[TEST] Recording stop error:', error);
+      setState('idle');
+    }
+  }, [transcribeWithRetry, showError]);
+
   const handleToggleRecording = useCallback(async () => {
     if (state === 'idle') {
       // Clear any pending retry audio when starting new recording
@@ -105,6 +121,11 @@ export function App() {
 
       try {
         recorderRef.current = new AudioRecorder();
+        // Set up silence detection callback for auto-stop
+        recorderRef.current.setOnSilenceStop(() => {
+          console.log('[TEST] Silence detected - auto-stopping recording');
+          stopRecordingAndTranscribe();
+        });
         await recorderRef.current.start();
         setState('recording');
         console.log('[AudioRecorder] Recording started');
@@ -113,18 +134,9 @@ export function App() {
         console.error('[AudioRecorder] Start error:', error);
       }
     } else if (state === 'recording') {
-      try {
-        const audioBase64 = await recorderRef.current!.stop();
-        console.log('[TEST] Recording stopped, audio length:', audioBase64.length, 'chars');
-        await transcribeWithRetry(audioBase64);
-      } catch (error) {
-        // Recording stop error (too short, etc.)
-        showError(error);
-        console.error('[TEST] Recording stop error:', error);
-        setState('idle');
-      }
+      await stopRecordingAndTranscribe();
     }
-  }, [state]);
+  }, [state, showError, stopRecordingAndTranscribe]);
 
   // Listen for global keyboard shortcut
   useEffect(() => {
