@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, clipboard, globalShortcut } from 'electron';
+import { app, BrowserWindow, ipcMain, clipboard, globalShortcut, Tray, Menu, nativeImage } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -55,6 +55,7 @@ let appSettings: AppSettings = DEFAULT_SETTINGS;
 
 let mainWindow: BrowserWindow | null = null;
 let settingsWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
 
 function createSettingsWindow() {
   if (settingsWindow && !settingsWindow.isDestroyed()) {
@@ -120,9 +121,116 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
 
+  // Hide to tray instead of closing on macOS/Windows
+  mainWindow.on('close', (event) => {
+    if (tray && !app.isQuitting) {
+      event.preventDefault();
+      mainWindow?.hide();
+    }
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+}
+
+function getIconPath(): string {
+  // Use Template suffix on macOS for proper menu bar appearance
+  const iconName = process.platform === 'darwin' ? 'tray-iconTemplate.png' : 'tray-icon.png';
+
+  if (process.env.NODE_ENV === 'development') {
+    // In development, assets are in project root
+    return path.join(app.getAppPath(), 'assets', iconName);
+  } else {
+    // In production, assets are in resources folder
+    return path.join(process.resourcesPath, 'assets', iconName);
+  }
+}
+
+function createTray() {
+  console.log('[Tray] === ВЕРСИЯ 3 === Создаю tray...');
+  const iconPath = getIconPath();
+  console.log('[Tray] Icon path:', iconPath);
+  console.log('[Tray] Icon exists:', fs.existsSync(iconPath));
+
+  let icon = nativeImage.createFromPath(iconPath);
+  console.log('[Tray] Icon isEmpty:', icon.isEmpty());
+  console.log('[Tray] Icon size:', icon.getSize());
+
+  // If icon failed to load, create a simple 16x16 icon programmatically
+  if (icon.isEmpty()) {
+    console.log('[Tray] Creating fallback icon...');
+    // Create a simple 16x16 white circle on transparent background
+    const size = 16;
+    const canvas = Buffer.alloc(size * size * 4); // RGBA
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const idx = (y * size + x) * 4;
+        const cx = size / 2, cy = size / 2, r = 6;
+        const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+        if (dist <= r) {
+          canvas[idx] = 255;     // R
+          canvas[idx + 1] = 255; // G
+          canvas[idx + 2] = 255; // B
+          canvas[idx + 3] = 255; // A
+        } else {
+          canvas[idx + 3] = 0;   // Transparent
+        }
+      }
+    }
+    icon = nativeImage.createFromBuffer(canvas, { width: size, height: size });
+  }
+
+  // Mark as template image on macOS for proper dark/light mode handling
+  if (process.platform === 'darwin') {
+    icon.setTemplateImage(true);
+  }
+
+  tray = new Tray(icon);
+  tray.setToolTip('Voice Recognition — ⌘⇧R to record');
+  console.log('[Tray] Created successfully, tooltip set');
+
+  updateTrayMenu();
+}
+
+function updateTrayMenu() {
+  if (!tray) return;
+
+  const isVisible = mainWindow?.isVisible() ?? false;
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: isVisible ? 'Hide Widget' : 'Show Widget',
+      click: () => {
+        if (mainWindow) {
+          if (mainWindow.isVisible()) {
+            mainWindow.hide();
+          } else {
+            mainWindow.show();
+            mainWindow.focus();
+          }
+          updateTrayMenu();
+        }
+      },
+    },
+    { type: 'separator' },
+    {
+      label: 'Settings',
+      click: () => {
+        createSettingsWindow();
+      },
+    },
+    { type: 'separator' },
+    {
+      label: 'Quit',
+      click: () => {
+        (app as any).isQuitting = true;
+        app.quit();
+      },
+    },
+  ]);
+
+  tray.setContextMenu(contextMenu);
 }
 
 // Default shortcut: Cmd+Shift+R on macOS, Ctrl+Shift+R on other platforms
@@ -148,21 +256,32 @@ app.whenReady().then(() => {
   appSettings = loadSettings();
   console.log('[Settings] Loaded settings, API key configured:', !!appSettings.apiKey);
   createWindow();
+  createTray();
   registerGlobalShortcuts();
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+  // With tray integration, don't quit when windows are closed
+  // The app keeps running in the tray
+  if (!tray && process.platform !== 'darwin') {
     app.quit();
   }
 });
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
+  if (tray) {
+    tray.destroy();
+    tray = null;
+  }
 });
 
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
+  // Show the window if it's hidden when dock icon is clicked (macOS)
+  if (mainWindow) {
+    mainWindow.show();
+    updateTrayMenu();
+  } else if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
 });

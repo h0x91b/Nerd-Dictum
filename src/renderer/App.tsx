@@ -158,9 +158,9 @@ export function App() {
         }
         data-tooltip={
           state === 'idle'
-            ? 'Start recording (⌘⇧R — global)'
+            ? '⌘⇧R'
             : state === 'recording'
-              ? 'Stop recording (⌘⇧R — global)'
+              ? '⌘⇧R'
               : undefined
         }
       >

@@ -33,6 +33,12 @@
       "!node_modules/**/CHANGELOG*",
       "!node_modules/**/*.md"
     ],
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      }
+    ],
     "mac": {
       "category": "public.app-category.utilities",
       "target": ["dmg", "zip"]
