@@ -264,6 +264,12 @@ export class AudioRecorder {
     const headerSize = 44;
     const totalSize = headerSize + dataSize;
 
+    console.log('[TEST] WAV Encoder: samples =', audioData.length);
+    console.log('[TEST] WAV Encoder: sample rate =', sampleRate, 'Hz');
+    console.log('[TEST] WAV Encoder: bits per sample =', bitsPerSample);
+    console.log('[TEST] WAV Encoder: channels =', numChannels);
+    console.log('[TEST] WAV Encoder: total size =', totalSize, 'bytes');
+
     const buffer = new ArrayBuffer(totalSize);
     const view = new DataView(buffer);
 
