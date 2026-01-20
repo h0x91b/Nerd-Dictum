@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import './styles/App.css';
 import { AudioRecorder, AudioRecordingError } from '../lib/audio';
+import { transcribeAudio } from '../lib/gemini';
 
 type AppState = 'idle' | 'recording' | 'transcribing';
 
@@ -33,21 +34,40 @@ export function App() {
       setState('transcribing');
       try {
         const audioBase64 = await recorderRef.current!.stop();
-        console.log('[AudioRecorder] Recording stopped');
-        console.log('[AudioRecorder] Audio length:', audioBase64.length, 'chars');
-        console.log('[AudioRecorder] Audio preview:', audioBase64.substring(0, 100) + '...');
+        console.log('[TEST] Recording stopped, audio length:', audioBase64.length, 'chars');
 
-        // TODO: Send to transcription API
-        // For now, just show success
-        showMessage('Recording captured!');
+        // Get API key and model from main process
+        const apiKey = await window.electronAPI.getApiKey();
+        const model = await window.electronAPI.getModel();
+
+        if (!apiKey) {
+          showMessage('Missing API key');
+          console.error('[TEST] GEMINI_API_KEY not set');
+          setState('idle');
+          return;
+        }
+
+        console.log('[TEST] Calling transcription API with model:', model);
+
+        // Transcribe audio
+        const transcript = await transcribeAudio(audioBase64, apiKey, model);
+        console.log('[TEST] Transcription result:', transcript);
+
+        // Copy to clipboard
+        await window.electronAPI.copyToClipboard(transcript);
+        showMessage('Copied to clipboard');
+        console.log('[TEST] Transcript copied to clipboard');
+
         setState('idle');
       } catch (error) {
         if (error instanceof AudioRecordingError) {
           showMessage(error.message);
+        } else if (error instanceof Error) {
+          showMessage(error.message);
         } else {
-          showMessage('Recording failed');
+          showMessage('Transcription failed');
         }
-        console.error('[AudioRecorder] Stop error:', error);
+        console.error('[TEST] Transcription error:', error);
         setState('idle');
       }
     }
