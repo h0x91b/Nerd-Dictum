@@ -1,0 +1,65 @@
+{
+  "name": "voice-recognition-widget",
+  "version": "0.1.0",
+  "description": "A minimal floating window for voice-to-text transcription using Google Gemini",
+  "type": "module",
+  "main": "dist/main/main.js",
+  "author": "",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "bun run build:main && bun run build:preload && concurrently \"vite\" \"wait-on http://localhost:5173 && NODE_ENV=development electron .\"",
+    "build": "bun run build:main && bun run build:preload && vite build",
+    "build:main": "bun build src/main/main.ts --outdir dist/main --target node --external electron",
+    "build:preload": "bun build src/preload/preload.ts --outdir dist/preload --target node --external electron --format cjs",
+    "test": "bun test",
+    "dist": "bun run build && electron-builder --mac",
+    "dist:win": "bun run build && electron-builder --win",
+    "dist:linux": "bun run build && electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.voicewidget.app",
+    "productName": "Voice Recognition Widget",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "node_modules/**/*",
+      "!node_modules/**/README*",
+      "!node_modules/**/CHANGELOG*",
+      "!node_modules/**/*.md"
+    ],
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": ["dmg", "zip"]
+    },
+    "win": {
+      "target": ["nsis", "portable"]
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Utility"
+    }
+  },
+  "devDependencies": {
+    "@happy-dom/global-registrator": "^20.0.11",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.1",
+    "@types/bun": "latest",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.2",
+    "concurrently": "^9.2.1",
+    "electron": "^33.0.0",
+    "electron-builder": "^26.4.0",
+    "happy-dom": "^20.0.11",
+    "typescript": "^5.0.0",
+    "vite": "^7.3.0",
+    "wait-on": "^9.0.3"
+  },
+  "dependencies": {
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  }
+}

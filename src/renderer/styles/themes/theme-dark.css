@@ -1,0 +1,40 @@
+[data-theme="dark"] {
+  /* Backgrounds */
+  --bg-app: #1a1a1a;
+  --bg-primary: #242424;
+  --bg-secondary: #2a2a2a;
+  --bg-tertiary: #333333;
+  --bg-hover: #3a3a3a;
+  --bg-active: #444444;
+
+  /* Text */
+  --text-primary: #e0e0e0;
+  --text-secondary: #a0a0a0;
+  --text-tertiary: #707070;
+  --text-inverse: #1a1a1a;
+
+  /* Borders */
+  --border-default: #404040;
+  --border-subtle: #333333;
+  --border-strong: #555555;
+
+  /* Accent (interactive) */
+  --accent-primary: #4a9eff;
+  --accent-hover: #6bb3ff;
+  --accent-active: #3a8eef;
+
+  /* Semantic */
+  --color-success: #4caf50;
+  --color-warning: #ff9800;
+  --color-error: #f44336;
+  --color-info: #2196f3;
+
+  /* Widget-specific */
+  --color-recording: #f44336;
+  --color-transcribing: #ff9800;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+}
