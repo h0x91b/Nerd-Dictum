@@ -53,6 +53,34 @@
   appearance: none;
   outline: none;
   -webkit-app-region: no-drag;
+  position: relative;
+}
+
+.mic-button[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #2a2a2a;
+  color: #e0e0e0;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+  transition-delay: 0s;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.mic-button[data-tooltip]:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 350ms;
 }
 
 .mic-button:hover {

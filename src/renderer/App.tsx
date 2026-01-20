@@ -149,6 +149,13 @@ export function App() {
               ? 'Stop recording'
               : 'Transcribing...'
         }
+        data-tooltip={
+          state === 'idle'
+            ? 'Start recording (⌘⇧R — global)'
+            : state === 'recording'
+              ? 'Stop recording (⌘⇧R — global)'
+              : undefined
+        }
       >
         {state === 'transcribing' ? (
           <span className="spinner" />
