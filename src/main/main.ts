@@ -9,13 +9,15 @@ let mainWindow: BrowserWindow | null = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 90,
-    height: 90,
+    width: 80,
+    height: 100,
     frame: false,
-    transparent: true,
+    transparent: false,
+    backgroundColor: '#2a2a2a',
     alwaysOnTop: true,
     resizable: false,
     skipTaskbar: true,
+    hasShadow: false,
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.js'),
       contextIsolation: true,

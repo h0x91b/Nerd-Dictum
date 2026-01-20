@@ -87,4 +87,18 @@ describe('App', () => {
       expect(recordingButton.className).toContain('recording');
     });
   });
+
+  it('should have mic-button class on button', () => {
+    render(<App />);
+
+    const button = screen.getByRole('button', { name: /start recording/i });
+    expect(button.className).toContain('mic-button');
+  });
+
+  it('should have widget container for drag region', () => {
+    render(<App />);
+
+    const widget = document.querySelector('.widget');
+    expect(widget).toBeDefined();
+  });
 });

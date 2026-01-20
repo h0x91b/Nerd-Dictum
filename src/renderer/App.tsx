@@ -55,6 +55,9 @@ export function App() {
 
   return (
     <div className="widget">
+      <div className="drag-handle">
+        <span className="grip-dots"></span>
+      </div>
       <button
         className={`mic-button ${state}`}
         onClick={handleClick}

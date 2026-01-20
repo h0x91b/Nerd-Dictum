@@ -2,31 +2,61 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   padding: 8px;
-  background: var(--bg-tertiary);
-  border-radius: 12px;
-  box-shadow: var(--shadow-lg);
+  width: 100%;
+  height: 100%;
+}
+
+.drag-handle {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 6px 0;
+  cursor: grab;
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.grip-dots {
+  display: block;
+  width: 20px;
+  height: 6px;
+  background-image: radial-gradient(circle, #666 1.5px, transparent 1.5px);
+  background-size: 6px 6px;
+  background-position: 0 0;
+  opacity: 0.8;
+}
+
+.drag-handle:hover .grip-dots {
+  opacity: 1;
+  background-image: radial-gradient(circle, #888 1.5px, transparent 1.5px);
 }
 
 .mic-button {
-  width: 60px;
-  height: 60px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   border: none;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
+  background: #3a3a3a;
+  color: #e0e0e0;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
-  box-shadow: var(--shadow-md);
+  transition: background 0.2s ease, transform 0.1s ease;
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+  -webkit-app-region: no-drag;
 }
 
 .mic-button:hover {
-  background: var(--bg-hover);
-  transform: scale(1.05);
+  background: #4a4a4a;
 }
 
 .mic-button:active {
@@ -39,14 +69,14 @@
 }
 
 .mic-button.recording {
-  background: var(--color-recording);
-  color: var(--text-inverse);
+  background: #f44336;
+  color: #1a1a1a;
   animation: pulse 1.5s ease-in-out infinite;
 }
 
 .mic-button.transcribing {
-  background: var(--color-transcribing);
-  color: var(--text-inverse);
+  background: #ff9800;
+  color: #1a1a1a;
 }
 
 @keyframes pulse {
@@ -61,7 +91,7 @@
 .spinner {
   width: 24px;
   height: 24px;
-  border: 3px solid var(--text-inverse);
+  border: 3px solid #1a1a1a;
   border-top-color: transparent;
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -78,13 +108,13 @@
   bottom: -30px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--bg-secondary);
-  color: var(--text-primary);
+  background: #2a2a2a;
+  color: #e0e0e0;
   padding: 4px 12px;
   border-radius: 4px;
   font-size: 12px;
   white-space: nowrap;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   animation: fadeIn 0.2s ease;
 }
 
