@@ -112,6 +112,32 @@ After every meaningful change, add an entry to `CHANGELOG.md`:
 
 ---
 
+## Task Testability Policy
+
+**Every completed task must include clear testing instructions for the developer.**
+
+1. Provide step-by-step instructions on how to verify the change works
+2. If the change has visible UI effects, describe what to look for
+3. If the change has no visible UI effects, add `console.log` statements so the developer can verify via DevTools/terminal
+
+**Testing instruction format:**
+```
+## How to Test
+1. Run `bun run dev`
+2. [Specific steps to trigger the feature]
+3. [What to observe - UI change or console output]
+```
+
+**For non-visible changes (logic, refactoring, internal APIs):**
+- Add temporary `console.log` with prefix `[TEST]` to show the code path is executed
+- Example: `console.log('[TEST] AudioRecorder: buffer size =', buffer.length)`
+- Instruct developer where to check logs (DevTools console, terminal, etc.)
+- These logs can be removed after verification
+
+**Why this matters:** The developer working on this app needs to confirm changes work before committing. Never leave them guessing.
+
+---
+
 ## Theming
 
 ### Architecture
