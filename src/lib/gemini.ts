@@ -2,7 +2,7 @@
  * Google Gemini API client for speech-to-text transcription
  */
 
-const TRANSCRIPTION_PROMPT = `Transcribe the provided audio to text. Preserve developer terms faithfully:
+const DEFAULT_TRANSCRIPTION_PROMPT = `Transcribe the provided audio to text. Preserve developer terms faithfully:
 code-like tokens, identifiers, acronyms, file paths. Do not invent content.
 Output only the final transcript.
 
@@ -22,18 +22,36 @@ interface GeminiResponse {
   };
 }
 
+export interface TranscribeOptions {
+  customPrompt?: string;
+  languages?: string[];
+}
+
+function buildPrompt(options?: TranscribeOptions): string {
+  const basePrompt = options?.customPrompt || DEFAULT_TRANSCRIPTION_PROMPT;
+
+  if (options?.languages && options.languages.length > 0) {
+    const languageHint = `\n\nPrimary languages: ${options.languages.join(', ')}. The speaker may mix these languages.`;
+    return basePrompt + languageHint;
+  }
+
+  return basePrompt;
+}
+
 export async function transcribeAudio(
   audioBase64: string,
   apiKey: string,
-  model: string = 'gemini-3-flash-preview'
+  model: string = 'gemini-3-flash-preview',
+  options?: TranscribeOptions
 ): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const prompt = buildPrompt(options);
 
   const requestBody = {
     contents: [
       {
         parts: [
-          { text: TRANSCRIPTION_PROMPT },
+          { text: prompt },
           {
             inline_data: {
               mime_type: 'audio/wav',

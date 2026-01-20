@@ -1,6 +1,8 @@
 export interface AppSettings {
   apiKey: string;
   model: string;
+  customPrompt: string;
+  languages: string[];
 }
 
 export interface ElectronAPI {

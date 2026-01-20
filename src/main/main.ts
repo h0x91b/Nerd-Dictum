@@ -10,11 +10,15 @@ const __dirname = path.dirname(__filename);
 interface AppSettings {
   apiKey: string;
   model: string;
+  customPrompt: string;
+  languages: string[];
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
   apiKey: '',
   model: 'gemini-3-flash-preview',
+  customPrompt: '',
+  languages: [],
 };
 
 function getSettingsPath(): string {
@@ -59,8 +63,8 @@ function createSettingsWindow() {
   }
 
   settingsWindow = new BrowserWindow({
-    width: 400,
-    height: 300,
+    width: 450,
+    height: 550,
     frame: true,
     resizable: false,
     minimizable: false,
@@ -184,6 +188,8 @@ ipcMain.handle('get-settings', () => {
   return {
     apiKey: appSettings.apiKey,
     model: appSettings.model,
+    customPrompt: appSettings.customPrompt,
+    languages: appSettings.languages,
   };
 });
 

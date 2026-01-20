@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import './styles/App.css';
 import { AudioRecorder, AudioRecordingError } from '../lib/audio';
-import { transcribeAudio } from '../lib/gemini';
+import { transcribeAudio, TranscribeOptions } from '../lib/gemini';
 import { classifyError, ClassifiedError } from '../lib/errors';
 import { SettingsButton } from './components/Settings';
 
@@ -42,11 +42,10 @@ export function App() {
   const transcribeWithRetry = useCallback(async (audioBase64: string) => {
     setState('transcribing');
     try {
-      // Get API key and model from main process
-      const apiKey = await window.electronAPI.getApiKey();
-      const model = await window.electronAPI.getModel();
+      // Get settings from main process
+      const settings = await window.electronAPI.getSettings();
 
-      if (!apiKey) {
+      if (!settings.apiKey) {
         showMessage('Set API key in settings', 'error', true);
         console.error('[TEST] GEMINI_API_KEY not set - open settings to configure');
         window.electronAPI.openSettingsWindow();
@@ -56,10 +55,18 @@ export function App() {
         return;
       }
 
-      console.log('[TEST] Calling transcription API with model:', model);
+      const options: TranscribeOptions = {};
+      if (settings.customPrompt) {
+        options.customPrompt = settings.customPrompt;
+      }
+      if (settings.languages && settings.languages.length > 0) {
+        options.languages = settings.languages;
+      }
+
+      console.log('[TEST] Calling transcription API with model:', settings.model, 'languages:', settings.languages);
 
       // Transcribe audio
-      const transcript = await transcribeAudio(audioBase64, apiKey, model);
+      const transcript = await transcribeAudio(audioBase64, settings.apiKey, settings.model, options);
       console.log('[TEST] Transcription result:', transcript);
 
       // Copy to clipboard

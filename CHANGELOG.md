@@ -20,3 +20,4 @@
 [2026-01-20 16:30] Feature — Add global keyboard shortcut (Cmd/Ctrl+Shift+R) to toggle recording
 [2026-01-20 18:30] Feature — Add settings UI with gear icon to configure Gemini API key and model, persisted to disk
 [2026-01-20 19:30] Bug — Fix settings to open in separate window instead of inside tiny widget, fix gear icon clickable area
+[2026-01-20 19:34] Feature — Add custom system prompt and multi-language selection in settings for better transcription

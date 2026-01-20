@@ -3,6 +3,8 @@ import { contextBridge, ipcRenderer } from 'electron';
 export interface AppSettings {
   apiKey: string;
   model: string;
+  customPrompt: string;
+  languages: string[];
 }
 
 contextBridge.exposeInMainWorld('electronAPI', {
