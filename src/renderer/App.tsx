@@ -1,25 +1,55 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import './styles/App.css';
+import { AudioRecorder, AudioRecordingError } from '../lib/audio';
 
 type AppState = 'idle' | 'recording' | 'transcribing';
 
 export function App() {
   const [state, setState] = useState<AppState>('idle');
   const [message, setMessage] = useState<string>('');
+  const recorderRef = useRef<AudioRecorder | null>(null);
+
+  const showMessage = (msg: string) => {
+    setMessage(msg);
+    setTimeout(() => setMessage(''), 2000);
+  };
 
   const handleClick = async () => {
     if (state === 'idle') {
-      // TODO: Start recording
-      setState('recording');
+      try {
+        recorderRef.current = new AudioRecorder();
+        await recorderRef.current.start();
+        setState('recording');
+        console.log('[AudioRecorder] Recording started');
+      } catch (error) {
+        if (error instanceof AudioRecordingError) {
+          showMessage(error.message);
+        } else {
+          showMessage('Failed to start recording');
+        }
+        console.error('[AudioRecorder] Start error:', error);
+      }
     } else if (state === 'recording') {
-      // TODO: Stop recording and transcribe
       setState('transcribing');
-      // TODO: Implement transcription
-      setTimeout(() => {
-        setMessage('Copied to clipboard');
+      try {
+        const audioBase64 = await recorderRef.current!.stop();
+        console.log('[AudioRecorder] Recording stopped');
+        console.log('[AudioRecorder] Audio length:', audioBase64.length, 'chars');
+        console.log('[AudioRecorder] Audio preview:', audioBase64.substring(0, 100) + '...');
+
+        // TODO: Send to transcription API
+        // For now, just show success
+        showMessage('Recording captured!');
         setState('idle');
-        setTimeout(() => setMessage(''), 2000);
-      }, 1000);
+      } catch (error) {
+        if (error instanceof AudioRecordingError) {
+          showMessage(error.message);
+        } else {
+          showMessage('Recording failed');
+        }
+        console.error('[AudioRecorder] Stop error:', error);
+        setState('idle');
+      }
     }
   };
 

@@ -1,0 +1,353 @@
+/**
+ * Audio recording module using Web Audio API
+ * Records audio as WAV format (PCM, 16-bit, mono, 16kHz)
+ */
+
+// Audio configuration
+const TARGET_SAMPLE_RATE = 16000;
+const CHANNELS = 1; // mono
+const BITS_PER_SAMPLE = 16;
+
+// Validation constants
+const MIN_RECORDING_MS = 250;
+const MAX_RECORDING_MS = 15 * 60 * 1000; // 15 minutes
+
+export class AudioRecordingError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AudioRecordingError';
+  }
+}
+
+/**
+ * Dependencies for AudioRecorder (injectable for testing)
+ */
+export interface AudioRecorderDeps {
+  getUserMedia: (constraints: MediaStreamConstraints) => Promise<MediaStream>;
+  createAudioContext: (options?: AudioContextOptions) => AudioContext;
+}
+
+const defaultDeps: AudioRecorderDeps = {
+  getUserMedia: (constraints) =>
+    navigator.mediaDevices.getUserMedia(constraints),
+  createAudioContext: (options) => new AudioContext(options),
+};
+
+export class AudioRecorder {
+  private mediaStream: MediaStream | null = null;
+  private audioContext: AudioContext | null = null;
+  private sourceNode: MediaStreamAudioSourceNode | null = null;
+  private processorNode: ScriptProcessorNode | null = null;
+  private audioChunks: Float32Array[] = [];
+  private recordingStartTime: number = 0;
+  private isRecording: boolean = false;
+  private originalSampleRate: number = TARGET_SAMPLE_RATE;
+  private deps: AudioRecorderDeps;
+
+  constructor(deps: AudioRecorderDeps = defaultDeps) {
+    this.deps = deps;
+  }
+
+  /**
+   * Start recording audio from the microphone
+   */
+  async start(): Promise<void> {
+    if (this.isRecording) {
+      throw new AudioRecordingError('Recording already in progress');
+    }
+
+    try {
+      // Request microphone access
+      this.mediaStream = await this.deps.getUserMedia({
+        audio: {
+          channelCount: CHANNELS,
+          sampleRate: TARGET_SAMPLE_RATE,
+          echoCancellation: true,
+          noiseSuppression: true,
+        },
+      });
+
+      // Create audio context
+      this.audioContext = this.deps.createAudioContext({
+        sampleRate: TARGET_SAMPLE_RATE,
+      });
+
+      // Store the actual sample rate (may differ from requested)
+      this.originalSampleRate = this.audioContext.sampleRate;
+
+      // Create source node from media stream
+      this.sourceNode = this.audioContext.createMediaStreamSource(
+        this.mediaStream
+      );
+
+      // Create script processor for capturing raw audio data
+      // Buffer size of 4096 is a good balance between latency and performance
+      this.processorNode = this.audioContext.createScriptProcessor(
+        4096,
+        CHANNELS,
+        CHANNELS
+      );
+
+      // Reset audio chunks
+      this.audioChunks = [];
+
+      // Capture audio data
+      this.processorNode.onaudioprocess = (event: AudioProcessingEvent) => {
+        if (this.isRecording) {
+          const inputData = event.inputBuffer.getChannelData(0);
+          // Clone the data since the buffer is reused
+          this.audioChunks.push(new Float32Array(inputData));
+        }
+      };
+
+      // Connect nodes: source -> processor -> destination
+      this.sourceNode.connect(this.processorNode);
+      this.processorNode.connect(this.audioContext.destination);
+
+      this.isRecording = true;
+      this.recordingStartTime = Date.now();
+    } catch (error) {
+      this.cleanup();
+      if (error instanceof Error) {
+        if (
+          error.name === 'NotAllowedError' ||
+          error.name === 'PermissionDeniedError'
+        ) {
+          throw new AudioRecordingError('Microphone permission denied');
+        }
+        if (
+          error.name === 'NotFoundError' ||
+          error.name === 'DevicesNotFoundError'
+        ) {
+          throw new AudioRecordingError('No microphone found');
+        }
+        throw new AudioRecordingError(`Failed to start recording: ${error.message}`);
+      }
+      throw new AudioRecordingError('Failed to start recording');
+    }
+  }
+
+  /**
+   * Stop recording and return the audio as base64-encoded WAV
+   */
+  async stop(): Promise<string> {
+    if (!this.isRecording) {
+      throw new AudioRecordingError('No recording in progress');
+    }
+
+    const recordingDuration = Date.now() - this.recordingStartTime;
+    this.isRecording = false;
+
+    // Validate recording duration
+    if (recordingDuration < MIN_RECORDING_MS) {
+      this.cleanup();
+      throw new AudioRecordingError(
+        `Recording too short (minimum ${MIN_RECORDING_MS}ms)`
+      );
+    }
+
+    if (recordingDuration > MAX_RECORDING_MS) {
+      this.cleanup();
+      throw new AudioRecordingError(
+        `Recording too long (maximum ${MAX_RECORDING_MS / 60000} minutes)`
+      );
+    }
+
+    try {
+      // Merge all audio chunks into a single buffer
+      const mergedAudio = this.mergeAudioChunks();
+
+      // Resample if necessary
+      const resampledAudio =
+        this.originalSampleRate !== TARGET_SAMPLE_RATE
+          ? this.resample(mergedAudio, this.originalSampleRate, TARGET_SAMPLE_RATE)
+          : mergedAudio;
+
+      // Convert to WAV format
+      const wavBuffer = this.encodeWav(resampledAudio);
+
+      // Convert to base64
+      const base64 = this.arrayBufferToBase64(wavBuffer);
+
+      return base64;
+    } finally {
+      this.cleanup();
+    }
+  }
+
+  /**
+   * Cancel recording without returning audio
+   */
+  cancel(): void {
+    this.isRecording = false;
+    this.cleanup();
+  }
+
+  /**
+   * Check if currently recording
+   */
+  getIsRecording(): boolean {
+    return this.isRecording;
+  }
+
+  /**
+   * Get current recording duration in milliseconds
+   */
+  getRecordingDuration(): number {
+    if (!this.isRecording) {
+      return 0;
+    }
+    return Date.now() - this.recordingStartTime;
+  }
+
+  /**
+   * Merge all audio chunks into a single Float32Array
+   */
+  private mergeAudioChunks(): Float32Array {
+    const totalLength = this.audioChunks.reduce(
+      (acc, chunk) => acc + chunk.length,
+      0
+    );
+    const merged = new Float32Array(totalLength);
+    let offset = 0;
+
+    for (const chunk of this.audioChunks) {
+      merged.set(chunk, offset);
+      offset += chunk.length;
+    }
+
+    return merged;
+  }
+
+  /**
+   * Resample audio from one sample rate to another using linear interpolation
+   */
+  private resample(
+    audioData: Float32Array,
+    fromSampleRate: number,
+    toSampleRate: number
+  ): Float32Array {
+    if (fromSampleRate === toSampleRate) {
+      return audioData;
+    }
+
+    const ratio = fromSampleRate / toSampleRate;
+    const newLength = Math.round(audioData.length / ratio);
+    const result = new Float32Array(newLength);
+
+    for (let i = 0; i < newLength; i++) {
+      const srcIndex = i * ratio;
+      const srcIndexFloor = Math.floor(srcIndex);
+      const srcIndexCeil = Math.min(srcIndexFloor + 1, audioData.length - 1);
+      const fraction = srcIndex - srcIndexFloor;
+
+      // Linear interpolation
+      result[i] =
+        audioData[srcIndexFloor] * (1 - fraction) +
+        audioData[srcIndexCeil] * fraction;
+    }
+
+    return result;
+  }
+
+  /**
+   * Encode audio data as WAV format (PCM, 16-bit, little-endian)
+   */
+  private encodeWav(audioData: Float32Array): ArrayBuffer {
+    const numChannels = CHANNELS;
+    const sampleRate = TARGET_SAMPLE_RATE;
+    const bitsPerSample = BITS_PER_SAMPLE;
+    const bytesPerSample = bitsPerSample / 8;
+    const blockAlign = numChannels * bytesPerSample;
+    const byteRate = sampleRate * blockAlign;
+    const dataSize = audioData.length * bytesPerSample;
+    const headerSize = 44;
+    const totalSize = headerSize + dataSize;
+
+    const buffer = new ArrayBuffer(totalSize);
+    const view = new DataView(buffer);
+
+    // RIFF header
+    this.writeString(view, 0, 'RIFF');
+    view.setUint32(4, totalSize - 8, true); // File size - 8
+    this.writeString(view, 8, 'WAVE');
+
+    // fmt sub-chunk
+    this.writeString(view, 12, 'fmt ');
+    view.setUint32(16, 16, true); // Sub-chunk size (16 for PCM)
+    view.setUint16(20, 1, true); // Audio format (1 = PCM)
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, byteRate, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitsPerSample, true);
+
+    // data sub-chunk
+    this.writeString(view, 36, 'data');
+    view.setUint32(40, dataSize, true);
+
+    // Write audio samples as 16-bit PCM
+    let offset = 44;
+    for (let i = 0; i < audioData.length; i++) {
+      // Clamp and convert float [-1, 1] to 16-bit integer [-32768, 32767]
+      const sample = Math.max(-1, Math.min(1, audioData[i]));
+      const intSample = sample < 0 ? sample * 32768 : sample * 32767;
+      view.setInt16(offset, intSample, true); // little-endian
+      offset += 2;
+    }
+
+    return buffer;
+  }
+
+  /**
+   * Write a string to a DataView at the specified offset
+   */
+  private writeString(view: DataView, offset: number, str: string): void {
+    for (let i = 0; i < str.length; i++) {
+      view.setUint8(offset + i, str.charCodeAt(i));
+    }
+  }
+
+  /**
+   * Convert an ArrayBuffer to a base64 string
+   */
+  private arrayBufferToBase64(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  }
+
+  /**
+   * Clean up all resources
+   */
+  private cleanup(): void {
+    if (this.processorNode) {
+      this.processorNode.disconnect();
+      this.processorNode.onaudioprocess = null;
+      this.processorNode = null;
+    }
+
+    if (this.sourceNode) {
+      this.sourceNode.disconnect();
+      this.sourceNode = null;
+    }
+
+    if (this.audioContext) {
+      this.audioContext.close().catch(() => {});
+      this.audioContext = null;
+    }
+
+    if (this.mediaStream) {
+      this.mediaStream.getTracks().forEach((track) => track.stop());
+      this.mediaStream = null;
+    }
+
+    this.audioChunks = [];
+  }
+}
+
+// Export utility functions for testing
+export { TARGET_SAMPLE_RATE, CHANNELS, BITS_PER_SAMPLE, MIN_RECORDING_MS, MAX_RECORDING_MS };
