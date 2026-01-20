@@ -33,10 +33,14 @@ const createMockAudioContext = () => {
 const mockElectronAPI = {
   getApiKey: mock(() => Promise.resolve('test-api-key')),
   getModel: mock(() => Promise.resolve('gemini-3-flash-preview')),
-  copyToClipboard: mock(() => Promise.resolve()),
+  copyToClipboard: mock(() => Promise.resolve(true)),
   onToggleRecording: mock((callback: () => void) => {
     return () => {};
   }),
+  getSettings: mock(() => Promise.resolve({ apiKey: 'test-api-key', model: 'gemini-3-flash-preview' })),
+  saveSettings: mock(() => Promise.resolve(true)),
+  openSettingsWindow: mock(() => Promise.resolve(true)),
+  closeSettingsWindow: mock(() => Promise.resolve(true)),
 };
 
 describe('App', () => {
@@ -63,8 +67,19 @@ describe('App', () => {
       () => createMockAudioContext()
     );
 
-    // Mock electronAPI
-    (window as unknown as { electronAPI: typeof mockElectronAPI }).electronAPI = mockElectronAPI;
+    // Mock electronAPI with settings methods
+    window.electronAPI = {
+      copyToClipboard: mock(() => Promise.resolve(true)),
+      getApiKey: mock(() => Promise.resolve('test-api-key')),
+      getModel: mock(() => Promise.resolve('gemini-3-flash-preview')),
+      getSettings: mock(() => Promise.resolve({ apiKey: 'test-api-key', model: 'gemini-3-flash-preview' })),
+      saveSettings: mock(() => Promise.resolve(true)),
+      onToggleRecording: mock((callback: () => void) => {
+        return () => {};
+      }),
+      openSettingsWindow: mock(() => Promise.resolve(true)),
+      closeSettingsWindow: mock(() => Promise.resolve(true)),
+    };
   });
 
   afterEach(() => {
@@ -81,7 +96,7 @@ describe('App', () => {
       (window as unknown as { AudioContext: unknown }).AudioContext = originalAudioContext;
     }
     if (originalElectronAPI !== undefined) {
-      (window as unknown as { electronAPI: typeof window.electronAPI }).electronAPI = originalElectronAPI;
+      window.electronAPI = originalElectronAPI;
     }
   });
 
@@ -118,6 +133,13 @@ describe('App', () => {
 
     const widget = document.querySelector('.widget');
     expect(widget).toBeDefined();
+  });
+
+  it('should render settings button', () => {
+    render(<App />);
+
+    const settingsButton = screen.getByRole('button', { name: /open settings/i });
+    expect(settingsButton).toBeDefined();
   });
 
   describe('error handling', () => {
@@ -235,9 +257,10 @@ describe('App', () => {
 
     it('should show error message for missing API key', async () => {
       // Mock electronAPI to return no API key
-      (window as unknown as { electronAPI: typeof mockElectronAPI }).electronAPI = {
-        ...mockElectronAPI,
-        getApiKey: mock(() => Promise.resolve(null)),
+      window.electronAPI = {
+        ...window.electronAPI,
+        getApiKey: mock(() => Promise.resolve('')),
+        getSettings: mock(() => Promise.resolve({ apiKey: '', model: 'gemini-3-flash-preview' })),
       };
 
       render(<App />);
@@ -393,7 +416,7 @@ describe('App', () => {
       const mockOnToggleRecording = mock((callback: () => void) => {
         return () => {};
       });
-      (window as unknown as { electronAPI: typeof mockElectronAPI }).electronAPI = {
+      window.electronAPI = {
         ...mockElectronAPI,
         onToggleRecording: mockOnToggleRecording,
       };
@@ -409,7 +432,7 @@ describe('App', () => {
         capturedCallback = callback;
         return () => {};
       });
-      (window as unknown as { electronAPI: typeof mockElectronAPI }).electronAPI = {
+      window.electronAPI = {
         ...mockElectronAPI,
         onToggleRecording: mockOnToggleRecording,
       };

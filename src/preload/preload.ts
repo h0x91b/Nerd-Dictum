@@ -1,5 +1,10 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+export interface AppSettings {
+  apiKey: string;
+  model: string;
+}
+
 contextBridge.exposeInMainWorld('electronAPI', {
   copyToClipboard: (text: string) => ipcRenderer.invoke('copy-to-clipboard', text),
   getApiKey: () => ipcRenderer.invoke('get-api-key'),
@@ -11,4 +16,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.removeListener('toggle-recording', listener);
     };
   },
+  getSettings: () => ipcRenderer.invoke('get-settings'),
+  saveSettings: (settings: Partial<AppSettings>) => ipcRenderer.invoke('save-settings', settings),
+  openSettingsWindow: () => ipcRenderer.invoke('open-settings-window'),
+  closeSettingsWindow: () => ipcRenderer.invoke('close-settings-window'),
 });

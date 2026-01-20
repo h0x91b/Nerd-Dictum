@@ -1,11 +1,95 @@
 import { app, BrowserWindow, ipcMain, clipboard, globalShortcut } from 'electron';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Settings persistence
+interface AppSettings {
+  apiKey: string;
+  model: string;
+}
+
+const DEFAULT_SETTINGS: AppSettings = {
+  apiKey: '',
+  model: 'gemini-3-flash-preview',
+};
+
+function getSettingsPath(): string {
+  return path.join(app.getPath('userData'), 'settings.json');
+}
+
+function loadSettings(): AppSettings {
+  try {
+    const settingsPath = getSettingsPath();
+    if (fs.existsSync(settingsPath)) {
+      const data = fs.readFileSync(settingsPath, 'utf-8');
+      const parsed = JSON.parse(data);
+      return { ...DEFAULT_SETTINGS, ...parsed };
+    }
+  } catch (error) {
+    console.error('[Settings] Failed to load settings:', error);
+  }
+  return { ...DEFAULT_SETTINGS };
+}
+
+function saveSettings(settings: AppSettings): boolean {
+  try {
+    const settingsPath = getSettingsPath();
+    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
+    console.log('[Settings] Saved to:', settingsPath);
+    return true;
+  } catch (error) {
+    console.error('[Settings] Failed to save settings:', error);
+    return false;
+  }
+}
+
+let appSettings: AppSettings = DEFAULT_SETTINGS;
+
 let mainWindow: BrowserWindow | null = null;
+let settingsWindow: BrowserWindow | null = null;
+
+function createSettingsWindow() {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.focus();
+    return;
+  }
+
+  settingsWindow = new BrowserWindow({
+    width: 400,
+    height: 300,
+    frame: true,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    title: 'Settings',
+    parent: mainWindow || undefined,
+    modal: false,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, '../preload/preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  if (process.env.NODE_ENV === 'development') {
+    settingsWindow.loadURL('http://localhost:5173/settings.html');
+  } else {
+    settingsWindow.loadFile(path.join(__dirname, '../renderer/settings.html'));
+  }
+
+  settingsWindow.once('ready-to-show', () => {
+    settingsWindow?.show();
+  });
+
+  settingsWindow.on('closed', () => {
+    settingsWindow = null;
+  });
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -56,6 +140,9 @@ function registerGlobalShortcuts() {
 }
 
 app.whenReady().then(() => {
+  // Load settings on app start
+  appSettings = loadSettings();
+  console.log('[Settings] Loaded settings, API key configured:', !!appSettings.apiKey);
   createWindow();
   registerGlobalShortcuts();
 });
@@ -82,10 +169,41 @@ ipcMain.handle('copy-to-clipboard', (_event, text: string) => {
   return true;
 });
 
+// API key: prefer saved settings, fallback to env var
 ipcMain.handle('get-api-key', () => {
-  return process.env.GEMINI_API_KEY || '';
+  return appSettings.apiKey || process.env.GEMINI_API_KEY || '';
 });
 
+// Model: prefer saved settings, fallback to env var
 ipcMain.handle('get-model', () => {
-  return process.env.GEMINI_MODEL || 'gemini-3-flash-preview';
+  return appSettings.model || process.env.GEMINI_MODEL || 'gemini-3-flash-preview';
+});
+
+// Settings management
+ipcMain.handle('get-settings', () => {
+  return {
+    apiKey: appSettings.apiKey,
+    model: appSettings.model,
+  };
+});
+
+ipcMain.handle('save-settings', (_event, settings: Partial<AppSettings>) => {
+  appSettings = { ...appSettings, ...settings };
+  const success = saveSettings(appSettings);
+  console.log('[Settings] Save result:', success);
+  return success;
+});
+
+// Open settings window
+ipcMain.handle('open-settings-window', () => {
+  createSettingsWindow();
+  return true;
+});
+
+// Close settings window
+ipcMain.handle('close-settings-window', () => {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.close();
+  }
+  return true;
 });

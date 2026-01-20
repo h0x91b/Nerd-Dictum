@@ -3,6 +3,7 @@ import './styles/App.css';
 import { AudioRecorder, AudioRecordingError } from '../lib/audio';
 import { transcribeAudio } from '../lib/gemini';
 import { classifyError, ClassifiedError } from '../lib/errors';
+import { SettingsButton } from './components/Settings';
 
 type AppState = 'idle' | 'recording' | 'transcribing';
 type MessageType = 'success' | 'error';
@@ -46,7 +47,13 @@ export function App() {
       const model = await window.electronAPI.getModel();
 
       if (!apiKey) {
-        throw new Error('Missing API key');
+        showMessage('Set API key in settings', 'error', true);
+        console.error('[TEST] GEMINI_API_KEY not set - open settings to configure');
+        window.electronAPI.openSettingsWindow();
+        // Save audio for retry after setting API key
+        lastAudioRef.current = audioBase64;
+        setState('idle');
+        return;
       }
 
       console.log('[TEST] Calling transcription API with model:', model);
@@ -127,6 +134,7 @@ export function App() {
 
   return (
     <div className="widget">
+      <SettingsButton />
       <div className="drag-handle">
         <span className="grip-dots"></span>
       </div>

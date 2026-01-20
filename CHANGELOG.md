@@ -18,3 +18,5 @@
 [2026-01-20 16:55] Feature — Add error handling with user-friendly messages, error/success flash styling, and retry capability for transient errors
 [2026-01-20 17:35] Test — Add comprehensive unit tests (errors.test.ts, App.test.tsx) and E2E tests (voice-widget.spec.ts) for error handling feature
 [2026-01-20 16:30] Feature — Add global keyboard shortcut (Cmd/Ctrl+Shift+R) to toggle recording
+[2026-01-20 18:30] Feature — Add settings UI with gear icon to configure Gemini API key and model, persisted to disk
+[2026-01-20 19:30] Bug — Fix settings to open in separate window instead of inside tiny widget, fix gear icon clickable area
