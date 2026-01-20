@@ -141,7 +141,6 @@ export class AudioRecorder {
               // Only auto-stop if we've recorded enough content (past MIN_RECORDING_MS)
               // and callback hasn't been fired yet
               if (silenceDuration >= SILENCE_DURATION_MS && recordingDuration >= MIN_RECORDING_MS && !this.silenceStopFired) {
-                console.log('[TEST] Silence detected for', silenceDuration, 'ms - auto-stopping');
                 this.silenceStopFired = true;
                 if (this.onSilenceStop) {
                   this.onSilenceStop();
@@ -318,12 +317,6 @@ export class AudioRecorder {
     const dataSize = audioData.length * bytesPerSample;
     const headerSize = 44;
     const totalSize = headerSize + dataSize;
-
-    console.log('[TEST] WAV Encoder: samples =', audioData.length);
-    console.log('[TEST] WAV Encoder: sample rate =', sampleRate, 'Hz');
-    console.log('[TEST] WAV Encoder: bits per sample =', bitsPerSample);
-    console.log('[TEST] WAV Encoder: channels =', numChannels);
-    console.log('[TEST] WAV Encoder: total size =', totalSize, 'bytes');
 
     const buffer = new ArrayBuffer(totalSize);
     const view = new DataView(buffer);

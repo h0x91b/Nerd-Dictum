@@ -34,7 +34,6 @@ export function App() {
 
   const showError = useCallback((error: unknown) => {
     const classified: ClassifiedError = classifyError(error);
-    console.error('[TEST] Error classified:', classified);
     showMessage(classified.message, 'error', classified.isRetryable);
     return classified;
   }, [showMessage]);
@@ -47,7 +46,6 @@ export function App() {
 
       if (!settings.apiKey) {
         showMessage('Set API key in settings', 'error', true);
-        console.error('[TEST] GEMINI_API_KEY not set - open settings to configure');
         window.electronAPI.openSettingsWindow();
         // Save audio for retry after setting API key
         lastAudioRef.current = audioBase64;
@@ -63,23 +61,18 @@ export function App() {
         options.languages = settings.languages;
       }
 
-      console.log('[TEST] Calling transcription API with model:', settings.model, 'languages:', settings.languages);
-
       // Transcribe audio
       const transcript = await transcribeAudio(audioBase64, settings.apiKey, settings.model, options);
-      console.log('[TEST] Transcription result:', transcript);
 
       // Copy to clipboard
       await window.electronAPI.copyToClipboard(transcript);
       showMessage('Copied to clipboard', 'success');
-      console.log('[TEST] Transcript copied to clipboard');
 
       // Clear saved audio on success
       lastAudioRef.current = null;
       setState('idle');
     } catch (error) {
       const classified = showError(error);
-      console.error('[TEST] Transcription error:', error);
 
       // Save audio for retry only if error is retryable
       if (classified.isRetryable) {
@@ -93,7 +86,6 @@ export function App() {
 
   const handleRetry = useCallback(async () => {
     if (lastAudioRef.current && state === 'idle') {
-      console.log('[TEST] Retrying transcription...');
       await transcribeWithRetry(lastAudioRef.current);
     }
   }, [state, transcribeWithRetry]);
@@ -104,12 +96,10 @@ export function App() {
 
     try {
       const audioBase64 = await recorderRef.current.stop();
-      console.log('[TEST] Recording stopped, audio length:', audioBase64.length, 'chars');
       await transcribeWithRetry(audioBase64);
     } catch (error) {
       // Recording stop error (too short, etc.)
       showError(error);
-      console.error('[TEST] Recording stop error:', error);
       setState('idle');
     }
   }, [transcribeWithRetry, showError]);
@@ -123,15 +113,12 @@ export function App() {
         recorderRef.current = new AudioRecorder();
         // Set up silence detection callback for auto-stop
         recorderRef.current.setOnSilenceStop(() => {
-          console.log('[TEST] Silence detected - auto-stopping recording');
           stopRecordingAndTranscribe();
         });
         await recorderRef.current.start();
         setState('recording');
-        console.log('[AudioRecorder] Recording started');
       } catch (error) {
         showError(error);
-        console.error('[AudioRecorder] Start error:', error);
       }
     } else if (state === 'recording') {
       await stopRecordingAndTranscribe();
@@ -140,13 +127,10 @@ export function App() {
 
   // Listen for global keyboard shortcut
   useEffect(() => {
-    console.log('[TEST] Registering toggle-recording listener');
     const unsubscribe = window.electronAPI.onToggleRecording(() => {
-      console.log('[TEST] Global shortcut triggered, current state:', state);
       handleToggleRecording();
     });
     return () => {
-      console.log('[TEST] Unregistering toggle-recording listener');
       unsubscribe();
     };
   }, [handleToggleRecording, state]);

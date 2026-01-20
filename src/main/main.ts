@@ -50,10 +50,9 @@ function saveSettings(settings: AppSettings): boolean {
   try {
     const settingsPath = getSettingsPath();
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
-    console.log('[Settings] Saved to:', settingsPath);
     return true;
   } catch (error) {
-    console.error('[Settings] Failed to save settings:', error);
+    console.error('[Settings] Failed to save:', error);
     return false;
   }
 }
@@ -75,7 +74,6 @@ function loadWindowPosition(): WindowPosition | null {
       // Validate that display count matches current configuration
       const currentDisplayCount = screen.getAllDisplays().length;
       if (parsed.displayCount !== currentDisplayCount) {
-        console.log('[WindowPosition] Display configuration changed:', parsed.displayCount, '->', currentDisplayCount, '- ignoring saved position');
         return null;
       }
 
@@ -87,11 +85,9 @@ function loadWindowPosition(): WindowPosition | null {
       });
 
       if (!isPositionVisible) {
-        console.log('[WindowPosition] Saved position is outside visible bounds - ignoring');
         return null;
       }
 
-      console.log('[WindowPosition] Loaded position:', parsed.x, parsed.y);
       return parsed;
     }
   } catch (error) {
@@ -106,7 +102,6 @@ function saveWindowPosition(x: number, y: number): void {
     const position: WindowPosition = { x, y, displayCount };
     const positionPath = getWindowPositionPath();
     fs.writeFileSync(positionPath, JSON.stringify(position, null, 2), 'utf-8');
-    console.log('[WindowPosition] Saved position:', x, y, 'displays:', displayCount);
   } catch (error) {
     console.error('[WindowPosition] Failed to save position:', error);
   }
@@ -219,18 +214,11 @@ function getIconPath(): string {
 }
 
 function createTray() {
-  console.log('[Tray] === ВЕРСИЯ 3 === Создаю tray...');
   const iconPath = getIconPath();
-  console.log('[Tray] Icon path:', iconPath);
-  console.log('[Tray] Icon exists:', fs.existsSync(iconPath));
-
   let icon = nativeImage.createFromPath(iconPath);
-  console.log('[Tray] Icon isEmpty:', icon.isEmpty());
-  console.log('[Tray] Icon size:', icon.getSize());
 
   // If icon failed to load, create a simple 16x16 icon programmatically
   if (icon.isEmpty()) {
-    console.log('[Tray] Creating fallback icon...');
     // Create a simple 16x16 white circle on transparent background
     const size = 16;
     const canvas = Buffer.alloc(size * size * 4); // RGBA
@@ -259,7 +247,6 @@ function createTray() {
 
   tray = new Tray(icon);
   tray.setToolTip('Voice Recognition — ⌘⇧R to record');
-  console.log('[Tray] Created successfully, tooltip set');
 
   updateTrayMenu();
 }
@@ -309,7 +296,6 @@ const TOGGLE_RECORDING_SHORTCUT = process.platform === 'darwin' ? 'CommandOrCont
 
 function registerGlobalShortcuts() {
   const registered = globalShortcut.register(TOGGLE_RECORDING_SHORTCUT, () => {
-    console.log('[Shortcut] Toggle recording shortcut triggered');
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('toggle-recording');
     }
@@ -317,15 +303,12 @@ function registerGlobalShortcuts() {
 
   if (!registered) {
     console.error('[Shortcut] Failed to register global shortcut:', TOGGLE_RECORDING_SHORTCUT);
-  } else {
-    console.log('[Shortcut] Registered global shortcut:', TOGGLE_RECORDING_SHORTCUT);
   }
 }
 
 app.whenReady().then(() => {
   // Load settings on app start
   appSettings = loadSettings();
-  console.log('[Settings] Loaded settings, API key configured:', !!appSettings.apiKey);
   createWindow();
   createTray();
   registerGlobalShortcuts();
@@ -385,9 +368,7 @@ ipcMain.handle('get-settings', () => {
 
 ipcMain.handle('save-settings', (_event, settings: Partial<AppSettings>) => {
   appSettings = { ...appSettings, ...settings };
-  const success = saveSettings(appSettings);
-  console.log('[Settings] Save result:', success);
-  return success;
+  return saveSettings(appSettings);
 });
 
 // Open settings window
