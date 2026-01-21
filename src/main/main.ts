@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, clipboard, globalShortcut, Tray, Menu, nativeImage, screen } from 'electron';
+import { app, BrowserWindow, ipcMain, clipboard, globalShortcut, Tray, Menu, nativeImage, screen, systemPreferences } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -154,7 +154,9 @@ function createSettingsWindow() {
     },
   });
 
-  if (!app.isPackaged) {
+  const isDev = process.env.ELECTRON_DEV === 'true' || (!app.isPackaged && !process.env.ELECTRON_FORCE_PROD);
+
+  if (isDev) {
     settingsWindow.loadURL('http://localhost:5173/settings.html');
   } else {
     settingsWindow.loadFile(path.join(__dirname, '../renderer/settings.html'));
@@ -191,7 +193,10 @@ function createWindow() {
     },
   });
 
-  if (!app.isPackaged) {
+  // Use ELECTRON_DEV env var to detect dev mode, or fall back to app.isPackaged
+  const isDev = process.env.ELECTRON_DEV === 'true' || (!app.isPackaged && !process.env.ELECTRON_FORCE_PROD);
+
+  if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
@@ -418,9 +423,40 @@ function createApplicationMenu() {
   Menu.setApplicationMenu(menu);
 }
 
-app.whenReady().then(() => {
+async function requestMicrophonePermission(): Promise<boolean> {
+  if (process.platform !== 'darwin') {
+    return true; // Only macOS needs explicit permission request
+  }
+
+  const status = systemPreferences.getMediaAccessStatus('microphone');
+  console.log('[Permissions] Microphone access status:', status);
+
+  if (status === 'granted') {
+    return true;
+  }
+
+  if (status === 'not-determined') {
+    // Request permission - this will show the macOS permission dialog
+    const granted = await systemPreferences.askForMediaAccess('microphone');
+    console.log('[Permissions] Microphone permission request result:', granted);
+    return granted;
+  }
+
+  // status is 'denied' or 'restricted'
+  console.error('[Permissions] Microphone access denied. Please enable in System Preferences > Privacy & Security > Microphone');
+  return false;
+}
+
+app.whenReady().then(async () => {
   // Load settings on app start
   appSettings = loadSettings();
+
+  // Request microphone permission on macOS before creating window
+  const micPermission = await requestMicrophonePermission();
+  if (!micPermission) {
+    console.warn('[Permissions] Microphone permission not granted - recording may not work');
+  }
+
   createApplicationMenu();
   createWindow();
   createTray();
@@ -508,4 +544,16 @@ ipcMain.handle('close-settings-window', () => {
     settingsWindow.close();
   }
   return true;
+});
+
+// Microphone permission handlers
+ipcMain.handle('get-microphone-permission-status', () => {
+  if (process.platform !== 'darwin') {
+    return 'granted'; // Non-macOS platforms don't need explicit permission
+  }
+  return systemPreferences.getMediaAccessStatus('microphone');
+});
+
+ipcMain.handle('request-microphone-permission', async () => {
+  return requestMicrophonePermission();
 });

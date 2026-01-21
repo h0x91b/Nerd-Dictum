@@ -6,6 +6,17 @@ import { App } from './App';
 const createMockMediaStream = (): MediaStream =>
   ({
     getTracks: () => [{ stop: mock(() => {}) }],
+    getAudioTracks: () => [{
+      label: 'Mock Microphone',
+      getSettings: () => ({
+        deviceId: 'mock-device-id',
+        sampleRate: 48000,
+        channelCount: 1,
+        echoCancellation: true,
+        noiseSuppression: true,
+      }),
+      stop: mock(() => {}),
+    }],
   }) as unknown as MediaStream;
 
 const createMockAudioContext = () => {
@@ -41,6 +52,8 @@ const mockElectronAPI = {
   saveSettings: mock(() => Promise.resolve(true)),
   openSettingsWindow: mock(() => Promise.resolve(true)),
   closeSettingsWindow: mock(() => Promise.resolve(true)),
+  getMicrophonePermissionStatus: mock(() => Promise.resolve('granted' as const)),
+  requestMicrophonePermission: mock(() => Promise.resolve(true)),
 };
 
 describe('App', () => {
@@ -79,6 +92,8 @@ describe('App', () => {
       }),
       openSettingsWindow: mock(() => Promise.resolve(true)),
       closeSettingsWindow: mock(() => Promise.resolve(true)),
+      getMicrophonePermissionStatus: mock(() => Promise.resolve('granted' as const)),
+      requestMicrophonePermission: mock(() => Promise.resolve(true)),
     };
   });
 

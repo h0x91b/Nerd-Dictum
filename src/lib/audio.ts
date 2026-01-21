@@ -16,6 +16,10 @@ const MAX_RECORDING_MS = 15 * 60 * 1000; // 15 minutes
 const SILENCE_THRESHOLD = 0.01; // RMS threshold below which audio is considered silence
 const DEFAULT_SILENCE_DURATION_MS = 2500; // Stop recording after 2.5s of silence
 
+// Debug logging interval
+let lastRmsLogTime = 0;
+const RMS_LOG_INTERVAL_MS = 500; // Log RMS every 500ms
+
 export class AudioRecordingError extends Error {
   constructor(message: string) {
     super(message);
@@ -109,9 +113,25 @@ export class AudioRecorder {
         audioConstraints.deviceId = { exact: this.options.deviceId };
       }
 
+      console.log('[AudioRecorder] Requesting microphone with constraints:', JSON.stringify(audioConstraints, null, 2));
+
       this.mediaStream = await this.deps.getUserMedia({
         audio: audioConstraints,
       });
+
+      // Log which device we actually got
+      const audioTrack = this.mediaStream.getAudioTracks()[0];
+      if (audioTrack) {
+        const trackSettings = audioTrack.getSettings();
+        console.log('[AudioRecorder] Got audio track:', {
+          label: audioTrack.label,
+          deviceId: trackSettings.deviceId,
+          sampleRate: trackSettings.sampleRate,
+          channelCount: trackSettings.channelCount,
+          echoCancellation: trackSettings.echoCancellation,
+          noiseSuppression: trackSettings.noiseSuppression,
+        });
+      }
 
       // Create audio context
       this.audioContext = this.deps.createAudioContext({
@@ -120,6 +140,7 @@ export class AudioRecorder {
 
       // Store the actual sample rate (may differ from requested)
       this.originalSampleRate = this.audioContext.sampleRate;
+      console.log(`[AudioRecorder] AudioContext created: requested=${TARGET_SAMPLE_RATE}Hz, actual=${this.originalSampleRate}Hz`);
 
       // Create source node from media stream
       this.sourceNode = this.audioContext.createMediaStreamSource(
@@ -152,16 +173,26 @@ export class AudioRecorder {
             const now = Date.now();
             const recordingDuration = now - this.recordingStartTime;
 
+            // Periodic RMS logging for debugging
+            if (now - lastRmsLogTime >= RMS_LOG_INTERVAL_MS) {
+              lastRmsLogTime = now;
+              const isSilent = rms < SILENCE_THRESHOLD;
+              const silenceDuration = this.silenceStartTime ? now - this.silenceStartTime : 0;
+              console.log(`[AudioRecorder] RMS: ${rms.toFixed(4)} | threshold: ${SILENCE_THRESHOLD} | silent: ${isSilent} | silenceDuration: ${silenceDuration}ms | recordingDuration: ${recordingDuration}ms`);
+            }
+
             if (rms < SILENCE_THRESHOLD) {
               // Audio is silent
               if (this.silenceStartTime === null) {
                 this.silenceStartTime = now;
+                console.log('[AudioRecorder] Silence started');
               } else {
                 const silenceDuration = now - this.silenceStartTime;
                 // Only auto-stop if we've recorded enough content (past MIN_RECORDING_MS)
                 // and callback hasn't been fired yet
                 const silenceThreshold = this.options.silenceDurationMs || DEFAULT_SILENCE_DURATION_MS;
                 if (silenceDuration >= silenceThreshold && recordingDuration >= MIN_RECORDING_MS && !this.silenceStopFired) {
+                  console.log(`[AudioRecorder] Silence threshold reached (${silenceDuration}ms >= ${silenceThreshold}ms), triggering auto-stop`);
                   this.silenceStopFired = true;
                   if (this.onSilenceStop) {
                     this.onSilenceStop();
@@ -170,6 +201,9 @@ export class AudioRecorder {
               }
             } else {
               // Audio is not silent, reset silence timer
+              if (this.silenceStartTime !== null) {
+                console.log('[AudioRecorder] Sound detected, resetting silence timer');
+              }
               this.silenceStartTime = null;
             }
           }

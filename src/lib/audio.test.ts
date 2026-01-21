@@ -15,6 +15,17 @@ import {
 // Mock audio data generators
 const createMockMediaStream = (): MediaStream => ({
   getTracks: () => [{ stop: mock(() => {}) } as unknown as MediaStreamTrack],
+  getAudioTracks: () => [{
+    label: 'Mock Microphone',
+    getSettings: () => ({
+      deviceId: 'mock-device-id',
+      sampleRate: 48000,
+      channelCount: 1,
+      echoCancellation: true,
+      noiseSuppression: true,
+    }),
+    stop: mock(() => {}),
+  }],
 }) as unknown as MediaStream;
 
 interface MockAudioContext {

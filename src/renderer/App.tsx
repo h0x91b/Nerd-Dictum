@@ -129,6 +129,23 @@ export function App() {
       }
 
       try {
+        // Check and request microphone permission on macOS
+        const permissionStatus = await window.electronAPI.getMicrophonePermissionStatus();
+        console.log('[Permission] Microphone status:', permissionStatus);
+
+        if (permissionStatus === 'denied' || permissionStatus === 'restricted') {
+          showMessage('Microphone access denied. Enable in System Preferences.', 'error', false);
+          return;
+        }
+
+        if (permissionStatus === 'not-determined') {
+          const granted = await window.electronAPI.requestMicrophonePermission();
+          if (!granted) {
+            showMessage('Microphone permission required', 'error', false);
+            return;
+          }
+        }
+
         // Get audio settings
         const settings = await window.electronAPI.getSettings();
         const recorderOptions: AudioRecorderOptions = {

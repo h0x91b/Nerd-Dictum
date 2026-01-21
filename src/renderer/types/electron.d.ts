@@ -10,6 +10,8 @@ export interface AppSettings {
   launchAtStartup: boolean;
 }
 
+export type MicrophonePermissionStatus = 'not-determined' | 'granted' | 'denied' | 'restricted' | 'unknown';
+
 export interface ElectronAPI {
   copyToClipboard: (text: string) => Promise<boolean>;
   getApiKey: () => Promise<string>;
@@ -19,6 +21,8 @@ export interface ElectronAPI {
   saveSettings: (settings: Partial<AppSettings>) => Promise<boolean>;
   openSettingsWindow: () => Promise<boolean>;
   closeSettingsWindow: () => Promise<boolean>;
+  getMicrophonePermissionStatus: () => Promise<MicrophonePermissionStatus>;
+  requestMicrophonePermission: () => Promise<boolean>;
 }
 
 declare global {
