@@ -9,7 +9,7 @@ import {
   MIN_RECORDING_MS,
   MAX_RECORDING_MS,
   SILENCE_THRESHOLD,
-  SILENCE_DURATION_MS,
+  DEFAULT_SILENCE_DURATION_MS,
 } from './audio';
 
 // Mock audio data generators
@@ -458,7 +458,7 @@ describe('AudioRecorder', () => {
 
     it('should export correct silence detection constants', () => {
       expect(SILENCE_THRESHOLD).toBe(0.01);
-      expect(SILENCE_DURATION_MS).toBe(2500);
+      expect(DEFAULT_SILENCE_DURATION_MS).toBe(2500);
     });
   });
 
@@ -499,7 +499,7 @@ describe('AudioRecorder', () => {
         inputBuffer: { getChannelData: () => silentBuffer },
       } as unknown as AudioProcessingEvent;
 
-      // Process silence for 3000ms (past SILENCE_DURATION_MS of 2500ms)
+      // Process silence for 3000ms (past DEFAULT_SILENCE_DURATION_MS of 2500ms)
       // First chunk sets silenceStartTime, subsequent chunks measure duration
       // So we need 2500ms AFTER the first chunk
       for (let i = 0; i < 15; i++) {

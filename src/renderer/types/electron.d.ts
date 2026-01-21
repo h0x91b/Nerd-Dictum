@@ -1,8 +1,12 @@
 export interface AppSettings {
   apiKey: string;
   model: string;
-  customPrompt: string;
   languages: string[];
+  speechDomain: string;
+  customDomainHint: string;
+  microphoneDeviceId: string;
+  silenceDetectionEnabled: boolean;
+  silenceDurationMs: number;
 }
 
 export interface ElectronAPI {

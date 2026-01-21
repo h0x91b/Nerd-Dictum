@@ -2,11 +2,57 @@
  * Google Gemini API client for speech-to-text transcription
  */
 
-const DEFAULT_TRANSCRIPTION_PROMPT = `Transcribe the provided audio to text. Preserve developer terms faithfully:
+// Domain-specific prompts for different speech contexts
+const DOMAIN_PROMPTS: Record<string, string> = {
+  programming: `Transcribe the provided audio to text. Preserve developer terms faithfully:
 code-like tokens, identifiers, acronyms, file paths. Do not invent content.
 Output only the final transcript.
 
-Domain hint: programming / developer speech`;
+Domain hint: programming / developer speech`,
+
+  general: `Transcribe the provided audio to text accurately.
+Do not invent content. Output only the final transcript.
+
+Domain hint: general everyday conversation`,
+
+  cooking: `Transcribe the provided audio to text. Pay attention to:
+recipe ingredients, cooking techniques, measurements, kitchen equipment.
+Do not invent content. Output only the final transcript.
+
+Domain hint: cooking and culinary terms`,
+
+  medical: `Transcribe the provided audio to text. Preserve medical terms faithfully:
+diagnoses, medications, symptoms, procedures, anatomical terms.
+Do not invent content. Output only the final transcript.
+
+Domain hint: medical and healthcare terminology`,
+
+  legal: `Transcribe the provided audio to text. Preserve legal terms faithfully:
+case citations, legal phrases, contract terminology, statutory references.
+Do not invent content. Output only the final transcript.
+
+Domain hint: legal terminology`,
+
+  academic: `Transcribe the provided audio to text. Preserve academic terms faithfully:
+citations, research terminology, scientific concepts, methodology terms.
+Do not invent content. Output only the final transcript.
+
+Domain hint: academic and research speech`,
+
+  business: `Transcribe the provided audio to text. Preserve business terms faithfully:
+financial terms, corporate jargon, metrics, KPIs, project management terms.
+Do not invent content. Output only the final transcript.
+
+Domain hint: business and corporate speech`,
+
+  creative: `Transcribe the provided audio to text. Preserve creative writing elements:
+dialogue, narrative structure, character names, literary terms.
+Do not invent content. Output only the final transcript.
+
+Domain hint: creative writing and storytelling`,
+};
+
+const DEFAULT_TRANSCRIPTION_PROMPT = DOMAIN_PROMPTS.programming;
 
 interface GeminiResponse {
   candidates?: Array<{
@@ -23,12 +69,25 @@ interface GeminiResponse {
 }
 
 export interface TranscribeOptions {
-  customPrompt?: string;
   languages?: string[];
+  speechDomain?: string;
+  customDomainHint?: string;
 }
 
 function buildPrompt(options?: TranscribeOptions): string {
-  const basePrompt = options?.customPrompt || DEFAULT_TRANSCRIPTION_PROMPT;
+  let basePrompt: string;
+
+  // If custom domain with custom hint, build a custom prompt
+  if (options?.speechDomain === 'custom' && options?.customDomainHint) {
+    basePrompt = `Transcribe the provided audio to text accurately.
+Do not invent content. Output only the final transcript.
+
+Domain hint: ${options.customDomainHint}`;
+  } else if (options?.speechDomain && DOMAIN_PROMPTS[options.speechDomain]) {
+    basePrompt = DOMAIN_PROMPTS[options.speechDomain];
+  } else {
+    basePrompt = DEFAULT_TRANSCRIPTION_PROMPT;
+  }
 
   if (options?.languages && options.languages.length > 0) {
     const languageHint = `\n\nPrimary languages: ${options.languages.join(', ')}. The speaker may mix these languages.`;

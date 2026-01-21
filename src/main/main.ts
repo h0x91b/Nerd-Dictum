@@ -10,8 +10,12 @@ const __dirname = path.dirname(__filename);
 interface AppSettings {
   apiKey: string;
   model: string;
-  customPrompt: string;
   languages: string[];
+  speechDomain: string;
+  customDomainHint: string;
+  microphoneDeviceId: string;
+  silenceDetectionEnabled: boolean;
+  silenceDurationMs: number;
 }
 
 // Window position persistence
@@ -24,8 +28,12 @@ interface WindowPosition {
 const DEFAULT_SETTINGS: AppSettings = {
   apiKey: '',
   model: 'gemini-3-flash-preview',
-  customPrompt: '',
   languages: [],
+  speechDomain: 'programming',
+  customDomainHint: '',
+  microphoneDeviceId: '',
+  silenceDetectionEnabled: true,
+  silenceDurationMs: 2500,
 };
 
 function getSettingsPath(): string {
@@ -118,8 +126,8 @@ function createSettingsWindow() {
   }
 
   settingsWindow = new BrowserWindow({
-    width: 450,
-    height: 550,
+    width: 500,
+    height: 700,
     frame: true,
     resizable: false,
     minimizable: false,
@@ -362,8 +370,12 @@ ipcMain.handle('get-settings', () => {
   return {
     apiKey: appSettings.apiKey || process.env.GEMINI_API_KEY || '',
     model: appSettings.model || process.env.GEMINI_MODEL || 'gemini-3-flash-preview',
-    customPrompt: appSettings.customPrompt,
     languages: appSettings.languages,
+    speechDomain: appSettings.speechDomain,
+    customDomainHint: appSettings.customDomainHint,
+    microphoneDeviceId: appSettings.microphoneDeviceId,
+    silenceDetectionEnabled: appSettings.silenceDetectionEnabled,
+    silenceDurationMs: appSettings.silenceDurationMs,
   };
 });
 

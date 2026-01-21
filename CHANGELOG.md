@@ -28,3 +28,5 @@
 [2026-01-20 20:45] Feature — Change silence duration from 1.5s to 2.5s for more natural pauses
 [2026-01-20 21:00] Bug — Fix silence auto-stop not working (stale closure issue with state); add unit tests for silence detection
 [2026-01-21 14:20] Feature — Add success state with green checkmark icon (pop animation) that fades to idle over 5 seconds after transcription
+[2026-01-21 14:30] Feature — Expand settings: speech domain selector (programming, cooking, medical, etc.), microphone device picker, silence detection toggle with adjustable duration slider (1-10s)
+[2026-01-21 15:00] Refactor — Replace system prompt field with custom domain hint (max 500 chars); add "Custom" option to speech domain selector for free-text domain hints

@@ -3,8 +3,12 @@ import { contextBridge, ipcRenderer } from 'electron';
 export interface AppSettings {
   apiKey: string;
   model: string;
-  customPrompt: string;
   languages: string[];
+  speechDomain: string;
+  customDomainHint: string;
+  microphoneDeviceId: string;
+  silenceDetectionEnabled: boolean;
+  silenceDurationMs: number;
 }
 
 contextBridge.exposeInMainWorld('electronAPI', {

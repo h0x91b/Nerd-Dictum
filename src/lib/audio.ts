@@ -14,7 +14,7 @@ const MAX_RECORDING_MS = 15 * 60 * 1000; // 15 minutes
 
 // Silence detection constants
 const SILENCE_THRESHOLD = 0.01; // RMS threshold below which audio is considered silence
-const SILENCE_DURATION_MS = 2500; // Stop recording after 2.5s of silence
+const DEFAULT_SILENCE_DURATION_MS = 2500; // Stop recording after 2.5s of silence
 
 export class AudioRecordingError extends Error {
   constructor(message: string) {
@@ -39,6 +39,12 @@ const defaultDeps: AudioRecorderDeps = {
 
 export type SilenceStopCallback = () => void;
 
+export interface AudioRecorderOptions {
+  deviceId?: string;
+  silenceDetectionEnabled?: boolean;
+  silenceDurationMs?: number;
+}
+
 export class AudioRecorder {
   private mediaStream: MediaStream | null = null;
   private audioContext: AudioContext | null = null;
@@ -52,9 +58,15 @@ export class AudioRecorder {
   private silenceStartTime: number | null = null;
   private onSilenceStop: SilenceStopCallback | null = null;
   private silenceStopFired: boolean = false;
+  private options: AudioRecorderOptions;
 
-  constructor(deps: AudioRecorderDeps = defaultDeps) {
+  constructor(deps: AudioRecorderDeps = defaultDeps, options: AudioRecorderOptions = {}) {
     this.deps = deps;
+    this.options = {
+      deviceId: options.deviceId || '',
+      silenceDetectionEnabled: options.silenceDetectionEnabled ?? true,
+      silenceDurationMs: options.silenceDurationMs || DEFAULT_SILENCE_DURATION_MS,
+    };
   }
 
   /**
@@ -85,13 +97,20 @@ export class AudioRecorder {
 
     try {
       // Request microphone access
+      const audioConstraints: MediaTrackConstraints = {
+        channelCount: CHANNELS,
+        sampleRate: TARGET_SAMPLE_RATE,
+        echoCancellation: true,
+        noiseSuppression: true,
+      };
+
+      // Add device ID if specified
+      if (this.options.deviceId) {
+        audioConstraints.deviceId = { exact: this.options.deviceId };
+      }
+
       this.mediaStream = await this.deps.getUserMedia({
-        audio: {
-          channelCount: CHANNELS,
-          sampleRate: TARGET_SAMPLE_RATE,
-          echoCancellation: true,
-          noiseSuppression: true,
-        },
+        audio: audioConstraints,
       });
 
       // Create audio context
@@ -127,29 +146,32 @@ export class AudioRecorder {
           // Clone the data since the buffer is reused
           this.audioChunks.push(new Float32Array(inputData));
 
-          // Silence detection
-          const rms = this.calculateRMS(inputData);
-          const now = Date.now();
-          const recordingDuration = now - this.recordingStartTime;
+          // Silence detection (only if enabled)
+          if (this.options.silenceDetectionEnabled) {
+            const rms = this.calculateRMS(inputData);
+            const now = Date.now();
+            const recordingDuration = now - this.recordingStartTime;
 
-          if (rms < SILENCE_THRESHOLD) {
-            // Audio is silent
-            if (this.silenceStartTime === null) {
-              this.silenceStartTime = now;
-            } else {
-              const silenceDuration = now - this.silenceStartTime;
-              // Only auto-stop if we've recorded enough content (past MIN_RECORDING_MS)
-              // and callback hasn't been fired yet
-              if (silenceDuration >= SILENCE_DURATION_MS && recordingDuration >= MIN_RECORDING_MS && !this.silenceStopFired) {
-                this.silenceStopFired = true;
-                if (this.onSilenceStop) {
-                  this.onSilenceStop();
+            if (rms < SILENCE_THRESHOLD) {
+              // Audio is silent
+              if (this.silenceStartTime === null) {
+                this.silenceStartTime = now;
+              } else {
+                const silenceDuration = now - this.silenceStartTime;
+                // Only auto-stop if we've recorded enough content (past MIN_RECORDING_MS)
+                // and callback hasn't been fired yet
+                const silenceThreshold = this.options.silenceDurationMs || DEFAULT_SILENCE_DURATION_MS;
+                if (silenceDuration >= silenceThreshold && recordingDuration >= MIN_RECORDING_MS && !this.silenceStopFired) {
+                  this.silenceStopFired = true;
+                  if (this.onSilenceStop) {
+                    this.onSilenceStop();
+                  }
                 }
               }
+            } else {
+              // Audio is not silent, reset silence timer
+              this.silenceStartTime = null;
             }
-          } else {
-            // Audio is not silent, reset silence timer
-            this.silenceStartTime = null;
           }
         }
       };
@@ -406,4 +428,4 @@ export class AudioRecorder {
 }
 
 // Export utility functions for testing
-export { TARGET_SAMPLE_RATE, CHANNELS, BITS_PER_SAMPLE, MIN_RECORDING_MS, MAX_RECORDING_MS, SILENCE_THRESHOLD, SILENCE_DURATION_MS };
+export { TARGET_SAMPLE_RATE, CHANNELS, BITS_PER_SAMPLE, MIN_RECORDING_MS, MAX_RECORDING_MS, SILENCE_THRESHOLD, DEFAULT_SILENCE_DURATION_MS };

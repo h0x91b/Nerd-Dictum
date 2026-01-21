@@ -20,20 +20,59 @@ const AVAILABLE_LANGUAGES = [
   { code: 'pl', name: 'Polish' },
 ];
 
-const DEFAULT_PROMPT = `Transcribe the provided audio to text. Preserve developer terms faithfully:
-code-like tokens, identifiers, acronyms, file paths. Do not invent content.
-Output only the final transcript.
+const SPEECH_DOMAINS = [
+  { id: 'programming', name: 'Programming', hint: 'Code, APIs, technical terms' },
+  { id: 'general', name: 'General', hint: 'Everyday conversation' },
+  { id: 'cooking', name: 'Cooking', hint: 'Recipes, ingredients, kitchen' },
+  { id: 'medical', name: 'Medical', hint: 'Healthcare, symptoms, medications' },
+  { id: 'legal', name: 'Legal', hint: 'Contracts, law terms' },
+  { id: 'academic', name: 'Academic', hint: 'Research, citations, science' },
+  { id: 'business', name: 'Business', hint: 'Meetings, finance, reports' },
+  { id: 'creative', name: 'Creative Writing', hint: 'Stories, poetry, scripts' },
+  { id: 'custom', name: 'Custom', hint: 'Enter your own domain hint below' },
+];
 
-Domain hint: programming / developer speech`;
+const MAX_CUSTOM_HINT_LENGTH = 500;
+
+interface AudioDevice {
+  deviceId: string;
+  label: string;
+}
 
 export function SettingsPage() {
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState('gemini-3-flash-preview');
-  const [customPrompt, setCustomPrompt] = useState('');
   const [languages, setLanguages] = useState<string[]>([]);
+  const [speechDomain, setSpeechDomain] = useState('programming');
+  const [customDomainHint, setCustomDomainHint] = useState('');
+  const [microphoneDeviceId, setMicrophoneDeviceId] = useState('');
+  const [silenceDetectionEnabled, setSilenceDetectionEnabled] = useState(true);
+  const [silenceDurationMs, setSilenceDurationMs] = useState(2500);
+  const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
+
+  // Load audio devices
+  useEffect(() => {
+    async function loadAudioDevices() {
+      try {
+        // Request permission first to get device labels
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const microphones = devices
+          .filter((device) => device.kind === 'audioinput')
+          .map((device) => ({
+            deviceId: device.deviceId,
+            label: device.label || `Microphone ${device.deviceId.slice(0, 8)}`,
+          }));
+        setAudioDevices(microphones);
+      } catch (error) {
+        console.error('[Settings] Failed to load audio devices:', error);
+      }
+    }
+    loadAudioDevices();
+  }, []);
 
   // Load settings on mount
   useEffect(() => {
@@ -42,8 +81,12 @@ export function SettingsPage() {
         const settings = await window.electronAPI.getSettings();
         setApiKey(settings.apiKey);
         setModel(settings.model);
-        setCustomPrompt(settings.customPrompt || '');
+        setSpeechDomain(settings.speechDomain || 'programming');
+        setCustomDomainHint(settings.customDomainHint || '');
         setLanguages(settings.languages || []);
+        setMicrophoneDeviceId(settings.microphoneDeviceId || '');
+        setSilenceDetectionEnabled(settings.silenceDetectionEnabled ?? true);
+        setSilenceDurationMs(settings.silenceDurationMs || 2500);
       } catch (error) {
         console.error('[Settings] Failed to load:', error);
       } finally {
@@ -59,6 +102,12 @@ export function SettingsPage() {
     );
   };
 
+  const handleCustomHintChange = (value: string) => {
+    if (value.length <= MAX_CUSTOM_HINT_LENGTH) {
+      setCustomDomainHint(value);
+    }
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     setSaveMessage('');
@@ -67,8 +116,12 @@ export function SettingsPage() {
       const success = await window.electronAPI.saveSettings({
         apiKey,
         model,
-        customPrompt,
         languages,
+        speechDomain,
+        customDomainHint: customDomainHint.trim(),
+        microphoneDeviceId,
+        silenceDetectionEnabled,
+        silenceDurationMs,
       });
       if (success) {
         setSaveMessage('Saved!');
@@ -135,6 +188,85 @@ export function SettingsPage() {
         </div>
 
         <div className="settings-field">
+          <label htmlFor="speech-domain">Speech Domain</label>
+          <select
+            id="speech-domain"
+            value={speechDomain}
+            onChange={(e) => setSpeechDomain(e.target.value)}
+          >
+            {SPEECH_DOMAINS.map((domain) => (
+              <option key={domain.id} value={domain.id}>
+                {domain.name}
+              </option>
+            ))}
+          </select>
+          <span className="settings-hint">
+            {SPEECH_DOMAINS.find((d) => d.id === speechDomain)?.hint || 'Select domain for better accuracy'}
+          </span>
+          {speechDomain === 'custom' && (
+            <>
+              <input
+                id="custom-domain-hint"
+                type="text"
+                value={customDomainHint}
+                onChange={(e) => handleCustomHintChange(e.target.value)}
+                placeholder="e.g., gardening terms, music production, sports commentary..."
+                style={{ marginTop: '8px' }}
+              />
+              <span className="settings-hint">
+                {customDomainHint.length}/{MAX_CUSTOM_HINT_LENGTH} characters
+              </span>
+            </>
+          )}
+        </div>
+
+        <div className="settings-field">
+          <label htmlFor="microphone">Microphone</label>
+          <select
+            id="microphone"
+            value={microphoneDeviceId}
+            onChange={(e) => setMicrophoneDeviceId(e.target.value)}
+          >
+            <option value="">System Default</option>
+            {audioDevices.map((device) => (
+              <option key={device.deviceId} value={device.deviceId}>
+                {device.label}
+              </option>
+            ))}
+          </select>
+          <span className="settings-hint">
+            Select audio input device
+          </span>
+        </div>
+
+        <div className="settings-field">
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={silenceDetectionEnabled}
+              onChange={(e) => setSilenceDetectionEnabled(e.target.checked)}
+            />
+            <span>Auto-stop on silence</span>
+          </label>
+          {silenceDetectionEnabled && (
+            <div className="slider-container">
+              <input
+                type="range"
+                min="1000"
+                max="10000"
+                step="500"
+                value={silenceDurationMs}
+                onChange={(e) => setSilenceDurationMs(Number(e.target.value))}
+              />
+              <span className="slider-value">{(silenceDurationMs / 1000).toFixed(1)}s</span>
+            </div>
+          )}
+          <span className="settings-hint">
+            Automatically stop recording after a period of silence
+          </span>
+        </div>
+
+        <div className="settings-field">
           <label>Primary Languages</label>
           <div className="language-grid">
             {AVAILABLE_LANGUAGES.map((lang) => (
@@ -153,19 +285,6 @@ export function SettingsPage() {
           </span>
         </div>
 
-        <div className="settings-field">
-          <label htmlFor="custom-prompt">System Prompt</label>
-          <textarea
-            id="custom-prompt"
-            value={customPrompt}
-            onChange={(e) => setCustomPrompt(e.target.value)}
-            placeholder={DEFAULT_PROMPT}
-            rows={5}
-          />
-          <span className="settings-hint">
-            Customize the transcription prompt. Leave empty to use default.
-          </span>
-        </div>
       </div>
 
       <div className="settings-footer">

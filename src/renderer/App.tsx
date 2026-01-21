@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import './styles/App.css';
-import { AudioRecorder, AudioRecordingError } from '../lib/audio';
+import { AudioRecorder, AudioRecordingError, AudioRecorderOptions } from '../lib/audio';
 import { transcribeAudio, TranscribeOptions } from '../lib/gemini';
 import { classifyError, ClassifiedError } from '../lib/errors';
 import { SettingsButton } from './components/Settings';
@@ -55,11 +55,14 @@ export function App() {
       }
 
       const options: TranscribeOptions = {};
-      if (settings.customPrompt) {
-        options.customPrompt = settings.customPrompt;
-      }
       if (settings.languages && settings.languages.length > 0) {
         options.languages = settings.languages;
+      }
+      if (settings.speechDomain) {
+        options.speechDomain = settings.speechDomain;
+      }
+      if (settings.customDomainHint) {
+        options.customDomainHint = settings.customDomainHint;
       }
 
       // Transcribe audio
@@ -126,7 +129,15 @@ export function App() {
       }
 
       try {
-        recorderRef.current = new AudioRecorder();
+        // Get audio settings
+        const settings = await window.electronAPI.getSettings();
+        const recorderOptions: AudioRecorderOptions = {
+          deviceId: settings.microphoneDeviceId || undefined,
+          silenceDetectionEnabled: settings.silenceDetectionEnabled ?? true,
+          silenceDurationMs: settings.silenceDurationMs || 2500,
+        };
+
+        recorderRef.current = new AudioRecorder(undefined, recorderOptions);
         // Set up silence detection callback for auto-stop
         recorderRef.current.setOnSilenceStop(() => {
           stopRecordingAndTranscribe();
