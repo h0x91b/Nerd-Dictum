@@ -19,12 +19,12 @@ const createMockMediaStream = (): MediaStream =>
     }],
   }) as unknown as MediaStream;
 
+// Store the worklet port reference so we can simulate audio data
+let mockWorkletPort: { onmessage: ((event: MessageEvent) => void) | null } = { onmessage: null };
+
 const createMockAudioContext = () => {
-  const mockProcessor = {
-    connect: mock(() => {}),
-    disconnect: mock(() => {}),
-    onaudioprocess: null as ((event: AudioProcessingEvent) => void) | null,
-  };
+  // Reset port for each context
+  mockWorkletPort = { onmessage: null };
 
   const mockSource = {
     connect: mock(() => {}),
@@ -34,11 +34,27 @@ const createMockAudioContext = () => {
   return {
     sampleRate: 16000,
     createMediaStreamSource: mock(() => mockSource),
-    createScriptProcessor: mock(() => mockProcessor),
+    audioWorklet: {
+      addModule: mock(() => Promise.resolve()),
+    },
     destination: {},
     close: mock(() => Promise.resolve()),
   };
 };
+
+// Mock AudioWorkletNode globally
+const createMockAudioWorkletNode = () => {
+  const node = {
+    connect: mock(() => {}),
+    disconnect: mock(() => {}),
+    port: mockWorkletPort,
+  };
+  return node;
+};
+
+(globalThis as unknown as { AudioWorkletNode: unknown }).AudioWorkletNode = mock(
+  () => createMockAudioWorkletNode()
+);
 
 // Mock window.electronAPI
 const mockElectronAPI = {
@@ -60,12 +76,31 @@ describe('App', () => {
   let originalMediaDevices: MediaDevices | undefined;
   let originalAudioContext: typeof window.AudioContext | undefined;
   let originalElectronAPI: typeof window.electronAPI | undefined;
+  let originalLocation: Location | undefined;
 
   beforeEach(() => {
     // Save originals
     originalMediaDevices = navigator.mediaDevices;
     originalAudioContext = window.AudioContext;
     originalElectronAPI = window.electronAPI;
+    originalLocation = window.location;
+
+    // Mock window.location for worklet URL construction
+    Object.defineProperty(window, 'location', {
+      value: {
+        origin: 'http://localhost:5173',
+        href: 'http://localhost:5173/',
+        protocol: 'http:',
+        host: 'localhost:5173',
+        hostname: 'localhost',
+        port: '5173',
+        pathname: '/',
+        search: '',
+        hash: '',
+      },
+      writable: true,
+      configurable: true,
+    });
 
     // Mock navigator.mediaDevices
     const mockGetUserMedia = mock(() => Promise.resolve(createMockMediaStream()));
@@ -112,6 +147,13 @@ describe('App', () => {
     }
     if (originalElectronAPI !== undefined) {
       window.electronAPI = originalElectronAPI;
+    }
+    if (originalLocation !== undefined) {
+      Object.defineProperty(window, 'location', {
+        value: originalLocation,
+        writable: true,
+        configurable: true,
+      });
     }
   });
 
@@ -428,10 +470,11 @@ describe('App', () => {
 
   describe('silence auto-stop', () => {
     it('should not auto-stop if user is still speaking', async () => {
-      const mockProcessor = {
-        connect: mock(() => {}),
-        disconnect: mock(() => {}),
-        onaudioprocess: null as ((event: AudioProcessingEvent) => void) | null,
+      // Create a custom worklet port that we can send messages to
+      let capturedPortOnMessage: ((event: MessageEvent) => void) | null = null;
+      const customWorkletPort = {
+        onmessage: null as ((event: MessageEvent) => void) | null,
+        postMessage: mock(() => {}),
       };
 
       const mockSource = {
@@ -439,28 +482,39 @@ describe('App', () => {
         disconnect: mock(() => {}),
       };
 
-      let capturedAudioProcessor: ((event: AudioProcessingEvent) => void) | null = null;
+      const mockWorkletNode = {
+        connect: mock(() => {}),
+        disconnect: mock(() => {}),
+        port: new Proxy(customWorkletPort, {
+          set(target, prop, value) {
+            if (prop === 'onmessage') {
+              capturedPortOnMessage = value as (event: MessageEvent) => void;
+            }
+            (target as Record<string, unknown>)[prop as string] = value;
+            return true;
+          },
+          get(target, prop) {
+            return (target as Record<string, unknown>)[prop as string];
+          },
+        }),
+      };
 
       const mockAudioContext = {
         sampleRate: 16000,
         createMediaStreamSource: mock(() => mockSource),
-        createScriptProcessor: mock(() => {
-          return new Proxy(mockProcessor, {
-            set(target, prop, value) {
-              if (prop === 'onaudioprocess') {
-                capturedAudioProcessor = value as (event: AudioProcessingEvent) => void;
-              }
-              (target as Record<string, unknown>)[prop as string] = value;
-              return true;
-            },
-          });
-        }),
+        audioWorklet: {
+          addModule: mock(() => Promise.resolve()),
+        },
         destination: {},
         close: mock(() => Promise.resolve()),
       };
 
       (window as unknown as { AudioContext: unknown }).AudioContext = mock(
         () => mockAudioContext
+      );
+
+      (globalThis as unknown as { AudioWorkletNode: unknown }).AudioWorkletNode = mock(
+        () => mockWorkletNode
       );
 
       render(<App />);
@@ -473,15 +527,10 @@ describe('App', () => {
         expect(screen.getByRole('button', { name: /stop recording/i })).toBeDefined();
       });
 
-      expect(capturedAudioProcessor).not.toBeNull();
+      expect(capturedPortOnMessage).not.toBeNull();
 
-      // Simulate continuous speech (non-silent audio)
+      // Simulate continuous speech (non-silent audio) via worklet message
       const nonSilentBuffer = new Float32Array(4096).fill(0.5);
-      const mockNonSilentEvent = {
-        inputBuffer: {
-          getChannelData: () => nonSilentBuffer,
-        },
-      } as unknown as AudioProcessingEvent;
 
       const originalDateNow = Date.now;
       let currentTime = originalDateNow();
@@ -490,7 +539,7 @@ describe('App', () => {
       // Process many chunks of non-silent audio
       for (let i = 0; i < 20; i++) {
         currentTime += 200;
-        capturedAudioProcessor!(mockNonSilentEvent);
+        capturedPortOnMessage!({ data: { type: 'audio', data: nonSilentBuffer } } as MessageEvent);
       }
 
       Date.now = originalDateNow;

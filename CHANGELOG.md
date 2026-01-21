@@ -36,3 +36,4 @@
 [2026-01-21 21:07] Feature — Add real-time audio level visualization as tachometer arc around mic button (7-to-5 o'clock), with theme support and easeOut smoothing
 [2026-01-21 21:31] Feature — Allow canceling in-progress transcription from the widget button
 [2026-01-21 21:37] Feature — Allow canceling in-progress transcription from the widget button (log cancellation)
+[2026-01-21 21:54] Refactor — Replace deprecated ScriptProcessorNode with AudioWorkletNode for audio capture

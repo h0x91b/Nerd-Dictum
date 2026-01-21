@@ -35,12 +35,14 @@ export class AudioRecordingError extends Error {
 export interface AudioRecorderDeps {
   getUserMedia: (constraints: MediaStreamConstraints) => Promise<MediaStream>;
   createAudioContext: (options?: AudioContextOptions) => AudioContext;
+  getWorkletUrl: () => string;
 }
 
 const defaultDeps: AudioRecorderDeps = {
   getUserMedia: (constraints) =>
     navigator.mediaDevices.getUserMedia(constraints),
   createAudioContext: (options) => new AudioContext(options),
+  getWorkletUrl: () => new URL('/audio-processor.worklet.js', window.location.origin).href,
 };
 
 export type SilenceStopCallback = () => void;
@@ -56,7 +58,7 @@ export class AudioRecorder {
   private mediaStream: MediaStream | null = null;
   private audioContext: AudioContext | null = null;
   private sourceNode: MediaStreamAudioSourceNode | null = null;
-  private processorNode: ScriptProcessorNode | null = null;
+  private workletNode: AudioWorkletNode | null = null;
   private audioChunks: Float32Array[] = [];
   private recordingStartTime: number = 0;
   private isRecording: boolean = false;
@@ -159,80 +161,83 @@ export class AudioRecorder {
         this.mediaStream
       );
 
-      // Create script processor for capturing raw audio data
-      // Buffer size of 4096 is a good balance between latency and performance
-      this.processorNode = this.audioContext.createScriptProcessor(
-        4096,
-        CHANNELS,
-        CHANNELS
-      );
+      // Load and register the AudioWorklet processor
+      // In Electron/Vite, the worklet file is served from the public directory
+      const workletUrl = this.deps.getWorkletUrl();
+      await this.audioContext.audioWorklet.addModule(workletUrl);
+
+      // Create AudioWorkletNode to replace deprecated ScriptProcessorNode
+      this.workletNode = new AudioWorkletNode(this.audioContext, 'audio-capture-processor');
 
       // Reset audio chunks and silence detection
       this.audioChunks = [];
       this.silenceStartTime = null;
       this.silenceStopFired = false;
 
-      // Capture audio data with silence detection and audio level callback
-      this.processorNode.onaudioprocess = (event: AudioProcessingEvent) => {
-        if (this.isRecording) {
-          const inputData = event.inputBuffer.getChannelData(0);
-          // Clone the data since the buffer is reused
-          this.audioChunks.push(new Float32Array(inputData));
+      // Handle audio data from the worklet via MessagePort
+      this.workletNode.port.onmessage = (event: MessageEvent) => {
+        if (!this.isRecording) return;
 
-          // Calculate RMS for audio level callback and silence detection
-          const rms = this.calculateRMS(inputData);
-          const now = Date.now();
-          const recordingDuration = now - this.recordingStartTime;
+        const { type, data } = event.data;
+        if (type !== 'audio') return;
 
-          // Call audio level callback (normalized RMS, clamped to 0-1)
-          // Multiply by ~3 to make typical speech levels more visible (raw RMS is often 0.01-0.1)
-          if (this.onAudioLevel) {
-            const normalizedLevel = Math.min(1, rms * 3);
-            this.onAudioLevel(normalizedLevel);
+        const inputData = data as Float32Array;
+        // Clone the data since the buffer may be reused
+        this.audioChunks.push(new Float32Array(inputData));
+
+        // Calculate RMS for audio level callback and silence detection
+        const rms = this.calculateRMS(inputData);
+        const now = Date.now();
+        const recordingDuration = now - this.recordingStartTime;
+
+        // Call audio level callback (normalized RMS, clamped to 0-1)
+        // Multiply by ~3 to make typical speech levels more visible (raw RMS is often 0.01-0.1)
+        if (this.onAudioLevel) {
+          const normalizedLevel = Math.min(1, rms * 3);
+          this.onAudioLevel(normalizedLevel);
+        }
+
+        // Silence detection (only if enabled)
+        if (this.options.silenceDetectionEnabled) {
+          // Periodic RMS logging for debugging
+          if (now - lastRmsLogTime >= RMS_LOG_INTERVAL_MS) {
+            lastRmsLogTime = now;
+            const isSilent = rms < SILENCE_THRESHOLD;
+            const silenceDuration = this.silenceStartTime ? now - this.silenceStartTime : 0;
+            console.log(`[AudioRecorder] RMS: ${rms.toFixed(4)} | threshold: ${SILENCE_THRESHOLD} | silent: ${isSilent} | silenceDuration: ${silenceDuration}ms | recordingDuration: ${recordingDuration}ms`);
           }
 
-          // Silence detection (only if enabled)
-          if (this.options.silenceDetectionEnabled) {
-            // Periodic RMS logging for debugging
-            if (now - lastRmsLogTime >= RMS_LOG_INTERVAL_MS) {
-              lastRmsLogTime = now;
-              const isSilent = rms < SILENCE_THRESHOLD;
-              const silenceDuration = this.silenceStartTime ? now - this.silenceStartTime : 0;
-              console.log(`[AudioRecorder] RMS: ${rms.toFixed(4)} | threshold: ${SILENCE_THRESHOLD} | silent: ${isSilent} | silenceDuration: ${silenceDuration}ms | recordingDuration: ${recordingDuration}ms`);
-            }
-
-            if (rms < SILENCE_THRESHOLD) {
-              // Audio is silent
-              if (this.silenceStartTime === null) {
-                this.silenceStartTime = now;
-                console.log('[AudioRecorder] Silence started');
-              } else {
-                const silenceDuration = now - this.silenceStartTime;
-                // Only auto-stop if we've recorded enough content (past MIN_RECORDING_MS)
-                // and callback hasn't been fired yet
-                const silenceThreshold = this.options.silenceDurationMs || DEFAULT_SILENCE_DURATION_MS;
-                if (silenceDuration >= silenceThreshold && recordingDuration >= MIN_RECORDING_MS && !this.silenceStopFired) {
-                  console.log(`[AudioRecorder] Silence threshold reached (${silenceDuration}ms >= ${silenceThreshold}ms), triggering auto-stop`);
-                  this.silenceStopFired = true;
-                  if (this.onSilenceStop) {
-                    this.onSilenceStop();
-                  }
+          if (rms < SILENCE_THRESHOLD) {
+            // Audio is silent
+            if (this.silenceStartTime === null) {
+              this.silenceStartTime = now;
+              console.log('[AudioRecorder] Silence started');
+            } else {
+              const silenceDuration = now - this.silenceStartTime;
+              // Only auto-stop if we've recorded enough content (past MIN_RECORDING_MS)
+              // and callback hasn't been fired yet
+              const silenceThreshold = this.options.silenceDurationMs || DEFAULT_SILENCE_DURATION_MS;
+              if (silenceDuration >= silenceThreshold && recordingDuration >= MIN_RECORDING_MS && !this.silenceStopFired) {
+                console.log(`[AudioRecorder] Silence threshold reached (${silenceDuration}ms >= ${silenceThreshold}ms), triggering auto-stop`);
+                this.silenceStopFired = true;
+                if (this.onSilenceStop) {
+                  this.onSilenceStop();
                 }
               }
-            } else {
-              // Audio is not silent, reset silence timer
-              if (this.silenceStartTime !== null) {
-                console.log('[AudioRecorder] Sound detected, resetting silence timer');
-              }
-              this.silenceStartTime = null;
             }
+          } else {
+            // Audio is not silent, reset silence timer
+            if (this.silenceStartTime !== null) {
+              console.log('[AudioRecorder] Sound detected, resetting silence timer');
+            }
+            this.silenceStartTime = null;
           }
         }
       };
 
-      // Connect nodes: source -> processor -> destination
-      this.sourceNode.connect(this.processorNode);
-      this.processorNode.connect(this.audioContext.destination);
+      // Connect nodes: source -> worklet -> destination
+      this.sourceNode.connect(this.workletNode);
+      this.workletNode.connect(this.audioContext.destination);
 
       this.isRecording = true;
       this.recordingStartTime = Date.now();
@@ -402,10 +407,10 @@ export class AudioRecorder {
    * Clean up all resources
    */
   private cleanup(): void {
-    if (this.processorNode) {
-      this.processorNode.disconnect();
-      this.processorNode.onaudioprocess = null;
-      this.processorNode = null;
+    if (this.workletNode) {
+      this.workletNode.port.onmessage = null;
+      this.workletNode.disconnect();
+      this.workletNode = null;
     }
 
     if (this.sourceNode) {

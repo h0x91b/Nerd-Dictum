@@ -28,28 +28,43 @@ const createMockMediaStream = (): MediaStream => ({
   }],
 }) as unknown as MediaStream;
 
+interface MockWorkletPort {
+  onmessage: ((event: MessageEvent) => void) | null;
+  postMessage: ReturnType<typeof mock>;
+}
+
+interface MockWorkletNode {
+  connect: ReturnType<typeof mock>;
+  disconnect: ReturnType<typeof mock>;
+  port: MockWorkletPort;
+}
+
 interface MockAudioContext {
   sampleRate: number;
   createMediaStreamSource: ReturnType<typeof mock>;
-  createScriptProcessor: ReturnType<typeof mock>;
+  audioWorklet: {
+    addModule: ReturnType<typeof mock>;
+  };
   destination: AudioDestinationNode;
   close: ReturnType<typeof mock>;
-  _mockProcessor: {
-    connect: ReturnType<typeof mock>;
-    disconnect: ReturnType<typeof mock>;
-    onaudioprocess: ((event: AudioProcessingEvent) => void) | null;
-  };
+  _mockWorkletNode: MockWorkletNode;
   _mockSource: {
     connect: ReturnType<typeof mock>;
     disconnect: ReturnType<typeof mock>;
   };
+  _simulateAudioData: (audioData: Float32Array) => void;
 }
 
 const createMockAudioContext = (sampleRate = TARGET_SAMPLE_RATE): MockAudioContext => {
-  const mockProcessor = {
+  const mockPort: MockWorkletPort = {
+    onmessage: null,
+    postMessage: mock(() => {}),
+  };
+
+  const mockWorkletNode: MockWorkletNode = {
     connect: mock(() => {}),
     disconnect: mock(() => {}),
-    onaudioprocess: null as ((event: AudioProcessingEvent) => void) | null,
+    port: mockPort,
   };
 
   const mockSource = {
@@ -57,15 +72,35 @@ const createMockAudioContext = (sampleRate = TARGET_SAMPLE_RATE): MockAudioConte
     disconnect: mock(() => {}),
   };
 
-  return {
+  const context: MockAudioContext = {
     sampleRate,
     createMediaStreamSource: mock(() => mockSource),
-    createScriptProcessor: mock(() => mockProcessor),
+    audioWorklet: {
+      addModule: mock(() => Promise.resolve()),
+    },
     destination: {} as AudioDestinationNode,
     close: mock(() => Promise.resolve()),
-    _mockProcessor: mockProcessor,
+    _mockWorkletNode: mockWorkletNode,
     _mockSource: mockSource,
+    _simulateAudioData: (audioData: Float32Array) => {
+      if (mockPort.onmessage) {
+        mockPort.onmessage({ data: { type: 'audio', data: audioData } } as MessageEvent);
+      }
+    },
   };
+
+  // Mock the AudioWorkletNode constructor
+  // We need to capture when AudioWorkletNode is created
+  (globalThis as unknown as { AudioWorkletNode: unknown }).AudioWorkletNode = class MockAudioWorkletNode {
+    port = mockPort;
+    connect = mockWorkletNode.connect;
+    disconnect = mockWorkletNode.disconnect;
+    constructor() {
+      // Store reference so tests can access it
+    }
+  };
+
+  return context;
 };
 
 const createMockDeps = (
@@ -81,8 +116,11 @@ const createMockDeps = (
 
   const createAudioContext = mock(() => mockContext as unknown as AudioContext);
 
+  // Mock worklet URL - just return a dummy URL for testing
+  const getWorkletUrl = mock(() => 'blob:mock-worklet-url');
+
   return {
-    deps: { getUserMedia, createAudioContext },
+    deps: { getUserMedia, createAudioContext, getWorkletUrl },
     mockContext,
   };
 };
@@ -149,9 +187,9 @@ describe('AudioRecorder', () => {
       await recorder.start();
 
       expect(mockContext.createMediaStreamSource).toHaveBeenCalledTimes(1);
-      expect(mockContext.createScriptProcessor).toHaveBeenCalledTimes(1);
+      expect(mockContext.audioWorklet.addModule).toHaveBeenCalledTimes(1);
       expect(mockContext._mockSource.connect).toHaveBeenCalledTimes(1);
-      expect(mockContext._mockProcessor.connect).toHaveBeenCalledTimes(1);
+      expect(mockContext._mockWorkletNode.connect).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -205,16 +243,8 @@ describe('AudioRecorder', () => {
 
       await recorder.start();
 
-      // Simulate audio data being captured
-      const mockAudioBuffer = {
-        getChannelData: () => new Float32Array([0.5, -0.5, 0.25, -0.25]),
-      };
-      const mockEvent = {
-        inputBuffer: mockAudioBuffer,
-      } as unknown as AudioProcessingEvent;
-
-      // Trigger audio capture
-      mockContext._mockProcessor.onaudioprocess?.(mockEvent);
+      // Simulate audio data via worklet message port
+      mockContext._simulateAudioData(new Float32Array([0.5, -0.5, 0.25, -0.25]));
 
       // Wait for minimum recording time
       await new Promise((resolve) => setTimeout(resolve, MIN_RECORDING_MS + 50));
@@ -239,10 +269,7 @@ describe('AudioRecorder', () => {
       expect(recorder.getIsRecording()).toBe(true);
 
       // Simulate some audio data
-      const mockEvent = {
-        inputBuffer: { getChannelData: () => new Float32Array(100) },
-      } as unknown as AudioProcessingEvent;
-      mockContext._mockProcessor.onaudioprocess?.(mockEvent);
+      mockContext._simulateAudioData(new Float32Array(100));
 
       // Wait for minimum recording time
       await new Promise((resolve) => setTimeout(resolve, MIN_RECORDING_MS + 50));
@@ -258,16 +285,13 @@ describe('AudioRecorder', () => {
       await recorder.start();
 
       // Simulate some audio data
-      const mockEvent = {
-        inputBuffer: { getChannelData: () => new Float32Array(100) },
-      } as unknown as AudioProcessingEvent;
-      mockContext._mockProcessor.onaudioprocess?.(mockEvent);
+      mockContext._simulateAudioData(new Float32Array(100));
 
       await new Promise((resolve) => setTimeout(resolve, MIN_RECORDING_MS + 50));
 
       await recorder.stop();
 
-      expect(mockContext._mockProcessor.disconnect).toHaveBeenCalled();
+      expect(mockContext._mockWorkletNode.disconnect).toHaveBeenCalled();
       expect(mockContext._mockSource.disconnect).toHaveBeenCalled();
       expect(mockContext.close).toHaveBeenCalled();
     });
@@ -299,7 +323,7 @@ describe('AudioRecorder', () => {
       await recorder.start();
       recorder.cancel();
 
-      expect(mockContext._mockProcessor.disconnect).toHaveBeenCalled();
+      expect(mockContext._mockWorkletNode.disconnect).toHaveBeenCalled();
       expect(mockContext._mockSource.disconnect).toHaveBeenCalled();
       expect(mockContext.close).toHaveBeenCalled();
     });
@@ -334,15 +358,8 @@ describe('AudioRecorder', () => {
 
       await recorder.start();
 
-      // Simulate audio data
-      const mockAudioBuffer = {
-        getChannelData: () => new Float32Array(1000).fill(0.5),
-      };
-      const mockEvent = {
-        inputBuffer: mockAudioBuffer,
-      } as unknown as AudioProcessingEvent;
-
-      mockContext._mockProcessor.onaudioprocess?.(mockEvent);
+      // Simulate audio data via worklet
+      mockContext._simulateAudioData(new Float32Array(1000).fill(0.5));
 
       await new Promise((resolve) => setTimeout(resolve, MIN_RECORDING_MS + 50));
 
@@ -383,11 +400,7 @@ describe('AudioRecorder', () => {
 
       // Create known audio samples
       const audioSamples = new Float32Array([0.5, -0.5, 0, 1.0, -1.0]);
-      const mockEvent = {
-        inputBuffer: { getChannelData: () => audioSamples },
-      } as unknown as AudioProcessingEvent;
-
-      mockContext._mockProcessor.onaudioprocess?.(mockEvent);
+      mockContext._simulateAudioData(audioSamples);
 
       await new Promise((resolve) => setTimeout(resolve, MIN_RECORDING_MS + 50));
 
@@ -429,11 +442,7 @@ describe('AudioRecorder', () => {
         audioSamples[i] = Math.sin((2 * Math.PI * 440 * i) / 48000);
       }
 
-      const mockEvent = {
-        inputBuffer: { getChannelData: () => audioSamples },
-      } as unknown as AudioProcessingEvent;
-
-      mockContext._mockProcessor.onaudioprocess?.(mockEvent);
+      mockContext._simulateAudioData(audioSamples);
 
       await new Promise((resolve) => setTimeout(resolve, MIN_RECORDING_MS + 50));
 
@@ -488,34 +497,24 @@ describe('AudioRecorder', () => {
 
       await recorder.start();
 
-      // Get the audio processor callback
-      const processor = mockContext._mockProcessor;
-      expect(processor.onaudioprocess).not.toBeNull();
-
       // First, simulate some speech (non-silent) to pass MIN_RECORDING_MS
       const nonSilentBuffer = new Float32Array(4096).fill(0.5); // RMS = 0.5, above threshold
-      const mockNonSilentEvent = {
-        inputBuffer: { getChannelData: () => nonSilentBuffer },
-      } as unknown as AudioProcessingEvent;
 
       // Process speech for 300ms (past MIN_RECORDING_MS)
       for (let i = 0; i < 3; i++) {
         currentTime += 100;
-        processor.onaudioprocess!(mockNonSilentEvent);
+        mockContext._simulateAudioData(nonSilentBuffer);
       }
 
       // Now simulate silence
       const silentBuffer = new Float32Array(4096).fill(0.001); // RMS = 0.001, below threshold
-      const mockSilentEvent = {
-        inputBuffer: { getChannelData: () => silentBuffer },
-      } as unknown as AudioProcessingEvent;
 
       // Process silence for 3000ms (past DEFAULT_SILENCE_DURATION_MS of 2500ms)
       // First chunk sets silenceStartTime, subsequent chunks measure duration
       // So we need 2500ms AFTER the first chunk
       for (let i = 0; i < 15; i++) {
         currentTime += 200;
-        processor.onaudioprocess!(mockSilentEvent);
+        mockContext._simulateAudioData(silentBuffer);
       }
 
       // Restore Date.now
@@ -534,22 +533,17 @@ describe('AudioRecorder', () => {
 
       await recorder.start();
 
-      const processor = mockContext._mockProcessor;
-
       const originalDateNow = Date.now;
       let currentTime = originalDateNow();
       Date.now = () => currentTime;
 
       // Simulate continuous speech (non-silent)
       const nonSilentBuffer = new Float32Array(4096).fill(0.5);
-      const mockNonSilentEvent = {
-        inputBuffer: { getChannelData: () => nonSilentBuffer },
-      } as unknown as AudioProcessingEvent;
 
       // Process speech for 5 seconds
       for (let i = 0; i < 25; i++) {
         currentTime += 200;
-        processor.onaudioprocess!(mockNonSilentEvent);
+        mockContext._simulateAudioData(nonSilentBuffer);
       }
 
       Date.now = originalDateNow;
@@ -567,44 +561,36 @@ describe('AudioRecorder', () => {
 
       await recorder.start();
 
-      const processor = mockContext._mockProcessor;
-
       const originalDateNow = Date.now;
       let currentTime = originalDateNow();
       Date.now = () => currentTime;
 
       // First some speech to pass MIN_RECORDING_MS
       const nonSilentBuffer = new Float32Array(4096).fill(0.5);
-      const mockNonSilentEvent = {
-        inputBuffer: { getChannelData: () => nonSilentBuffer },
-      } as unknown as AudioProcessingEvent;
 
       for (let i = 0; i < 3; i++) {
         currentTime += 100;
-        processor.onaudioprocess!(mockNonSilentEvent);
+        mockContext._simulateAudioData(nonSilentBuffer);
       }
 
       // Silence for 2 seconds (not enough to trigger)
       const silentBuffer = new Float32Array(4096).fill(0.001);
-      const mockSilentEvent = {
-        inputBuffer: { getChannelData: () => silentBuffer },
-      } as unknown as AudioProcessingEvent;
 
       for (let i = 0; i < 10; i++) {
         currentTime += 200;
-        processor.onaudioprocess!(mockSilentEvent);
+        mockContext._simulateAudioData(silentBuffer);
       }
 
       // Resume speech - should reset silence timer
       for (let i = 0; i < 2; i++) {
         currentTime += 100;
-        processor.onaudioprocess!(mockNonSilentEvent);
+        mockContext._simulateAudioData(nonSilentBuffer);
       }
 
       // Another 2 seconds of silence (still not enough because timer was reset)
       for (let i = 0; i < 10; i++) {
         currentTime += 200;
-        processor.onaudioprocess!(mockSilentEvent);
+        mockContext._simulateAudioData(silentBuffer);
       }
 
       Date.now = originalDateNow;
@@ -622,32 +608,24 @@ describe('AudioRecorder', () => {
 
       await recorder.start();
 
-      const processor = mockContext._mockProcessor;
-
       const originalDateNow = Date.now;
       let currentTime = originalDateNow();
       Date.now = () => currentTime;
 
       // Speech first
       const nonSilentBuffer = new Float32Array(4096).fill(0.5);
-      const mockNonSilentEvent = {
-        inputBuffer: { getChannelData: () => nonSilentBuffer },
-      } as unknown as AudioProcessingEvent;
 
       for (let i = 0; i < 3; i++) {
         currentTime += 100;
-        processor.onaudioprocess!(mockNonSilentEvent);
+        mockContext._simulateAudioData(nonSilentBuffer);
       }
 
       // Long silence (10 seconds)
       const silentBuffer = new Float32Array(4096).fill(0.001);
-      const mockSilentEvent = {
-        inputBuffer: { getChannelData: () => silentBuffer },
-      } as unknown as AudioProcessingEvent;
 
       for (let i = 0; i < 50; i++) {
         currentTime += 200;
-        processor.onaudioprocess!(mockSilentEvent);
+        mockContext._simulateAudioData(silentBuffer);
       }
 
       Date.now = originalDateNow;
@@ -665,8 +643,6 @@ describe('AudioRecorder', () => {
 
       await recorder.start();
 
-      const processor = mockContext._mockProcessor;
-
       const originalDateNow = Date.now;
       let currentTime = originalDateNow();
       Date.now = () => currentTime;
@@ -674,18 +650,15 @@ describe('AudioRecorder', () => {
       // Only 100ms of recording (below MIN_RECORDING_MS of 250ms)
       // followed by silence - should NOT trigger
       const silentBuffer = new Float32Array(4096).fill(0.001);
-      const mockSilentEvent = {
-        inputBuffer: { getChannelData: () => silentBuffer },
-      } as unknown as AudioProcessingEvent;
 
       // Process just 1 chunk (not enough to pass MIN_RECORDING_MS)
       currentTime += 100;
-      processor.onaudioprocess!(mockSilentEvent);
+      mockContext._simulateAudioData(silentBuffer);
 
       // Now 3 seconds of silence
       for (let i = 0; i < 15; i++) {
         currentTime += 200;
-        processor.onaudioprocess!(mockSilentEvent);
+        mockContext._simulateAudioData(silentBuffer);
       }
 
       Date.now = originalDateNow;
@@ -711,15 +684,9 @@ describe('AudioRecorder', () => {
 
       await recorder.start();
 
-      const processor = mockContext._mockProcessor;
-
       // Create buffer with known RMS value (0.5 RMS -> normalized to 1.0 due to x3 multiplier capped at 1)
       const loudBuffer = new Float32Array(4096).fill(0.5);
-      const mockLoudEvent = {
-        inputBuffer: { getChannelData: () => loudBuffer },
-      } as unknown as AudioProcessingEvent;
-
-      processor.onaudioprocess!(mockLoudEvent);
+      mockContext._simulateAudioData(loudBuffer);
 
       expect(audioLevelCallback).toHaveBeenCalled();
       // RMS of constant 0.5 = 0.5, normalized = 0.5 * 3 = 1.5, clamped to 1
@@ -738,15 +705,9 @@ describe('AudioRecorder', () => {
 
       await recorder.start();
 
-      const processor = mockContext._mockProcessor;
-
       // Create buffer with low RMS value (0.1 RMS -> normalized to 0.3)
       const quietBuffer = new Float32Array(4096).fill(0.1);
-      const mockQuietEvent = {
-        inputBuffer: { getChannelData: () => quietBuffer },
-      } as unknown as AudioProcessingEvent;
-
-      processor.onaudioprocess!(mockQuietEvent);
+      mockContext._simulateAudioData(quietBuffer);
 
       expect(audioLevelCallback).toHaveBeenCalled();
       // RMS of constant 0.1 = 0.1, normalized = 0.1 * 3 = 0.3
@@ -761,15 +722,10 @@ describe('AudioRecorder', () => {
 
       await recorder.start();
 
-      const processor = mockContext._mockProcessor;
-
       const buffer = new Float32Array(4096).fill(0.5);
-      const mockEvent = {
-        inputBuffer: { getChannelData: () => buffer },
-      } as unknown as AudioProcessingEvent;
 
       // This should not throw
-      expect(() => processor.onaudioprocess!(mockEvent)).not.toThrow();
+      expect(() => mockContext._simulateAudioData(buffer)).not.toThrow();
     });
 
     it('should call onAudioLevel even when silence detection is disabled', async () => {
@@ -781,14 +737,8 @@ describe('AudioRecorder', () => {
 
       await recorder.start();
 
-      const processor = mockContext._mockProcessor;
-
       const buffer = new Float32Array(4096).fill(0.5);
-      const mockEvent = {
-        inputBuffer: { getChannelData: () => buffer },
-      } as unknown as AudioProcessingEvent;
-
-      processor.onaudioprocess!(mockEvent);
+      mockContext._simulateAudioData(buffer);
 
       expect(audioLevelCallback).toHaveBeenCalled();
     });
