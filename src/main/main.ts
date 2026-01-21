@@ -358,9 +358,10 @@ ipcMain.handle('get-model', () => {
 
 // Settings management
 ipcMain.handle('get-settings', () => {
+  // For apiKey and model: prefer saved settings, fallback to env var
   return {
-    apiKey: appSettings.apiKey,
-    model: appSettings.model,
+    apiKey: appSettings.apiKey || process.env.GEMINI_API_KEY || '',
+    model: appSettings.model || process.env.GEMINI_MODEL || 'gemini-3-flash-preview',
     customPrompt: appSettings.customPrompt,
     languages: appSettings.languages,
   };
