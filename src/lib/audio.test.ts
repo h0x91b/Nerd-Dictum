@@ -697,4 +697,100 @@ describe('AudioRecorder', () => {
       expect(silenceCallback).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('audio level callback', () => {
+    it('should call onAudioLevel with normalized RMS values', async () => {
+      const { deps, mockContext } = createMockDeps();
+      const recorder = new AudioRecorder(deps);
+
+      const receivedLevels: number[] = [];
+      const audioLevelCallback = mock((level: number) => {
+        receivedLevels.push(level);
+      });
+      recorder.setOnAudioLevel(audioLevelCallback);
+
+      await recorder.start();
+
+      const processor = mockContext._mockProcessor;
+
+      // Create buffer with known RMS value (0.5 RMS -> normalized to 1.0 due to x3 multiplier capped at 1)
+      const loudBuffer = new Float32Array(4096).fill(0.5);
+      const mockLoudEvent = {
+        inputBuffer: { getChannelData: () => loudBuffer },
+      } as unknown as AudioProcessingEvent;
+
+      processor.onaudioprocess!(mockLoudEvent);
+
+      expect(audioLevelCallback).toHaveBeenCalled();
+      // RMS of constant 0.5 = 0.5, normalized = 0.5 * 3 = 1.5, clamped to 1
+      expect(receivedLevels[0]).toBe(1);
+    });
+
+    it('should call onAudioLevel with lower values for quiet audio', async () => {
+      const { deps, mockContext } = createMockDeps();
+      const recorder = new AudioRecorder(deps);
+
+      const receivedLevels: number[] = [];
+      const audioLevelCallback = mock((level: number) => {
+        receivedLevels.push(level);
+      });
+      recorder.setOnAudioLevel(audioLevelCallback);
+
+      await recorder.start();
+
+      const processor = mockContext._mockProcessor;
+
+      // Create buffer with low RMS value (0.1 RMS -> normalized to 0.3)
+      const quietBuffer = new Float32Array(4096).fill(0.1);
+      const mockQuietEvent = {
+        inputBuffer: { getChannelData: () => quietBuffer },
+      } as unknown as AudioProcessingEvent;
+
+      processor.onaudioprocess!(mockQuietEvent);
+
+      expect(audioLevelCallback).toHaveBeenCalled();
+      // RMS of constant 0.1 = 0.1, normalized = 0.1 * 3 = 0.3
+      expect(receivedLevels[0]).toBeCloseTo(0.3, 2);
+    });
+
+    it('should not call onAudioLevel when callback is not set', async () => {
+      const { deps, mockContext } = createMockDeps();
+      const recorder = new AudioRecorder(deps);
+
+      // Don't set any callback
+
+      await recorder.start();
+
+      const processor = mockContext._mockProcessor;
+
+      const buffer = new Float32Array(4096).fill(0.5);
+      const mockEvent = {
+        inputBuffer: { getChannelData: () => buffer },
+      } as unknown as AudioProcessingEvent;
+
+      // This should not throw
+      expect(() => processor.onaudioprocess!(mockEvent)).not.toThrow();
+    });
+
+    it('should call onAudioLevel even when silence detection is disabled', async () => {
+      const { deps, mockContext } = createMockDeps();
+      const recorder = new AudioRecorder(deps, { silenceDetectionEnabled: false });
+
+      const audioLevelCallback = mock((_level: number) => {});
+      recorder.setOnAudioLevel(audioLevelCallback);
+
+      await recorder.start();
+
+      const processor = mockContext._mockProcessor;
+
+      const buffer = new Float32Array(4096).fill(0.5);
+      const mockEvent = {
+        inputBuffer: { getChannelData: () => buffer },
+      } as unknown as AudioProcessingEvent;
+
+      processor.onaudioprocess!(mockEvent);
+
+      expect(audioLevelCallback).toHaveBeenCalled();
+    });
+  });
 });

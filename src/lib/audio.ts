@@ -44,6 +44,7 @@ const defaultDeps: AudioRecorderDeps = {
 };
 
 export type SilenceStopCallback = () => void;
+export type AudioLevelCallback = (rms: number) => void;
 
 export interface AudioRecorderOptions {
   deviceId?: string;
@@ -63,6 +64,7 @@ export class AudioRecorder {
   private deps: AudioRecorderDeps;
   private silenceStartTime: number | null = null;
   private onSilenceStop: SilenceStopCallback | null = null;
+  private onAudioLevel: AudioLevelCallback | null = null;
   private silenceStopFired: boolean = false;
   private options: AudioRecorderOptions;
 
@@ -80,6 +82,14 @@ export class AudioRecorder {
    */
   setOnSilenceStop(callback: SilenceStopCallback | null): void {
     this.onSilenceStop = callback;
+  }
+
+  /**
+   * Set callback to receive real-time audio level (RMS) updates during recording.
+   * Called at ~10-15fps with normalized RMS value (0 to 1).
+   */
+  setOnAudioLevel(callback: AudioLevelCallback | null): void {
+    this.onAudioLevel = callback;
   }
 
   /**
@@ -162,19 +172,27 @@ export class AudioRecorder {
       this.silenceStartTime = null;
       this.silenceStopFired = false;
 
-      // Capture audio data with silence detection
+      // Capture audio data with silence detection and audio level callback
       this.processorNode.onaudioprocess = (event: AudioProcessingEvent) => {
         if (this.isRecording) {
           const inputData = event.inputBuffer.getChannelData(0);
           // Clone the data since the buffer is reused
           this.audioChunks.push(new Float32Array(inputData));
 
+          // Calculate RMS for audio level callback and silence detection
+          const rms = this.calculateRMS(inputData);
+          const now = Date.now();
+          const recordingDuration = now - this.recordingStartTime;
+
+          // Call audio level callback (normalized RMS, clamped to 0-1)
+          // Multiply by ~3 to make typical speech levels more visible (raw RMS is often 0.01-0.1)
+          if (this.onAudioLevel) {
+            const normalizedLevel = Math.min(1, rms * 3);
+            this.onAudioLevel(normalizedLevel);
+          }
+
           // Silence detection (only if enabled)
           if (this.options.silenceDetectionEnabled) {
-            const rms = this.calculateRMS(inputData);
-            const now = Date.now();
-            const recordingDuration = now - this.recordingStartTime;
-
             // Periodic RMS logging for debugging
             if (now - lastRmsLogTime >= RMS_LOG_INTERVAL_MS) {
               lastRmsLogTime = now;

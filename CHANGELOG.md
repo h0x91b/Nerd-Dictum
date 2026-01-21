@@ -33,3 +33,4 @@
 [2026-01-21 16:30] Feature — Add "Launch at startup" option in Settings; uses Electron's setLoginItemSettings API for macOS/Windows auto-launch
 [2026-01-21 20:39] Refactor — Centralize window-position validation, reuse WAV encoding helpers, and simplify transcription/options helpers
 [2026-01-21 21:27] Feature — Add theme selector (light/dark/system) with preview swatches, cross-window sync, and a softer light palette
+[2026-01-21 21:07] Feature — Add real-time audio level visualization as tachometer arc around mic button (7-to-5 o'clock), with theme support and easeOut smoothing

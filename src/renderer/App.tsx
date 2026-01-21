@@ -4,11 +4,15 @@ import { AudioRecorder, AudioRecorderOptions, DEFAULT_SILENCE_DURATION_MS } from
 import { transcribeAudio, TranscribeOptions } from '../lib/gemini';
 import { classifyError, ClassifiedError } from '../lib/errors';
 import { SettingsButton } from './components/Settings';
+import { AudioLevelRing } from './components/AudioLevelRing';
 import type { AppSettings } from './types/electron';
 
 const MESSAGE_TIMEOUT_MS = 2000;
 const RETRY_MESSAGE_TIMEOUT_MS = 4000;
 const SUCCESS_STATE_TIMEOUT_MS = 5000;
+
+// Audio level smoothing
+const AUDIO_LEVEL_LERP_UP = 0.8;   // Very fast rise
 
 function buildTranscribeOptions(settings: AppSettings): TranscribeOptions {
   const options: TranscribeOptions = {};
@@ -44,6 +48,8 @@ interface FlashMessage {
 export function App() {
   const [state, setState] = useState<AppState>('idle');
   const [message, setMessage] = useState<FlashMessage | null>(null);
+  const [audioLevel, setAudioLevel] = useState<number>(0);
+  const audioLevelRef = useRef<number>(0); // For lerp smoothing
   const recorderRef = useRef<AudioRecorder | null>(null);
   const lastAudioRef = useRef<string | null>(null);
   const messageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -124,6 +130,10 @@ export function App() {
     // Use recorder's internal state to avoid stale closure issues
     if (!recorderRef.current || !recorderRef.current.getIsRecording()) return;
 
+    // Reset audio level visualization
+    audioLevelRef.current = 0;
+    setAudioLevel(0);
+
     try {
       const audioBase64 = await recorderRef.current.stop();
       console.log('[Recording] Stopped');
@@ -171,6 +181,24 @@ export function App() {
         recorderRef.current.setOnSilenceStop(() => {
           stopRecordingAndTranscribe();
         });
+        // Set up audio level callback for visualization with smoothing
+        recorderRef.current.setOnAudioLevel((level) => {
+          const current = audioLevelRef.current;
+          let smoothed: number;
+
+          if (level > current) {
+            // Rising: simple lerp, fast
+            smoothed = current + (level - current) * AUDIO_LEVEL_LERP_UP;
+          } else {
+            // Falling: easeOut - faster at start, slower at end
+            const diff = current - level;
+            const easeOutFactor = 0.3 + diff * 0.6; // 0.3 base + up to 0.6 more based on distance
+            smoothed = current - diff * Math.min(easeOutFactor, 0.85);
+          }
+
+          audioLevelRef.current = smoothed;
+          setAudioLevel(smoothed);
+        });
         await recorderRef.current.start();
         console.log('[Recording] Started');
         setState('recording');
@@ -198,48 +226,51 @@ export function App() {
       <div className="drag-handle">
         <span className="grip-dots"></span>
       </div>
-      <button
-        className={`mic-button ${state}`}
-        onClick={handleToggleRecording}
-        disabled={state === 'transcribing'}
-        aria-label={
-          state === 'idle' || state === 'success'
-            ? 'Start recording'
-            : state === 'recording'
-              ? 'Stop recording'
-              : 'Transcribing...'
-        }
-        data-tooltip={
-          state === 'idle' || state === 'success'
-            ? '⌘⇧R'
-            : state === 'recording'
+      <div className="mic-button-container">
+        {state === 'recording' && <AudioLevelRing level={audioLevel} />}
+        <button
+          className={`mic-button ${state}`}
+          onClick={handleToggleRecording}
+          disabled={state === 'transcribing'}
+          aria-label={
+            state === 'idle' || state === 'success'
+              ? 'Start recording'
+              : state === 'recording'
+                ? 'Stop recording'
+                : 'Transcribing...'
+          }
+          data-tooltip={
+            state === 'idle' || state === 'success'
               ? '⌘⇧R'
-              : undefined
-        }
-      >
-        {state === 'transcribing' ? (
-          <span className="spinner" />
-        ) : state === 'success' ? (
-          <svg
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            width="32"
-            height="32"
-            className="checkmark-icon"
-          >
-            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
-          </svg>
-        ) : (
-          <svg
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            width="32"
-            height="32"
-          >
-            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
-          </svg>
-        )}
-      </button>
+              : state === 'recording'
+                ? '⌘⇧R'
+                : undefined
+          }
+        >
+          {state === 'transcribing' ? (
+            <span className="spinner" />
+          ) : state === 'success' ? (
+            <svg
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              width="32"
+              height="32"
+              className="checkmark-icon"
+            >
+              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
+            </svg>
+          ) : (
+            <svg
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              width="32"
+              height="32"
+            >
+              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+            </svg>
+          )}
+        </button>
+      </div>
       {message && (
         <div
           className={`flash-message ${message.type}${message.isRetryable ? ' retryable' : ''}`}

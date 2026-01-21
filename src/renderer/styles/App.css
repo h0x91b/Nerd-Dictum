@@ -37,6 +37,13 @@
   background-image: radial-gradient(circle, #888 1.5px, transparent 1.5px);
 }
 
+.mic-button-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .mic-button {
   width: 56px;
   height: 56px;

@@ -1,0 +1,27 @@
+.audio-level-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.tachometer-bg {
+  stroke: var(--color-tachometer-bg);
+}
+
+.tachometer-active {
+  transition: stroke 0.15s ease-out;
+}
+
+.tachometer-active.tachometer-low {
+  stroke: var(--color-tachometer-low);
+}
+
+.tachometer-active.tachometer-mid {
+  stroke: var(--color-tachometer-mid);
+}
+
+.tachometer-active.tachometer-high {
+  stroke: var(--color-tachometer-high);
+}
