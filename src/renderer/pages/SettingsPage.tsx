@@ -48,6 +48,7 @@ export function SettingsPage() {
   const [microphoneDeviceId, setMicrophoneDeviceId] = useState('');
   const [silenceDetectionEnabled, setSilenceDetectionEnabled] = useState(true);
   const [silenceDurationMs, setSilenceDurationMs] = useState(2500);
+  const [launchAtStartup, setLaunchAtStartup] = useState(false);
   const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -87,6 +88,7 @@ export function SettingsPage() {
         setMicrophoneDeviceId(settings.microphoneDeviceId || '');
         setSilenceDetectionEnabled(settings.silenceDetectionEnabled ?? true);
         setSilenceDurationMs(settings.silenceDurationMs || 2500);
+        setLaunchAtStartup(settings.launchAtStartup ?? false);
       } catch (error) {
         console.error('[Settings] Failed to load:', error);
       } finally {
@@ -122,6 +124,7 @@ export function SettingsPage() {
         microphoneDeviceId,
         silenceDetectionEnabled,
         silenceDurationMs,
+        launchAtStartup,
       });
       if (success) {
         setSaveMessage('Saved!');
@@ -282,6 +285,20 @@ export function SettingsPage() {
           </div>
           <span className="settings-hint">
             Select your primary languages for better transcription accuracy
+          </span>
+        </div>
+
+        <div className="settings-field">
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={launchAtStartup}
+              onChange={(e) => setLaunchAtStartup(e.target.checked)}
+            />
+            <span>Launch at startup</span>
+          </label>
+          <span className="settings-hint">
+            Automatically start the app when you log in
           </span>
         </div>
 

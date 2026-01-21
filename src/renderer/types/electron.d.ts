@@ -7,6 +7,7 @@ export interface AppSettings {
   microphoneDeviceId: string;
   silenceDetectionEnabled: boolean;
   silenceDurationMs: number;
+  launchAtStartup: boolean;
 }
 
 export interface ElectronAPI {

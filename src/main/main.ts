@@ -16,6 +16,7 @@ interface AppSettings {
   microphoneDeviceId: string;
   silenceDetectionEnabled: boolean;
   silenceDurationMs: number;
+  launchAtStartup: boolean;
 }
 
 // Window position persistence
@@ -34,6 +35,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   microphoneDeviceId: '',
   silenceDetectionEnabled: true,
   silenceDurationMs: 2500,
+  launchAtStartup: false,
 };
 
 function getSettingsPath(): string {
@@ -46,7 +48,11 @@ function loadSettings(): AppSettings {
     if (fs.existsSync(settingsPath)) {
       const data = fs.readFileSync(settingsPath, 'utf-8');
       const parsed = JSON.parse(data);
-      return { ...DEFAULT_SETTINGS, ...parsed };
+      const settings = { ...DEFAULT_SETTINGS, ...parsed };
+      // Sync launchAtStartup with actual system state
+      const { openAtLogin } = app.getLoginItemSettings();
+      settings.launchAtStartup = openAtLogin;
+      return settings;
     }
   } catch (error) {
     console.error('[Settings] Failed to load settings:', error);
@@ -58,6 +64,11 @@ function saveSettings(settings: AppSettings): boolean {
   try {
     const settingsPath = getSettingsPath();
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
+    // Apply auto-launch setting to system
+    app.setLoginItemSettings({
+      openAtLogin: settings.launchAtStartup,
+      openAsHidden: true, // macOS: launch without focusing
+    });
     return true;
   } catch (error) {
     console.error('[Settings] Failed to save:', error);
@@ -366,6 +377,8 @@ ipcMain.handle('get-model', () => {
 
 // Settings management
 ipcMain.handle('get-settings', () => {
+  // Sync launchAtStartup with actual system state
+  const { openAtLogin } = app.getLoginItemSettings();
   // For apiKey and model: prefer saved settings, fallback to env var
   return {
     apiKey: appSettings.apiKey || process.env.GEMINI_API_KEY || '',
@@ -376,6 +389,7 @@ ipcMain.handle('get-settings', () => {
     microphoneDeviceId: appSettings.microphoneDeviceId,
     silenceDetectionEnabled: appSettings.silenceDetectionEnabled,
     silenceDurationMs: appSettings.silenceDurationMs,
+    launchAtStartup: openAtLogin,
   };
 });
 
