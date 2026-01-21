@@ -154,7 +154,7 @@ function createSettingsWindow() {
     },
   });
 
-  if (process.env.NODE_ENV === 'development') {
+  if (!app.isPackaged) {
     settingsWindow.loadURL('http://localhost:5173/settings.html');
   } else {
     settingsWindow.loadFile(path.join(__dirname, '../renderer/settings.html'));
@@ -191,7 +191,7 @@ function createWindow() {
     },
   });
 
-  if (process.env.NODE_ENV === 'development') {
+  if (!app.isPackaged) {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
@@ -223,7 +223,7 @@ function getIconPath(): string {
   // Use Template suffix on macOS for proper menu bar appearance
   const iconName = process.platform === 'darwin' ? 'tray-iconTemplate.png' : 'tray-icon.png';
 
-  if (process.env.NODE_ENV === 'development') {
+  if (!app.isPackaged) {
     // In development, assets are in project root
     return path.join(app.getAppPath(), 'assets', iconName);
   } else {
@@ -302,6 +302,15 @@ function updateTrayMenu() {
       label: 'Quit',
       click: () => {
         (app as any).isQuitting = true;
+        // Destroy tray first to prevent menu callbacks
+        if (tray) {
+          tray.destroy();
+          tray = null;
+        }
+        // Close all windows explicitly
+        BrowserWindow.getAllWindows().forEach(win => {
+          win.destroy();
+        });
         app.quit();
       },
     },
@@ -339,6 +348,10 @@ app.on('window-all-closed', () => {
   if (!tray && process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('before-quit', () => {
+  (app as any).isQuitting = true;
 });
 
 app.on('will-quit', () => {
