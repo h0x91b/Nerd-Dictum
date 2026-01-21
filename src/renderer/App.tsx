@@ -63,6 +63,7 @@ export function App() {
 
       // Transcribe audio
       const transcript = await transcribeAudio(audioBase64, settings.apiKey, settings.model, options);
+      console.log('[Transcript]', transcript);
 
       // Copy to clipboard
       await window.electronAPI.copyToClipboard(transcript);
@@ -96,6 +97,7 @@ export function App() {
 
     try {
       const audioBase64 = await recorderRef.current.stop();
+      console.log('[Recording] Stopped');
       await transcribeWithRetry(audioBase64);
     } catch (error) {
       // Recording stop error (too short, etc.)
@@ -116,6 +118,7 @@ export function App() {
           stopRecordingAndTranscribe();
         });
         await recorderRef.current.start();
+        console.log('[Recording] Started');
         setState('recording');
       } catch (error) {
         showError(error);
