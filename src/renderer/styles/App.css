@@ -42,8 +42,8 @@
   height: 56px;
   border-radius: 50%;
   border: none;
-  background: #3a3a3a;
-  color: #e0e0e0;
+  background: var(--color-mic-idle, #3a3a3a);
+  color: var(--text-primary, #e0e0e0);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -105,6 +105,42 @@
 .mic-button.transcribing {
   background: #ff9800;
   color: #1a1a1a;
+}
+
+.mic-button.success {
+  background: var(--color-success, #4caf50);
+  color: #1a1a1a;
+  animation: successFade 5s ease-out forwards;
+}
+
+.checkmark-icon {
+  animation: checkmarkPop 0.3s ease-out;
+}
+
+@keyframes checkmarkPop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes successFade {
+  0% {
+    background: var(--color-success, #4caf50);
+  }
+  70% {
+    background: var(--color-success, #4caf50);
+  }
+  100% {
+    background: var(--color-mic-idle, #3a3a3a);
+  }
 }
 
 @keyframes pulse {

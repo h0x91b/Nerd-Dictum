@@ -5,7 +5,7 @@ import { transcribeAudio, TranscribeOptions } from '../lib/gemini';
 import { classifyError, ClassifiedError } from '../lib/errors';
 import { SettingsButton } from './components/Settings';
 
-type AppState = 'idle' | 'recording' | 'transcribing';
+type AppState = 'idle' | 'recording' | 'transcribing' | 'success';
 type MessageType = 'success' | 'error';
 
 interface FlashMessage {
@@ -20,6 +20,7 @@ export function App() {
   const recorderRef = useRef<AudioRecorder | null>(null);
   const lastAudioRef = useRef<string | null>(null);
   const messageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showMessage = useCallback((text: string, type: MessageType = 'success', isRetryable = false) => {
     // Clear any existing timeout
@@ -71,7 +72,15 @@ export function App() {
 
       // Clear saved audio on success
       lastAudioRef.current = null;
-      setState('idle');
+
+      // Show success state for 5 seconds, then fade to idle
+      setState('success');
+      if (successTimeoutRef.current) {
+        clearTimeout(successTimeoutRef.current);
+      }
+      successTimeoutRef.current = setTimeout(() => {
+        setState('idle');
+      }, 5000);
     } catch (error) {
       const classified = showError(error);
 
@@ -107,9 +116,14 @@ export function App() {
   }, [transcribeWithRetry, showError]);
 
   const handleToggleRecording = useCallback(async () => {
-    if (state === 'idle') {
+    if (state === 'idle' || state === 'success') {
       // Clear any pending retry audio when starting new recording
       lastAudioRef.current = null;
+      // Clear success timeout if transitioning from success state
+      if (successTimeoutRef.current) {
+        clearTimeout(successTimeoutRef.current);
+        successTimeoutRef.current = null;
+      }
 
       try {
         recorderRef.current = new AudioRecorder();
@@ -149,14 +163,14 @@ export function App() {
         onClick={handleToggleRecording}
         disabled={state === 'transcribing'}
         aria-label={
-          state === 'idle'
+          state === 'idle' || state === 'success'
             ? 'Start recording'
             : state === 'recording'
               ? 'Stop recording'
               : 'Transcribing...'
         }
         data-tooltip={
-          state === 'idle'
+          state === 'idle' || state === 'success'
             ? '⌘⇧R'
             : state === 'recording'
               ? '⌘⇧R'
@@ -165,6 +179,16 @@ export function App() {
       >
         {state === 'transcribing' ? (
           <span className="spinner" />
+        ) : state === 'success' ? (
+          <svg
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            width="32"
+            height="32"
+            className="checkmark-icon"
+          >
+            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
+          </svg>
         ) : (
           <svg
             viewBox="0 0 24 24"
