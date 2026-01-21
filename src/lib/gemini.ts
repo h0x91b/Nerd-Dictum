@@ -62,6 +62,23 @@ const AUTH_ERROR_STATUSES = new Set([401, 403]);
 const CLIENT_ERROR_STATUS_MIN = 400;
 const CLIENT_ERROR_STATUS_MAX = 500;
 
+export interface TranscribeOptions {
+  languages?: string[];
+  speechDomain?: string;
+  customDomainHint?: string;
+}
+
+export interface TranscribeRequestOptions extends TranscribeOptions {
+  signal?: AbortSignal;
+}
+
+export class TranscriptionCancelledError extends Error {
+  constructor() {
+    super('Transcription cancelled');
+    this.name = 'TranscriptionCancelledError';
+  }
+}
+
 interface GeminiResponse {
   candidates?: Array<{
     content?: {
@@ -74,12 +91,6 @@ interface GeminiResponse {
     message: string;
     code: number;
   };
-}
-
-export interface TranscribeOptions {
-  languages?: string[];
-  speechDomain?: string;
-  customDomainHint?: string;
 }
 
 function buildPrompt(options?: TranscribeOptions): string {
@@ -147,14 +158,39 @@ function getRetryDelayMs(attempt: number): number {
   return RETRY_DELAY_BASE_MS * Math.pow(2, attempt) + Math.random() * RETRY_JITTER_MS;
 }
 
+function waitForRetryDelayMs(delayMs: number, signal?: AbortSignal): Promise<void> {
+  if (!signal) {
+    return new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+
+  if (signal.aborted) {
+    return Promise.reject(new TranscriptionCancelledError());
+  }
+
+  return new Promise((resolve, reject) => {
+    const onAbort = () => {
+      clearTimeout(timeoutId);
+      signal.removeEventListener('abort', onAbort);
+      reject(new TranscriptionCancelledError());
+    };
+    const timeoutId = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, delayMs);
+
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
 export async function transcribeAudio(
   audioBase64: string,
   apiKey: string,
   model: string = 'gemini-3-flash-preview',
-  options?: TranscribeOptions
+  options?: TranscribeRequestOptions
 ): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
   const prompt = buildPrompt(options);
+  const requestSignal = options?.signal;
 
   const requestBody = buildRequestBody(prompt, audioBase64);
   console.log('[TEST] Gemini transcription request:', {
@@ -166,40 +202,62 @@ export async function transcribeAudio(
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
+      if (requestSignal?.aborted) {
+        throw new TranscriptionCancelledError();
+      }
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      const abortHandler = requestSignal ? () => controller.abort() : null;
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (AUTH_ERROR_STATUSES.has(response.status)) {
-        throw new Error('Invalid or missing API key');
+      if (requestSignal && abortHandler) {
+        requestSignal.addEventListener('abort', abortHandler, { once: true });
       }
 
-      if (
-        response.status >= CLIENT_ERROR_STATUS_MIN &&
-        response.status < CLIENT_ERROR_STATUS_MAX
-      ) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Bad request');
+      try {
+        if (requestSignal?.aborted) {
+          throw new TranscriptionCancelledError();
+        }
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal,
+        });
+
+        if (AUTH_ERROR_STATUSES.has(response.status)) {
+          throw new Error('Invalid or missing API key');
+        }
+
+        if (
+          response.status >= CLIENT_ERROR_STATUS_MIN &&
+          response.status < CLIENT_ERROR_STATUS_MAX
+        ) {
+          const errorData = await response.json();
+          throw new Error(errorData.error?.message || 'Bad request');
+        }
+
+        if (!response.ok) {
+          throw new Error(`HTTP error: ${response.status}`);
+        }
+
+        const data: GeminiResponse = await response.json();
+
+        return extractTranscript(data);
+      } finally {
+        clearTimeout(timeoutId);
+        if (requestSignal && abortHandler) {
+          requestSignal.removeEventListener('abort', abortHandler);
+        }
       }
-
-      if (!response.ok) {
-        throw new Error(`HTTP error: ${response.status}`);
-      }
-
-      const data: GeminiResponse = await response.json();
-
-      return extractTranscript(data);
     } catch (error) {
+      if (error instanceof TranscriptionCancelledError || requestSignal?.aborted) {
+        throw new TranscriptionCancelledError();
+      }
+
       lastError = error as Error;
 
       // Don't retry on auth errors or bad requests
@@ -210,7 +268,7 @@ export async function transcribeAudio(
       if (attempt < MAX_RETRIES - 1) {
         // Exponential backoff with jitter
         const delay = getRetryDelayMs(attempt);
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        await waitForRetryDelayMs(delay, requestSignal);
       }
     }
   }

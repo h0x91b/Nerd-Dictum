@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import './styles/App.css';
 import { AudioRecorder, AudioRecorderOptions, DEFAULT_SILENCE_DURATION_MS } from '../lib/audio';
-import { transcribeAudio, TranscribeOptions } from '../lib/gemini';
+import { transcribeAudio, TranscribeOptions, TranscriptionCancelledError } from '../lib/gemini';
 import { classifyError, ClassifiedError } from '../lib/errors';
 import { SettingsButton } from './components/Settings';
 import { AudioLevelRing } from './components/AudioLevelRing';
@@ -54,6 +54,8 @@ export function App() {
   const lastAudioRef = useRef<string | null>(null);
   const messageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const transcribeAbortRef = useRef<AbortController | null>(null);
+  const transcribeRequestIdRef = useRef(0);
 
   const showMessage = useCallback((text: string, type: MessageType = 'success', isRetryable = false) => {
     // Clear any existing timeout
@@ -74,9 +76,18 @@ export function App() {
 
   const transcribeWithRetry = useCallback(async (audioBase64: string) => {
     setState('transcribing');
+    const requestId = transcribeRequestIdRef.current + 1;
+    transcribeRequestIdRef.current = requestId;
+    const controller = new AbortController();
+    transcribeAbortRef.current = controller;
+
     try {
       // Get settings from main process
       const settings = await window.electronAPI.getSettings();
+
+      if (requestId !== transcribeRequestIdRef.current) {
+        return;
+      }
 
       if (!settings.apiKey) {
         showMessage('Set API key in settings', 'error', true);
@@ -89,11 +100,22 @@ export function App() {
 
       const options = buildTranscribeOptions(settings);
       // Transcribe audio
-      const transcript = await transcribeAudio(audioBase64, settings.apiKey, settings.model, options);
+      const transcript = await transcribeAudio(audioBase64, settings.apiKey, settings.model, {
+        ...options,
+        signal: controller.signal,
+      });
+
+      if (requestId !== transcribeRequestIdRef.current) {
+        return;
+      }
+
       console.log('[Transcript]', transcript);
 
       // Copy to clipboard
       await window.electronAPI.copyToClipboard(transcript);
+      if (requestId !== transcribeRequestIdRef.current) {
+        return;
+      }
       showMessage('Copied to clipboard', 'success');
 
       // Clear saved audio on success
@@ -108,6 +130,10 @@ export function App() {
         setState('idle');
       }, SUCCESS_STATE_TIMEOUT_MS);
     } catch (error) {
+      if (requestId !== transcribeRequestIdRef.current || error instanceof TranscriptionCancelledError) {
+        return;
+      }
+
       const classified = showError(error);
 
       // Save audio for retry only if error is retryable
@@ -117,6 +143,10 @@ export function App() {
         lastAudioRef.current = null;
       }
       setState('idle');
+    } finally {
+      if (transcribeAbortRef.current === controller) {
+        transcribeAbortRef.current = null;
+      }
     }
   }, [showError, showMessage]);
 
@@ -144,6 +174,22 @@ export function App() {
       setState('idle');
     }
   }, [transcribeWithRetry, showError]);
+
+  const cancelTranscription = useCallback(() => {
+    if (state !== 'transcribing') return;
+
+    const controller = transcribeAbortRef.current;
+    transcribeAbortRef.current = null;
+    transcribeRequestIdRef.current += 1;
+    lastAudioRef.current = null;
+
+    if (controller) {
+      controller.abort();
+    }
+
+    console.log('[TEST] Transcription cancelled by user');
+    setState('idle');
+  }, [state]);
 
   const handleToggleRecording = useCallback(async () => {
     if (state === 'idle' || state === 'success') {
@@ -207,8 +253,10 @@ export function App() {
       }
     } else if (state === 'recording') {
       await stopRecordingAndTranscribe();
+    } else if (state === 'transcribing') {
+      cancelTranscription();
     }
-  }, [state, showError, stopRecordingAndTranscribe]);
+  }, [state, showError, stopRecordingAndTranscribe, cancelTranscription]);
 
   // Listen for global keyboard shortcut
   useEffect(() => {
@@ -231,20 +279,19 @@ export function App() {
         <button
           className={`mic-button ${state}`}
           onClick={handleToggleRecording}
-          disabled={state === 'transcribing'}
           aria-label={
             state === 'idle' || state === 'success'
               ? 'Start recording'
               : state === 'recording'
                 ? 'Stop recording'
-                : 'Transcribing...'
+                : 'Cancel transcription'
           }
           data-tooltip={
             state === 'idle' || state === 'success'
               ? '⌘⇧R'
               : state === 'recording'
                 ? '⌘⇧R'
-                : undefined
+                : 'Cancel'
           }
         >
           {state === 'transcribing' ? (

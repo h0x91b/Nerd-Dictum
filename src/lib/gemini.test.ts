@@ -1,5 +1,5 @@
 import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
-import { transcribeAudio } from './gemini';
+import { transcribeAudio, TranscriptionCancelledError } from './gemini';
 
 describe('transcribeAudio', () => {
   const originalFetch = globalThis.fetch;
@@ -63,5 +63,44 @@ describe('transcribeAudio', () => {
     await expect(transcribeAudio('base64audio', 'test-api-key')).rejects.toThrow(
       'Empty response from API'
     );
+  });
+
+  it('should stop retries when aborted by signal', async () => {
+    let capturedSignal: AbortSignal | undefined;
+
+    globalThis.fetch = mock((_url, init) => {
+      const signal = init?.signal as AbortSignal | undefined;
+      capturedSignal = signal;
+      return new Promise((_resolve, reject) => {
+        if (!signal) {
+          reject(new Error('Missing abort signal'));
+          return;
+        }
+        if (signal.aborted) {
+          reject(signal.reason ?? new Error('Aborted'));
+          return;
+        }
+        signal.addEventListener(
+          'abort',
+          () => {
+            reject(signal.reason ?? new Error('Aborted'));
+          },
+          { once: true }
+        );
+      }) as Promise<Response>;
+    });
+
+    const controller = new AbortController();
+    const promise = transcribeAudio(
+      'base64audio',
+      'test-api-key',
+      'gemini-3-flash-preview',
+      { signal: controller.signal }
+    );
+
+    controller.abort();
+
+    await expect(promise).rejects.toBeInstanceOf(TranscriptionCancelledError);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
   });
 });
