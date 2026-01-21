@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { AppSettings } from '../types/electron';
+import { useTheme, ThemeMode } from '../contexts/ThemeContext';
 import './SettingsPage.css';
 
 const AVAILABLE_LANGUAGES = [
@@ -40,6 +41,7 @@ interface AudioDevice {
 }
 
 export function SettingsPage() {
+  const { theme, setTheme, systemTheme } = useTheme();
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState('gemini-3-flash-preview');
   const [languages, setLanguages] = useState<string[]>([]);
@@ -53,6 +55,12 @@ export function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
+
+  const themeOptions: Array<{ value: ThemeMode; label: string; previewTheme: 'dark' | 'light' }> = [
+    { value: 'light', label: 'Light', previewTheme: 'light' },
+    { value: 'dark', label: 'Dark', previewTheme: 'dark' },
+    { value: 'system', label: 'System', previewTheme: systemTheme },
+  ];
 
   // Load audio devices
   useEffect(() => {
@@ -188,6 +196,35 @@ export function SettingsPage() {
             placeholder="gemini-3-flash-preview"
           />
           <span className="settings-hint">Default: gemini-3-flash-preview</span>
+        </div>
+
+        <div className="settings-field">
+          <label>Theme</label>
+          <div className="settings-theme-options" role="radiogroup" aria-label="Theme">
+            {themeOptions.map((option) => (
+              <label
+                key={option.value}
+                className={`settings-theme-option${theme === option.value ? ' is-selected' : ''}`}
+              >
+                <span className="settings-theme-label">
+                  <input
+                    type="radio"
+                    name="theme"
+                    value={option.value}
+                    checked={theme === option.value}
+                    onChange={() => setTheme(option.value)}
+                  />
+                  <span>{option.label}</span>
+                </span>
+                <span className="settings-theme-preview" data-theme={option.previewTheme} aria-hidden="true">
+                  <span className="settings-theme-swatch settings-theme-swatch--bg" />
+                  <span className="settings-theme-swatch settings-theme-swatch--surface" />
+                  <span className="settings-theme-swatch settings-theme-swatch--text">Aa</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <span className="settings-hint">System follows your OS appearance.</span>
         </div>
 
         <div className="settings-field">

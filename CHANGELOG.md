@@ -32,3 +32,4 @@
 [2026-01-21 15:00] Refactor — Replace system prompt field with custom domain hint (max 500 chars); add "Custom" option to speech domain selector for free-text domain hints
 [2026-01-21 16:30] Feature — Add "Launch at startup" option in Settings; uses Electron's setLoginItemSettings API for macOS/Windows auto-launch
 [2026-01-21 20:39] Refactor — Centralize window-position validation, reuse WAV encoding helpers, and simplify transcription/options helpers
+[2026-01-21 21:27] Feature — Add theme selector (light/dark/system) with preview swatches, cross-window sync, and a softer light palette

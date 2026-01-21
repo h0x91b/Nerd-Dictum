@@ -77,6 +77,88 @@
   box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.2);
 }
 
+.settings-theme-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.settings-theme-option {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.settings-theme-option:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+}
+
+.settings-theme-option.is-selected {
+  border-color: var(--accent-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.settings-theme-option:focus-within {
+  border-color: var(--accent-primary);
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.settings-theme-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.settings-theme-option input[type="radio"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  accent-color: var(--accent-primary);
+}
+
+.settings-theme-preview {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.settings-theme-swatch {
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-primary);
+}
+
+.settings-theme-swatch--surface {
+  background: var(--bg-secondary);
+}
+
+.settings-theme-swatch--text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 10px;
+  font-weight: 600;
+  border-color: var(--border-default);
+}
+
 .checkbox-label {
   display: flex;
   align-items: center;
