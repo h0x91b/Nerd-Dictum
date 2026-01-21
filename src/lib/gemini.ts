@@ -54,6 +54,14 @@ Domain hint: creative writing and storytelling`,
 
 const DEFAULT_TRANSCRIPTION_PROMPT = DOMAIN_PROMPTS.programming;
 
+const REQUEST_TIMEOUT_MS = 30000;
+const MAX_RETRIES = 3;
+const RETRY_DELAY_BASE_MS = 250;
+const RETRY_JITTER_MS = 200;
+const AUTH_ERROR_STATUSES = new Set([401, 403]);
+const CLIENT_ERROR_STATUS_MIN = 400;
+const CLIENT_ERROR_STATUS_MAX = 500;
+
 interface GeminiResponse {
   candidates?: Array<{
     content?: {
@@ -97,16 +105,8 @@ Domain hint: ${options.customDomainHint}`;
   return basePrompt;
 }
 
-export async function transcribeAudio(
-  audioBase64: string,
-  apiKey: string,
-  model: string = 'gemini-3-flash-preview',
-  options?: TranscribeOptions
-): Promise<string> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-  const prompt = buildPrompt(options);
-
-  const requestBody = {
+function buildRequestBody(prompt: string, audioBase64: string) {
+  return {
     contents: [
       {
         parts: [
@@ -121,14 +121,53 @@ export async function transcribeAudio(
       },
     ],
   };
+}
+
+function extractTranscript(data: GeminiResponse): string {
+  if (data.error) {
+    throw new Error(data.error.message);
+  }
+
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    throw new Error('Empty response from API');
+  }
+
+  return text.trim();
+}
+
+function isNonRetryableError(error: Error): boolean {
+  return (
+    error.message.includes('API key') ||
+    error.message.includes('Bad request')
+  );
+}
+
+function getRetryDelayMs(attempt: number): number {
+  return RETRY_DELAY_BASE_MS * Math.pow(2, attempt) + Math.random() * RETRY_JITTER_MS;
+}
+
+export async function transcribeAudio(
+  audioBase64: string,
+  apiKey: string,
+  model: string = 'gemini-3-flash-preview',
+  options?: TranscribeOptions
+): Promise<string> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const prompt = buildPrompt(options);
+
+  const requestBody = buildRequestBody(prompt, audioBase64);
+  console.log('[TEST] Gemini transcription request:', {
+    model,
+    promptLength: prompt.length,
+  });
 
   let lastError: Error | null = null;
-  const maxRetries = 3;
 
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
       const response = await fetch(url, {
         method: 'POST',
@@ -141,11 +180,14 @@ export async function transcribeAudio(
 
       clearTimeout(timeoutId);
 
-      if (response.status === 401 || response.status === 403) {
+      if (AUTH_ERROR_STATUSES.has(response.status)) {
         throw new Error('Invalid or missing API key');
       }
 
-      if (response.status >= 400 && response.status < 500) {
+      if (
+        response.status >= CLIENT_ERROR_STATUS_MIN &&
+        response.status < CLIENT_ERROR_STATUS_MAX
+      ) {
         const errorData = await response.json();
         throw new Error(errorData.error?.message || 'Bad request');
       }
@@ -156,30 +198,18 @@ export async function transcribeAudio(
 
       const data: GeminiResponse = await response.json();
 
-      if (data.error) {
-        throw new Error(data.error.message);
-      }
-
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!text) {
-        throw new Error('Empty response from API');
-      }
-
-      return text.trim();
+      return extractTranscript(data);
     } catch (error) {
       lastError = error as Error;
 
       // Don't retry on auth errors or bad requests
-      if (
-        lastError.message.includes('API key') ||
-        lastError.message.includes('Bad request')
-      ) {
+      if (isNonRetryableError(lastError)) {
         throw lastError;
       }
 
-      if (attempt < maxRetries - 1) {
+      if (attempt < MAX_RETRIES - 1) {
         // Exponential backoff with jitter
-        const delay = 250 * Math.pow(2, attempt) + Math.random() * 200;
+        const delay = getRetryDelayMs(attempt);
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }

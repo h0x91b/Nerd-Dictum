@@ -2,6 +2,8 @@ import { app, BrowserWindow, ipcMain, clipboard, globalShortcut, Tray, Menu, nat
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { getDisplayBounds, isPositionValid } from './window-position';
+import type { WindowPosition } from './window-position';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,13 +19,6 @@ interface AppSettings {
   silenceDetectionEnabled: boolean;
   silenceDurationMs: number;
   launchAtStartup: boolean;
-}
-
-// Window position persistence
-interface WindowPosition {
-  x: number;
-  y: number;
-  displayCount: number;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -89,21 +84,18 @@ function loadWindowPosition(): WindowPosition | null {
     if (fs.existsSync(positionPath)) {
       const data = fs.readFileSync(positionPath, 'utf-8');
       const parsed = JSON.parse(data) as WindowPosition;
-
-      // Validate that display count matches current configuration
-      const currentDisplayCount = screen.getAllDisplays().length;
-      if (parsed.displayCount !== currentDisplayCount) {
-        return null;
-      }
-
-      // Validate that position is within visible bounds
       const displays = screen.getAllDisplays();
-      const isPositionVisible = displays.some(display => {
-        const { x, y, width, height } = display.bounds;
-        return parsed.x >= x && parsed.x < x + width && parsed.y >= y && parsed.y < y + height;
+      const isValidPosition = isPositionValid(
+        parsed,
+        displays.length,
+        getDisplayBounds(displays)
+      );
+      console.log('[TEST] Window position validation:', {
+        displayCount: displays.length,
+        isValid: isValidPosition,
       });
 
-      if (!isPositionVisible) {
+      if (!isValidPosition) {
         return null;
       }
 

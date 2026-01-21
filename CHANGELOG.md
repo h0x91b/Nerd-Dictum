@@ -31,3 +31,4 @@
 [2026-01-21 14:30] Feature — Expand settings: speech domain selector (programming, cooking, medical, etc.), microphone device picker, silence detection toggle with adjustable duration slider (1-10s)
 [2026-01-21 15:00] Refactor — Replace system prompt field with custom domain hint (max 500 chars); add "Custom" option to speech domain selector for free-text domain hints
 [2026-01-21 16:30] Feature — Add "Launch at startup" option in Settings; uses Electron's setLoginItemSettings API for macOS/Windows auto-launch
+[2026-01-21 20:39] Refactor — Centralize window-position validation, reuse WAV encoding helpers, and simplify transcription/options helpers

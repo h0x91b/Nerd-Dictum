@@ -1,45 +1,6 @@
 import { describe, it, expect } from 'vitest';
-
-// Pure functions extracted for testing
-interface WindowPosition {
-  x: number;
-  y: number;
-  displayCount: number;
-}
-
-interface DisplayBounds {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-/**
- * Validates if saved position should be restored based on display configuration.
- * Returns true if position is valid and should be used.
- */
-export function isPositionValid(
-  savedPosition: WindowPosition,
-  currentDisplayCount: number,
-  displayBounds: DisplayBounds[]
-): boolean {
-  // Check if display count matches
-  if (savedPosition.displayCount !== currentDisplayCount) {
-    return false;
-  }
-
-  // Check if position is within any display's visible bounds
-  const isPositionVisible = displayBounds.some(display => {
-    return (
-      savedPosition.x >= display.x &&
-      savedPosition.x < display.x + display.width &&
-      savedPosition.y >= display.y &&
-      savedPosition.y < display.y + display.height
-    );
-  });
-
-  return isPositionVisible;
-}
+import { isPositionValid } from './window-position';
+import type { DisplayBounds, WindowPosition } from './window-position';
 
 describe('window-position', () => {
   describe('isPositionValid', () => {

@@ -1,9 +1,36 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import './styles/App.css';
-import { AudioRecorder, AudioRecordingError, AudioRecorderOptions } from '../lib/audio';
+import { AudioRecorder, AudioRecorderOptions, DEFAULT_SILENCE_DURATION_MS } from '../lib/audio';
 import { transcribeAudio, TranscribeOptions } from '../lib/gemini';
 import { classifyError, ClassifiedError } from '../lib/errors';
 import { SettingsButton } from './components/Settings';
+import type { AppSettings } from './types/electron';
+
+const MESSAGE_TIMEOUT_MS = 2000;
+const RETRY_MESSAGE_TIMEOUT_MS = 4000;
+const SUCCESS_STATE_TIMEOUT_MS = 5000;
+
+function buildTranscribeOptions(settings: AppSettings): TranscribeOptions {
+  const options: TranscribeOptions = {};
+  if (settings.languages && settings.languages.length > 0) {
+    options.languages = settings.languages;
+  }
+  if (settings.speechDomain) {
+    options.speechDomain = settings.speechDomain;
+  }
+  if (settings.customDomainHint) {
+    options.customDomainHint = settings.customDomainHint;
+  }
+  return options;
+}
+
+function buildRecorderOptions(settings: AppSettings): AudioRecorderOptions {
+  return {
+    deviceId: settings.microphoneDeviceId || undefined,
+    silenceDetectionEnabled: settings.silenceDetectionEnabled ?? true,
+    silenceDurationMs: settings.silenceDurationMs || DEFAULT_SILENCE_DURATION_MS,
+  };
+}
 
 type AppState = 'idle' | 'recording' | 'transcribing' | 'success';
 type MessageType = 'success' | 'error';
@@ -29,7 +56,7 @@ export function App() {
     }
     setMessage({ text, type, isRetryable });
     // Error messages with retry stay longer
-    const duration = type === 'error' && isRetryable ? 4000 : 2000;
+    const duration = type === 'error' && isRetryable ? RETRY_MESSAGE_TIMEOUT_MS : MESSAGE_TIMEOUT_MS;
     messageTimeoutRef.current = setTimeout(() => setMessage(null), duration);
   }, []);
 
@@ -54,17 +81,7 @@ export function App() {
         return;
       }
 
-      const options: TranscribeOptions = {};
-      if (settings.languages && settings.languages.length > 0) {
-        options.languages = settings.languages;
-      }
-      if (settings.speechDomain) {
-        options.speechDomain = settings.speechDomain;
-      }
-      if (settings.customDomainHint) {
-        options.customDomainHint = settings.customDomainHint;
-      }
-
+      const options = buildTranscribeOptions(settings);
       // Transcribe audio
       const transcript = await transcribeAudio(audioBase64, settings.apiKey, settings.model, options);
       console.log('[Transcript]', transcript);
@@ -83,7 +100,7 @@ export function App() {
       }
       successTimeoutRef.current = setTimeout(() => {
         setState('idle');
-      }, 5000);
+      }, SUCCESS_STATE_TIMEOUT_MS);
     } catch (error) {
       const classified = showError(error);
 
@@ -148,12 +165,7 @@ export function App() {
 
         // Get audio settings
         const settings = await window.electronAPI.getSettings();
-        const recorderOptions: AudioRecorderOptions = {
-          deviceId: settings.microphoneDeviceId || undefined,
-          silenceDetectionEnabled: settings.silenceDetectionEnabled ?? true,
-          silenceDurationMs: settings.silenceDurationMs || 2500,
-        };
-
+        const recorderOptions = buildRecorderOptions(settings);
         recorderRef.current = new AudioRecorder(undefined, recorderOptions);
         // Set up silence detection callback for auto-stop
         recorderRef.current.setOnSilenceStop(() => {

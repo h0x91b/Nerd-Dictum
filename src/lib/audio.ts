@@ -3,6 +3,8 @@
  * Records audio as WAV format (PCM, 16-bit, mono, 16kHz)
  */
 
+import { encodeWavToBase64 } from './wav-encoder';
+
 // Audio configuration
 const TARGET_SAMPLE_RATE = 16000;
 const CHANNELS = 1; // mono
@@ -273,11 +275,13 @@ export class AudioRecorder {
           ? this.resample(mergedAudio, this.originalSampleRate, TARGET_SAMPLE_RATE)
           : mergedAudio;
 
-      // Convert to WAV format
-      const wavBuffer = this.encodeWav(resampledAudio);
-
-      // Convert to base64
-      const base64 = this.arrayBufferToBase64(wavBuffer);
+      const pcmData = this.float32ToInt16(resampledAudio);
+      const base64 = encodeWavToBase64(pcmData, {
+        sampleRate: TARGET_SAMPLE_RATE,
+        numChannels: CHANNELS,
+        bitsPerSample: BITS_PER_SAMPLE,
+      });
+      console.log('[TEST] AudioRecorder WAV base64 length:', base64.length);
 
       return base64;
     } finally {
@@ -361,73 +365,19 @@ export class AudioRecorder {
   }
 
   /**
-   * Encode audio data as WAV format (PCM, 16-bit, little-endian)
+   * Convert Float32 samples to 16-bit PCM.
    */
-  private encodeWav(audioData: Float32Array): ArrayBuffer {
-    const numChannels = CHANNELS;
-    const sampleRate = TARGET_SAMPLE_RATE;
-    const bitsPerSample = BITS_PER_SAMPLE;
-    const bytesPerSample = bitsPerSample / 8;
-    const blockAlign = numChannels * bytesPerSample;
-    const byteRate = sampleRate * blockAlign;
-    const dataSize = audioData.length * bytesPerSample;
-    const headerSize = 44;
-    const totalSize = headerSize + dataSize;
+  private float32ToInt16(audioData: Float32Array): Int16Array {
+    const pcmData = new Int16Array(audioData.length);
 
-    const buffer = new ArrayBuffer(totalSize);
-    const view = new DataView(buffer);
-
-    // RIFF header
-    this.writeString(view, 0, 'RIFF');
-    view.setUint32(4, totalSize - 8, true); // File size - 8
-    this.writeString(view, 8, 'WAVE');
-
-    // fmt sub-chunk
-    this.writeString(view, 12, 'fmt ');
-    view.setUint32(16, 16, true); // Sub-chunk size (16 for PCM)
-    view.setUint16(20, 1, true); // Audio format (1 = PCM)
-    view.setUint16(22, numChannels, true);
-    view.setUint32(24, sampleRate, true);
-    view.setUint32(28, byteRate, true);
-    view.setUint16(32, blockAlign, true);
-    view.setUint16(34, bitsPerSample, true);
-
-    // data sub-chunk
-    this.writeString(view, 36, 'data');
-    view.setUint32(40, dataSize, true);
-
-    // Write audio samples as 16-bit PCM
-    let offset = 44;
     for (let i = 0; i < audioData.length; i++) {
       // Clamp and convert float [-1, 1] to 16-bit integer [-32768, 32767]
       const sample = Math.max(-1, Math.min(1, audioData[i]));
       const intSample = sample < 0 ? sample * 32768 : sample * 32767;
-      view.setInt16(offset, intSample, true); // little-endian
-      offset += 2;
+      pcmData[i] = Math.trunc(intSample);
     }
 
-    return buffer;
-  }
-
-  /**
-   * Write a string to a DataView at the specified offset
-   */
-  private writeString(view: DataView, offset: number, str: string): void {
-    for (let i = 0; i < str.length; i++) {
-      view.setUint8(offset + i, str.charCodeAt(i));
-    }
-  }
-
-  /**
-   * Convert an ArrayBuffer to a base64 string
-   */
-  private arrayBufferToBase64(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
+    return pcmData;
   }
 
   /**
