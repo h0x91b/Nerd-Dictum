@@ -151,9 +151,27 @@ function createSettingsWindow() {
     return;
   }
 
+  // Get the display where the main window is located
+  let windowBounds: { x: number; y: number; width: number; height: number } | undefined;
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    const mainBounds = mainWindow.getBounds();
+    const display = screen.getDisplayNearestPoint({ x: mainBounds.x, y: mainBounds.y });
+    const { workArea } = display;
+    // Center the settings window on the same display
+    const width = 500;
+    const height = 700;
+    windowBounds = {
+      x: Math.round(workArea.x + (workArea.width - width) / 2),
+      y: Math.round(workArea.y + (workArea.height - height) / 2),
+      width,
+      height,
+    };
+  }
+
   settingsWindow = new BrowserWindow({
     width: 500,
     height: 700,
+    ...(windowBounds && { x: windowBounds.x, y: windowBounds.y }),
     frame: true,
     resizable: false,
     minimizable: false,
@@ -193,9 +211,27 @@ function createInfoWindow() {
     return;
   }
 
+  // Get the display where the main window is located
+  let windowBounds: { x: number; y: number; width: number; height: number } | undefined;
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    const mainBounds = mainWindow.getBounds();
+    const display = screen.getDisplayNearestPoint({ x: mainBounds.x, y: mainBounds.y });
+    const { workArea } = display;
+    // Center the info window on the same display
+    const width = 400;
+    const height = 380;
+    windowBounds = {
+      x: Math.round(workArea.x + (workArea.width - width) / 2),
+      y: Math.round(workArea.y + (workArea.height - height) / 2),
+      width,
+      height,
+    };
+  }
+
   infoWindow = new BrowserWindow({
     width: 400,
     height: 380,
+    ...(windowBounds && { x: windowBounds.x, y: windowBounds.y }),
     frame: true,
     resizable: false,
     minimizable: false,

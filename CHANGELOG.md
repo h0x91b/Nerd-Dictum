@@ -49,3 +49,4 @@
 [2026-01-22 19:45] UI — Replace mic button tooltip with permanent "⌘⇧R" shortcut hint between settings/info buttons
 [2026-01-22 19:45] Bug — Fix window titles to show "Nerd Dictum — Settings" and "Nerd Dictum — How to Use"
 [2026-01-22 19:45] Bug — Fix dock icon not appearing correctly for Info window (await dock.show before setIcon)
+[2026-01-22 23:10] Feature — Settings and Info windows now open on the same screen as the widget (multi-monitor support)
