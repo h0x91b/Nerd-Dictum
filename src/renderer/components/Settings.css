@@ -1,8 +1,8 @@
 /* Settings Button */
 .settings-button {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  bottom: 2px;
+  left: 2px;
   width: 16px;
   height: 16px;
   min-width: 16px;

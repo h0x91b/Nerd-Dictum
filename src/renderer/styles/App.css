@@ -21,7 +21,6 @@
   display: block;
   width: 20px;
   height: 6px;
-  margin-top: 8px;
   background-image: radial-gradient(circle, #666 1.5px, transparent 1.5px);
   background-size: 6px 6px;
   background-position: 0 0;
