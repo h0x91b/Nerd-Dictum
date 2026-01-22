@@ -54,10 +54,10 @@ Domain hint: creative writing and storytelling`,
 
 const DEFAULT_TRANSCRIPTION_PROMPT = DOMAIN_PROMPTS.programming;
 
-const REQUEST_TIMEOUT_MS = 30000;
-const MAX_RETRIES = 3;
-const RETRY_DELAY_BASE_MS = 250;
-const RETRY_JITTER_MS = 200;
+const INITIAL_TIMEOUT_MS = 30000; // 30 seconds for first attempt
+const RETRY_TIMEOUT_MS = 120000; // 2 minutes for retry
+const MAX_ATTEMPTS = 2; // 1 initial + 1 retry
+const RETRY_DELAY_MS = 1000; // 1 second delay before retry
 const AUTH_ERROR_STATUSES = new Set([401, 403]);
 const CLIENT_ERROR_STATUS_MIN = 400;
 const CLIENT_ERROR_STATUS_MAX = 500;
@@ -154,8 +154,8 @@ function isNonRetryableError(error: Error): boolean {
   );
 }
 
-function getRetryDelayMs(attempt: number): number {
-  return RETRY_DELAY_BASE_MS * Math.pow(2, attempt) + Math.random() * RETRY_JITTER_MS;
+function getTimeoutForAttempt(attempt: number): number {
+  return attempt === 0 ? INITIAL_TIMEOUT_MS : RETRY_TIMEOUT_MS;
 }
 
 function waitForRetryDelayMs(delayMs: number, signal?: AbortSignal): Promise<void> {
@@ -200,14 +200,17 @@ export async function transcribeAudio(
 
   let lastError: Error | null = null;
 
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const timeoutMs = getTimeoutForAttempt(attempt);
+    console.log(`[Gemini] Attempt ${attempt + 1}/${MAX_ATTEMPTS}, timeout: ${timeoutMs / 1000}s`);
+
     try {
       if (requestSignal?.aborted) {
         throw new TranscriptionCancelledError();
       }
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
       const abortHandler = requestSignal ? () => controller.abort() : null;
 
       if (requestSignal && abortHandler) {
@@ -265,10 +268,9 @@ export async function transcribeAudio(
         throw lastError;
       }
 
-      if (attempt < MAX_RETRIES - 1) {
-        // Exponential backoff with jitter
-        const delay = getRetryDelayMs(attempt);
-        await waitForRetryDelayMs(delay, requestSignal);
+      if (attempt < MAX_ATTEMPTS - 1) {
+        console.log(`[Gemini] Retrying in ${RETRY_DELAY_MS / 1000}s...`);
+        await waitForRetryDelayMs(RETRY_DELAY_MS, requestSignal);
       }
     }
   }
