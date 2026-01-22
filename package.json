@@ -17,6 +17,7 @@
     "test:e2e:ui": "playwright test --ui",
     "dev:renderer": "vite",
     "dist": "bun run build && APPLE_KEYCHAIN_PROFILE=AC_PASSWORD electron-builder --mac",
+    "dist:unsigned": "bun run build && electron-builder --mac -c.mac.identity=null",
     "dist:win": "bun run build && electron-builder --win",
     "dist:linux": "bun run build && electron-builder --linux"
   },
