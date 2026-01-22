@@ -279,7 +279,7 @@ export function SettingsPage() {
             id="custom-keywords"
             value={customKeywords}
             onChange={(e) => handleCustomKeywordsChange(e.target.value)}
-            placeholder={`Bun = bull, b u n\nTypeScript = type script`}
+            placeholder={`Default keywords (always included):\nCLAUDE.md = Cloud MD\nWIX = vix\n\nAdd your own below...`}
             rows={4}
           />
           <span className="settings-hint">

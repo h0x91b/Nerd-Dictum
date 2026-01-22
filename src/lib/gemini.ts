@@ -54,6 +54,10 @@ Domain hint: creative writing and storytelling`,
 
 const DEFAULT_TRANSCRIPTION_PROMPT = DOMAIN_PROMPTS.programming;
 
+// Default keywords always included in prompts
+const DEFAULT_KEYWORDS = `CLAUDE.md = Cloud MD
+WIX = vix`;
+
 const INITIAL_TIMEOUT_MS = 30000; // 30 seconds for first attempt
 const RETRY_TIMEOUT_MS = 120000; // 2 minutes for retry
 const MAX_ATTEMPTS = 2; // 1 initial + 1 retry
@@ -135,7 +139,12 @@ function parseCustomKeywords(customKeywords?: string): CustomKeywordEntry[] {
 }
 
 function buildCustomKeywordsSection(customKeywords?: string): string {
-  const entries = parseCustomKeywords(customKeywords);
+  // Always include default keywords, then user's custom keywords
+  const combinedKeywords = customKeywords
+    ? `${DEFAULT_KEYWORDS}\n${customKeywords}`
+    : DEFAULT_KEYWORDS;
+
+  const entries = parseCustomKeywords(combinedKeywords);
   if (entries.length === 0) {
     return '';
   }
