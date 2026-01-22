@@ -109,3 +109,14 @@
   font-size: 11px;
   color: var(--text-tertiary);
 }
+
+.api-key-help-warning {
+  margin: 8px 0 0 0;
+  padding: 8px 10px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #ef4444;
+}

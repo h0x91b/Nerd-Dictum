@@ -68,8 +68,9 @@ export function ApiKeyHelp() {
 
           <p className="api-key-help-note">
             Your API key is stored locally and never shared.
-            <br />
-            <strong>Note:</strong> Use a personal Gmail account, not Google Workspace (enterprise).
+          </p>
+          <p className="api-key-help-warning">
+            Use a personal Gmail account, not Google Workspace (enterprise).
           </p>
         </div>
       )}
