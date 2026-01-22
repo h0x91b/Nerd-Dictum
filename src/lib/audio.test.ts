@@ -10,6 +10,7 @@ import {
   MAX_RECORDING_MS,
   SILENCE_THRESHOLD,
   DEFAULT_SILENCE_DURATION_MS,
+  SILENCE_STATE_LOG_DEBOUNCE_MS,
 } from './audio';
 
 // Mock audio data generators
@@ -668,6 +669,57 @@ describe('AudioRecorder', () => {
       // After 100 + 3000 = 3100ms, recordingDuration IS past MIN_RECORDING_MS
       // So callback SHOULD be called. Let me verify the test expectation:
       expect(silenceCallback).toHaveBeenCalledTimes(1);
+    });
+
+    it('should debounce silence and sound detection logs', async () => {
+      const { deps, mockContext } = createMockDeps();
+      const recorder = new AudioRecorder(deps);
+
+      const originalConsoleLog = console.log;
+      const logMock = mock(() => {});
+      console.log = logMock;
+
+      const originalDateNow = Date.now;
+      let currentTime = 0;
+      Date.now = () => currentTime;
+
+      try {
+        await recorder.start();
+
+        const silentBuffer = new Float32Array(4096).fill(0.001);
+        const nonSilentBuffer = new Float32Array(4096).fill(0.5);
+        const shortStep = Math.max(10, Math.floor(SILENCE_STATE_LOG_DEBOUNCE_MS / 4));
+
+        currentTime = 0;
+        mockContext._simulateAudioData(silentBuffer);
+        currentTime += shortStep;
+        mockContext._simulateAudioData(nonSilentBuffer);
+        currentTime += shortStep;
+        mockContext._simulateAudioData(silentBuffer);
+        currentTime += shortStep;
+        mockContext._simulateAudioData(nonSilentBuffer);
+
+        currentTime += SILENCE_STATE_LOG_DEBOUNCE_MS;
+        mockContext._simulateAudioData(silentBuffer);
+        currentTime += shortStep;
+        mockContext._simulateAudioData(nonSilentBuffer);
+      } finally {
+        recorder.cancel();
+        Date.now = originalDateNow;
+        console.log = originalConsoleLog;
+      }
+
+      const logCalls = logMock.mock.calls;
+      const messages = logCalls.map((call) => call.map((arg) => String(arg)).join(' '));
+      const silenceLogs = messages.filter((message) =>
+        message.includes('[AudioRecorder] Silence started')
+      );
+      const soundLogs = messages.filter((message) =>
+        message.includes('[AudioRecorder] Sound detected, resetting silence timer')
+      );
+
+      expect(silenceLogs).toHaveLength(2);
+      expect(soundLogs).toHaveLength(2);
     });
   });
 

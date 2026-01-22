@@ -21,6 +21,7 @@ const DEFAULT_SILENCE_DURATION_MS = 2500; // Stop recording after 2.5s of silenc
 // Debug logging interval
 let lastRmsLogTime = 0;
 const RMS_LOG_INTERVAL_MS = 500; // Log RMS every 500ms
+const SILENCE_STATE_LOG_DEBOUNCE_MS = 1000;
 
 export class AudioRecordingError extends Error {
   constructor(message: string) {
@@ -79,6 +80,8 @@ export class AudioRecorder {
   private onAudioLevel: AudioLevelCallback | null = null;
   private silenceStopFired: boolean = false;
   private options: AudioRecorderOptions;
+  private lastSilenceLogTime: number = Number.NEGATIVE_INFINITY;
+  private lastSoundLogTime: number = Number.NEGATIVE_INFINITY;
 
   constructor(deps: AudioRecorderDeps = defaultDeps, options: AudioRecorderOptions = {}) {
     this.deps = deps;
@@ -185,6 +188,8 @@ export class AudioRecorder {
       this.audioChunks = [];
       this.silenceStartTime = null;
       this.silenceStopFired = false;
+      this.lastSilenceLogTime = Number.NEGATIVE_INFINITY;
+      this.lastSoundLogTime = Number.NEGATIVE_INFINITY;
 
       // Handle audio data from the worklet via MessagePort
       this.workletNode.port.onmessage = (event: MessageEvent) => {
@@ -223,7 +228,10 @@ export class AudioRecorder {
             // Audio is silent
             if (this.silenceStartTime === null) {
               this.silenceStartTime = now;
-              console.log('[AudioRecorder] Silence started');
+              if (now - this.lastSilenceLogTime >= SILENCE_STATE_LOG_DEBOUNCE_MS) {
+                console.log('[AudioRecorder] Silence started');
+                this.lastSilenceLogTime = now;
+              }
             } else {
               const silenceDuration = now - this.silenceStartTime;
               // Only auto-stop if we've recorded enough content (past MIN_RECORDING_MS)
@@ -240,7 +248,10 @@ export class AudioRecorder {
           } else {
             // Audio is not silent, reset silence timer
             if (this.silenceStartTime !== null) {
-              console.log('[AudioRecorder] Sound detected, resetting silence timer');
+              if (now - this.lastSoundLogTime >= SILENCE_STATE_LOG_DEBOUNCE_MS) {
+                console.log('[AudioRecorder] Sound detected, resetting silence timer');
+                this.lastSoundLogTime = now;
+              }
             }
             this.silenceStartTime = null;
           }
@@ -447,4 +458,4 @@ export class AudioRecorder {
 }
 
 // Export utility functions for testing
-export { TARGET_SAMPLE_RATE, CHANNELS, BITS_PER_SAMPLE, MIN_RECORDING_MS, MAX_RECORDING_MS, SILENCE_THRESHOLD, DEFAULT_SILENCE_DURATION_MS };
+export { TARGET_SAMPLE_RATE, CHANNELS, BITS_PER_SAMPLE, MIN_RECORDING_MS, MAX_RECORDING_MS, SILENCE_THRESHOLD, DEFAULT_SILENCE_DURATION_MS, SILENCE_STATE_LOG_DEBOUNCE_MS };

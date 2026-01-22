@@ -37,3 +37,4 @@
 [2026-01-21 21:31] Feature — Allow canceling in-progress transcription from the widget button
 [2026-01-21 21:37] Feature — Allow canceling in-progress transcription from the widget button (log cancellation)
 [2026-01-21 21:54] Refactor — Replace deprecated ScriptProcessorNode with AudioWorkletNode for audio capture
+[2026-01-22 14:47] Bug — Debounce silence/sound state logs to reduce console spam
