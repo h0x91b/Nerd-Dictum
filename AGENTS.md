@@ -87,6 +87,10 @@ For non-visible changes, add `console.log('[TEST] ...')` so changes can be verif
 - Single API for transcription + domain understanding
 - Better at preserving technical tokens
 
+**Gemini API Key:**
+- Must be from a personal Gmail account, not a Google Workspace (enterprise) account
+- Enterprise accounts may have restrictions that prevent API access
+
 **Why Electron:**
 - Cross-platform (macOS, Windows, Linux)
 - System tray integration

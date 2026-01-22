@@ -34,7 +34,7 @@ The widget floats above all windows — always accessible, never in the way.
 ## Requirements
 
 - [Bun](https://bun.sh/) (v1.0+)
-- [Google Gemini API Key](https://makersuite.google.com/app/apikey)
+- [Google Gemini API Key](https://makersuite.google.com/app/apikey) — **must be from a personal Gmail account**, not a Google Workspace (enterprise) account
 
 ## Setup
 
