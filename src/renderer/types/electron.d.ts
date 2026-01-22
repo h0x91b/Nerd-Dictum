@@ -22,6 +22,7 @@ export interface ElectronAPI {
   saveSettings: (settings: Partial<AppSettings>) => Promise<boolean>;
   openSettingsWindow: () => Promise<boolean>;
   closeSettingsWindow: () => Promise<boolean>;
+  openInfoWindow: () => Promise<boolean>;
   getMicrophonePermissionStatus: () => Promise<MicrophonePermissionStatus>;
   requestMicrophonePermission: () => Promise<boolean>;
   openExternalUrl: (url: string) => Promise<boolean>;

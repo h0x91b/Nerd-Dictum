@@ -41,3 +41,5 @@
 [2026-01-22 18:35] Feature — Update retry logic: 30s timeout for first attempt, 2min timeout for retry (1 retry max)
 [2026-01-22 14:54] Feature — Add custom keyword glossary to bias transcription with user-defined terms and aliases
 [2026-01-22 16:55] Feature — Add onboarding screen with step-by-step instructions for getting Google Gemini API key; opens AI Studio link in user's browser via shell.openExternal
+[2026-01-22 17:05] Feature — Add info button (i) with popup explaining how to use the app
+[2026-01-22 17:05] Feature — Add info button (i) in bottom-right corner opening separate window with usage instructions

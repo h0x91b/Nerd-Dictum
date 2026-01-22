@@ -122,6 +122,7 @@ function saveWindowPosition(x: number, y: number): void {
 
 let mainWindow: BrowserWindow | null = null;
 let settingsWindow: BrowserWindow | null = null;
+let infoWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 
 function createSettingsWindow() {
@@ -165,6 +166,47 @@ function createSettingsWindow() {
   });
 }
 
+function createInfoWindow() {
+  if (infoWindow && !infoWindow.isDestroyed()) {
+    infoWindow.focus();
+    return;
+  }
+
+  infoWindow = new BrowserWindow({
+    width: 400,
+    height: 380,
+    frame: true,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    title: 'How to Use',
+    parent: mainWindow || undefined,
+    modal: false,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, '../preload/preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  const isDev = process.env.ELECTRON_DEV === 'true' || (!app.isPackaged && !process.env.ELECTRON_FORCE_PROD);
+
+  if (isDev) {
+    infoWindow.loadURL('http://localhost:5173/info.html');
+  } else {
+    infoWindow.loadFile(path.join(__dirname, '../renderer/info.html'));
+  }
+
+  infoWindow.once('ready-to-show', () => {
+    infoWindow?.show();
+  });
+
+  infoWindow.on('closed', () => {
+    infoWindow = null;
+  });
+}
+
 function createWindow() {
   // Try to restore saved window position
   const savedPosition = loadWindowPosition();
@@ -180,12 +222,18 @@ function createWindow() {
     resizable: false,
     skipTaskbar: true,
     hasShadow: false,
+    visibleOnAllWorkspaces: true,
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
     },
   });
+
+  // macOS: ensure window stays visible on all Spaces
+  if (process.platform === 'darwin') {
+    mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  }
 
   // Use ELECTRON_DEV env var to detect dev mode, or fall back to app.isPackaged
   const isDev = process.env.ELECTRON_DEV === 'true' || (!app.isPackaged && !process.env.ELECTRON_FORCE_PROD);
@@ -580,4 +628,10 @@ ipcMain.handle('open-external-url', (_event, url: string) => {
     return true;
   }
   return false;
+});
+
+// Open info window
+ipcMain.handle('open-info-window', () => {
+  createInfoWindow();
+  return true;
 });

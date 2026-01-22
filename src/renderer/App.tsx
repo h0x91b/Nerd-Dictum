@@ -4,6 +4,7 @@ import { AudioRecorder, AudioRecorderOptions, DEFAULT_SILENCE_DURATION_MS } from
 import { transcribeAudio, TranscribeOptions, TranscriptionCancelledError } from '../lib/gemini';
 import { classifyError, ClassifiedError } from '../lib/errors';
 import { SettingsButton } from './components/Settings';
+import { InfoButton } from './components/InfoButton';
 import { AudioLevelRing } from './components/AudioLevelRing';
 import type { AppSettings } from './types/electron';
 
@@ -273,6 +274,7 @@ export function App() {
 
   return (
     <div className="widget">
+      <InfoButton />
       <SettingsButton />
       <div className="drag-handle">
         <span className="grip-dots"></span>
