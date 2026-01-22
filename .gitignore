@@ -31,3 +31,6 @@ coverage/
 playwright-report/
 test-results/
 .playwright-mcp/
+
+# Auto-updater dev config
+dev-app-update.yml

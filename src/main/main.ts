@@ -1,7 +1,9 @@
-import { app, BrowserWindow, ipcMain, clipboard, globalShortcut, Tray, Menu, nativeImage, screen, systemPreferences, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, clipboard, globalShortcut, Tray, Menu, nativeImage, screen, systemPreferences, shell, dialog } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { autoUpdater } from 'electron-updater';
+import { decode as decodeBase65 } from '../lib/base65';
 import { getDisplayBounds, isPositionValid } from './window-position';
 import type { WindowPosition } from './window-position';
 
@@ -398,6 +400,24 @@ function updateTrayMenu() {
 
   const isDevToolsOpen = mainWindow?.webContents.isDevToolsOpened() ?? false;
 
+  // Build update menu items
+  const updateMenuItems: Electron.MenuItemConstructorOptions[] = [];
+  if (updateDownloaded && downloadedVersion) {
+    updateMenuItems.push({
+      label: `Install Update (v${downloadedVersion})`,
+      click: () => {
+        installUpdate();
+      },
+    });
+  } else {
+    updateMenuItems.push({
+      label: 'Check for Updates',
+      click: () => {
+        checkForUpdates();
+      },
+    });
+  }
+
   const contextMenu = Menu.buildFromTemplate([
     {
       label: isVisible ? 'Hide Widget' : 'Show Widget',
@@ -433,6 +453,8 @@ function updateTrayMenu() {
         }
       },
     },
+    { type: 'separator' },
+    ...updateMenuItems,
     { type: 'separator' },
     {
       label: 'Quit',
@@ -554,6 +576,87 @@ function createApplicationMenu() {
   Menu.setApplicationMenu(menu);
 }
 
+// Auto-updater setup
+// Obfuscated read-only token for accessing private GitHub releases (base65 encoded)
+const GH_RELEASES_TOKEN_ENCODED = 'ГцжАЦНудлуФмэЦрзееврфЯдаэЫзГФцекТЮхЦПшшЯЫцРцЯМЪШНьуУэРъыРЛЙегЗ__ЭЭЛРАЧцЙВонхзШнОаъпхЦЫГбодТКЦрфУрГчбюЫСуМахя_ыкхШшКЛДЛДлшЮЬы';
+
+// Update state tracking
+let updateDownloaded = false;
+let downloadedVersion: string | null = null;
+let updateCheckInterval: NodeJS.Timeout | null = null;
+
+// Enable dev testing with: FORCE_UPDATE_CHECK=true bun run dev
+const FORCE_UPDATE_CHECK = process.env.FORCE_UPDATE_CHECK === 'true';
+
+function checkForUpdates() {
+  if (!app.isPackaged && !FORCE_UPDATE_CHECK) return;
+  autoUpdater.checkForUpdates().catch((error) => {
+    console.error('[AutoUpdater] Check failed:', error.message);
+  });
+}
+
+function installUpdate() {
+  if (updateDownloaded) {
+    autoUpdater.quitAndInstall();
+  }
+}
+
+function setupAutoUpdater() {
+  if (!app.isPackaged && !FORCE_UPDATE_CHECK) return;
+
+  const token = decodeBase65(GH_RELEASES_TOKEN_ENCODED);
+  autoUpdater.requestHeaders = { Authorization: `token ${token}` };
+
+  if (FORCE_UPDATE_CHECK && !app.isPackaged) {
+    autoUpdater.forceDevUpdateConfig = true;
+  }
+
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('update-available', (info) => {
+    console.log('[AutoUpdater] Update available:', info.version);
+  });
+
+  autoUpdater.on('update-not-available', (info) => {
+    console.log('[AutoUpdater] Up to date:', info.version);
+  });
+
+  autoUpdater.on('download-progress', (progress) => {
+    console.log(`[AutoUpdater] Downloading: ${Math.round(progress.percent)}%`);
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('[AutoUpdater] Downloaded:', info.version);
+    updateDownloaded = true;
+    downloadedVersion = info.version;
+    updateTrayMenu();
+
+    dialog.showMessageBox({
+      type: 'info',
+      title: 'Update Ready',
+      message: `Version ${info.version} has been downloaded.`,
+      detail: 'The update will be installed when you restart the app.',
+      buttons: ['Restart Now', 'Later'],
+      defaultId: 0,
+    }).then((result) => {
+      if (result.response === 0) {
+        autoUpdater.quitAndInstall();
+      }
+    });
+  });
+
+  autoUpdater.on('error', (error) => {
+    console.error('[AutoUpdater] Error:', error.message);
+  });
+
+  // Initial check for updates
+  checkForUpdates();
+
+  // Check for updates every hour
+  updateCheckInterval = setInterval(checkForUpdates, 60 * 60 * 1000);
+}
+
 async function requestMicrophonePermission(): Promise<boolean> {
   if (process.platform !== 'darwin') {
     return true; // Only macOS needs explicit permission request
@@ -603,6 +706,9 @@ app.whenReady().then(async () => {
   createWindow();
   createTray();
   registerGlobalShortcuts();
+
+  // Check for updates after app is ready
+  setupAutoUpdater();
 });
 
 app.on('window-all-closed', () => {

@@ -50,3 +50,4 @@
 [2026-01-22 19:45] Bug — Fix window titles to show "Nerd Dictum — Settings" and "Nerd Dictum — How to Use"
 [2026-01-22 19:45] Bug — Fix dock icon not appearing correctly for Info window (await dock.show before setIcon)
 [2026-01-22 23:10] Feature — Settings and Info windows now open on the same screen as the widget (multi-monitor support)
+[2026-01-22 23:45] Feature — Add auto-update support via electron-updater with GitHub Releases; checks hourly and on startup; tray menu shows "Check for Updates" or "Install Update" when ready

@@ -1,6 +1,6 @@
 {
   "name": "nerd-dictum",
-  "version": "0.2.3",
+  "version": "0.3.1",
   "description": "A minimal floating window for voice-to-text transcription using Google Gemini",
   "type": "module",
   "main": "dist/main/main.js",
@@ -19,7 +19,8 @@
     "dist": "bun run build && APPLE_KEYCHAIN_PROFILE=AC_PASSWORD electron-builder --mac",
     "dist:unsigned": "bun run build && electron-builder --mac -c.mac.identity=null",
     "dist:win": "bun run build && electron-builder --win",
-    "dist:linux": "bun run build && electron-builder --linux"
+    "dist:linux": "bun run build && electron-builder --linux",
+    "release": "bun run build && APPLE_KEYCHAIN_PROFILE=AC_PASSWORD electron-builder --mac --publish always"
   },
   "build": {
     "appId": "com.h0x91b.nerddictum",
@@ -69,6 +70,12 @@
     "linux": {
       "target": ["AppImage", "deb"],
       "category": "Utility"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "h0x91b",
+      "repo": "Nerd-Dictum",
+      "private": true
     }
   },
   "devDependencies": {
@@ -89,6 +96,7 @@
     "wait-on": "^9.0.3"
   },
   "dependencies": {
+    "electron-updater": "^6.7.3",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   }
