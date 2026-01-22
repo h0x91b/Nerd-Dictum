@@ -42,7 +42,17 @@ const defaultDeps: AudioRecorderDeps = {
   getUserMedia: (constraints) =>
     navigator.mediaDevices.getUserMedia(constraints),
   createAudioContext: (options) => new AudioContext(options),
-  getWorkletUrl: () => new URL('/audio-processor.worklet.js', window.location.origin).href,
+  getWorkletUrl: () => {
+    // In Electron production builds (file:// protocol), window.location.origin returns "null"
+    // Use a relative path which works correctly with both http:// and file:// protocols
+    if (window.location.protocol === 'file:') {
+      // For file:// protocol, construct path relative to current HTML file
+      const basePath = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
+      return `${basePath}/audio-processor.worklet.js`;
+    }
+    // For http:// (dev server), use absolute path from origin
+    return new URL('/audio-processor.worklet.js', window.location.origin).href;
+  },
 };
 
 export type SilenceStopCallback = () => void;
@@ -164,7 +174,9 @@ export class AudioRecorder {
       // Load and register the AudioWorklet processor
       // In Electron/Vite, the worklet file is served from the public directory
       const workletUrl = this.deps.getWorkletUrl();
+      console.log('[AudioRecorder] Loading worklet from:', workletUrl);
       await this.audioContext.audioWorklet.addModule(workletUrl);
+      console.log('[AudioRecorder] Worklet loaded successfully');
 
       // Create AudioWorkletNode to replace deprecated ScriptProcessorNode
       this.workletNode = new AudioWorkletNode(this.audioContext, 'audio-capture-processor');
