@@ -276,6 +276,7 @@ export function App() {
     <div className="widget">
       <InfoButton />
       <SettingsButton />
+      <span className="shortcut-hint">⌘⇧R</span>
       <div className="drag-handle">
         <span className="grip-dots"></span>
       </div>
@@ -290,13 +291,6 @@ export function App() {
               : state === 'recording'
                 ? 'Stop recording'
                 : 'Cancel transcription'
-          }
-          data-tooltip={
-            state === 'idle' || state === 'success'
-              ? '⌘⇧R'
-              : state === 'recording'
-                ? '⌘⇧R'
-                : 'Cancel'
           }
         >
           {state === 'transcribing' ? (

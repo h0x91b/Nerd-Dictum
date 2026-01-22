@@ -45,3 +45,7 @@
 [2026-01-22 17:05] Feature — Add info button (i) in bottom-right corner opening separate window with usage instructions
 [2026-01-22 22:35] Bug — Fix Settings and Info windows moving together with main widget when dragging (removed parent window dependency)
 [2026-01-22 22:15] Feature — Add "Developer Tools" toggle in system tray menu; removed auto-open DevTools in dev mode
+[2026-01-22 19:45] Feature — Settings and Info windows now appear in Cmd+Tab (dynamic dock visibility); dock hides when only widget is open
+[2026-01-22 19:45] UI — Replace mic button tooltip with permanent "⌘⇧R" shortcut hint between settings/info buttons
+[2026-01-22 19:45] Bug — Fix window titles to show "Nerd Dictum — Settings" and "Nerd Dictum — How to Use"
+[2026-01-22 19:45] Bug — Fix dock icon not appearing correctly for Info window (await dock.show before setIcon)

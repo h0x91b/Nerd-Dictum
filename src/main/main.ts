@@ -125,6 +125,26 @@ let settingsWindow: BrowserWindow | null = null;
 let infoWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 
+async function updateDockVisibility() {
+  if (process.platform !== 'darwin' || !app.dock) return;
+
+  const hasSecondaryWindows =
+    (settingsWindow && !settingsWindow.isDestroyed()) ||
+    (infoWindow && !infoWindow.isDestroyed());
+
+  if (hasSecondaryWindows) {
+    // Show dock first, then set icon (setIcon requires dock to be visible)
+    await app.dock.show();
+    const appIconPath = getAppIconPath();
+    const appIcon = nativeImage.createFromPath(appIconPath);
+    if (!appIcon.isEmpty()) {
+      app.dock.setIcon(appIcon);
+    }
+  } else {
+    app.dock.hide();
+  }
+}
+
 function createSettingsWindow() {
   if (settingsWindow && !settingsWindow.isDestroyed()) {
     settingsWindow.focus();
@@ -158,10 +178,12 @@ function createSettingsWindow() {
 
   settingsWindow.once('ready-to-show', () => {
     settingsWindow?.show();
+    updateDockVisibility();
   });
 
   settingsWindow.on('closed', () => {
     settingsWindow = null;
+    updateDockVisibility();
   });
 }
 
@@ -198,10 +220,12 @@ function createInfoWindow() {
 
   infoWindow.once('ready-to-show', () => {
     infoWindow?.show();
+    updateDockVisibility();
   });
 
   infoWindow.on('closed', () => {
     infoWindow = null;
+    updateDockVisibility();
   });
 }
 
@@ -529,6 +553,8 @@ app.whenReady().then(async () => {
     if (!appIcon.isEmpty()) {
       app.dock.setIcon(appIcon);
     }
+    // Hide dock icon initially - it will show when settings/info windows open
+    app.dock.hide();
   }
 
   // Request microphone permission on macOS before creating window
