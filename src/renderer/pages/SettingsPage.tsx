@@ -34,6 +34,7 @@ const SPEECH_DOMAINS = [
 ];
 
 const MAX_CUSTOM_HINT_LENGTH = 500;
+const MAX_CUSTOM_KEYWORDS_LENGTH = 1000;
 
 interface AudioDevice {
   deviceId: string;
@@ -47,6 +48,7 @@ export function SettingsPage() {
   const [languages, setLanguages] = useState<string[]>([]);
   const [speechDomain, setSpeechDomain] = useState('programming');
   const [customDomainHint, setCustomDomainHint] = useState('');
+  const [customKeywords, setCustomKeywords] = useState('');
   const [microphoneDeviceId, setMicrophoneDeviceId] = useState('');
   const [silenceDetectionEnabled, setSilenceDetectionEnabled] = useState(true);
   const [silenceDurationMs, setSilenceDurationMs] = useState(2500);
@@ -92,6 +94,7 @@ export function SettingsPage() {
         setModel(settings.model);
         setSpeechDomain(settings.speechDomain || 'programming');
         setCustomDomainHint(settings.customDomainHint || '');
+        setCustomKeywords(settings.customKeywords || '');
         setLanguages(settings.languages || []);
         setMicrophoneDeviceId(settings.microphoneDeviceId || '');
         setSilenceDetectionEnabled(settings.silenceDetectionEnabled ?? true);
@@ -118,6 +121,12 @@ export function SettingsPage() {
     }
   };
 
+  const handleCustomKeywordsChange = (value: string) => {
+    if (value.length <= MAX_CUSTOM_KEYWORDS_LENGTH) {
+      setCustomKeywords(value);
+    }
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     setSaveMessage('');
@@ -129,6 +138,7 @@ export function SettingsPage() {
         languages,
         speechDomain,
         customDomainHint: customDomainHint.trim(),
+        customKeywords: customKeywords.trim(),
         microphoneDeviceId,
         silenceDetectionEnabled,
         silenceDurationMs,
@@ -258,6 +268,23 @@ export function SettingsPage() {
               </span>
             </>
           )}
+        </div>
+
+        <div className="settings-field">
+          <label htmlFor="custom-keywords">Custom Keywords</label>
+          <textarea
+            id="custom-keywords"
+            value={customKeywords}
+            onChange={(e) => handleCustomKeywordsChange(e.target.value)}
+            placeholder={`Bun = bull, b u n\nTypeScript = type script`}
+            rows={4}
+          />
+          <span className="settings-hint">
+            One per line. Use "Target = alias1, alias2" for corrections.
+          </span>
+          <span className="settings-hint">
+            {customKeywords.length}/{MAX_CUSTOM_KEYWORDS_LENGTH} characters
+          </span>
         </div>
 
         <div className="settings-field">

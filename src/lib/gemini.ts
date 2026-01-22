@@ -66,6 +66,7 @@ export interface TranscribeOptions {
   languages?: string[];
   speechDomain?: string;
   customDomainHint?: string;
+  customKeywords?: string;
 }
 
 export interface TranscribeRequestOptions extends TranscribeOptions {
@@ -93,6 +94,62 @@ interface GeminiResponse {
   };
 }
 
+interface CustomKeywordEntry {
+  term: string;
+  aliases: string[];
+}
+
+function parseCustomKeywords(customKeywords?: string): CustomKeywordEntry[] {
+  if (!customKeywords) {
+    return [];
+  }
+
+  return customKeywords
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const delimiterMatch = line.match(/(=>|->|=)/);
+      if (!delimiterMatch || delimiterMatch.index === undefined) {
+        return { term: line, aliases: [] };
+      }
+
+      const delimiterIndex = delimiterMatch.index;
+      const delimiter = delimiterMatch[0];
+      const term = line.slice(0, delimiterIndex).trim();
+      const aliasPart = line.slice(delimiterIndex + delimiter.length).trim();
+      if (!term) {
+        return null;
+      }
+
+      const aliases = aliasPart
+        ? aliasPart
+            .split(/[,;|]/)
+            .map((alias) => alias.trim())
+            .filter(Boolean)
+        : [];
+
+      return { term, aliases };
+    })
+    .filter((entry): entry is CustomKeywordEntry => Boolean(entry));
+}
+
+function buildCustomKeywordsSection(customKeywords?: string): string {
+  const entries = parseCustomKeywords(customKeywords);
+  if (entries.length === 0) {
+    return '';
+  }
+
+  const lines = entries.map((entry) => {
+    if (entry.aliases.length === 0) {
+      return `- ${entry.term}`;
+    }
+    return `- ${entry.term} (aliases: ${entry.aliases.join(', ')})`;
+  });
+
+  return `\n\nUser keywords and corrections:\n${lines.join('\n')}\nPrefer the target term when audio matches an alias or is ambiguous. Preserve exact casing.`;
+}
+
 function buildPrompt(options?: TranscribeOptions): string {
   let basePrompt: string;
 
@@ -108,12 +165,19 @@ Domain hint: ${options.customDomainHint}`;
     basePrompt = DEFAULT_TRANSCRIPTION_PROMPT;
   }
 
+  let prompt = basePrompt;
+
   if (options?.languages && options.languages.length > 0) {
     const languageHint = `\n\nPrimary languages: ${options.languages.join(', ')}. The speaker may mix these languages.`;
-    return basePrompt + languageHint;
+    prompt += languageHint;
   }
 
-  return basePrompt;
+  const customKeywordsSection = buildCustomKeywordsSection(options?.customKeywords);
+  if (customKeywordsSection) {
+    prompt += customKeywordsSection;
+  }
+
+  return prompt;
 }
 
 function buildRequestBody(prompt: string, audioBase64: string) {

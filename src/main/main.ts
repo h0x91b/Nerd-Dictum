@@ -15,6 +15,7 @@ interface AppSettings {
   languages: string[];
   speechDomain: string;
   customDomainHint: string;
+  customKeywords: string;
   microphoneDeviceId: string;
   silenceDetectionEnabled: boolean;
   silenceDurationMs: number;
@@ -27,6 +28,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   languages: [],
   speechDomain: 'programming',
   customDomainHint: '',
+  customKeywords: '',
   microphoneDeviceId: '',
   silenceDetectionEnabled: true,
   silenceDurationMs: 2500,
@@ -531,6 +533,7 @@ ipcMain.handle('get-settings', () => {
     languages: appSettings.languages,
     speechDomain: appSettings.speechDomain,
     customDomainHint: appSettings.customDomainHint,
+    customKeywords: appSettings.customKeywords,
     microphoneDeviceId: appSettings.microphoneDeviceId,
     silenceDetectionEnabled: appSettings.silenceDetectionEnabled,
     silenceDurationMs: appSettings.silenceDurationMs,

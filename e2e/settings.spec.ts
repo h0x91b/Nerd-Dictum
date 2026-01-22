@@ -60,6 +60,14 @@ test.describe('Settings Page - UI Elements', () => {
     await expect(domainSelect).toBeVisible();
   });
 
+  test('should display custom keywords field', async ({ page }) => {
+    const keywordsLabel = page.locator('label[for="custom-keywords"]');
+    await expect(keywordsLabel).toContainText('Custom Keywords');
+
+    const keywordsInput = page.locator('#custom-keywords');
+    await expect(keywordsInput).toBeVisible();
+  });
+
   test('should display microphone dropdown', async ({ page }) => {
     const micLabel = page.locator('label[for="microphone"]');
     await expect(micLabel).toContainText('Microphone');
@@ -480,6 +488,9 @@ test.describe('Settings Page - Save and Cancel', () => {
     const englishCheckbox = page.locator('.language-option').filter({ hasText: 'English' }).locator('input');
     await englishCheckbox.click();
 
+    const customKeywordsInput = page.locator('#custom-keywords');
+    await customKeywordsInput.fill('Bun = bull');
+
     // Click save
     const saveBtn = page.locator('.settings-btn-primary');
     await saveBtn.click();
@@ -488,6 +499,7 @@ test.describe('Settings Page - Save and Cancel', () => {
     savedSettings = await page.evaluate(() => (window as any).lastSavedSettings);
     expect(savedSettings.apiKey).toBe('my-test-key');
     expect(savedSettings.languages).toContain('en');
+    expect(savedSettings.customKeywords).toBe('Bun = bull');
   });
 
   test('should show "Saved!" message after successful save', async ({ page }) => {

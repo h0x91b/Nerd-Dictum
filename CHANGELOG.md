@@ -39,3 +39,4 @@
 [2026-01-21 21:54] Refactor — Replace deprecated ScriptProcessorNode with AudioWorkletNode for audio capture
 [2026-01-22 14:47] Bug — Debounce silence/sound state logs to reduce console spam
 [2026-01-22 18:35] Feature — Update retry logic: 30s timeout for first attempt, 2min timeout for retry (1 retry max)
+[2026-01-22 14:54] Feature — Add custom keyword glossary to bias transcription with user-defined terms and aliases

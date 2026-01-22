@@ -25,6 +25,9 @@ function buildTranscribeOptions(settings: AppSettings): TranscribeOptions {
   if (settings.customDomainHint) {
     options.customDomainHint = settings.customDomainHint;
   }
+  if (settings.customKeywords) {
+    options.customKeywords = settings.customKeywords;
+  }
   return options;
 }
 

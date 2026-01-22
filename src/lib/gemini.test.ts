@@ -103,4 +103,39 @@ describe('transcribeAudio', () => {
     await expect(promise).rejects.toBeInstanceOf(TranscriptionCancelledError);
     expect(globalThis.fetch).toHaveBeenCalledTimes(1);
   });
+
+  it('should include custom keywords in prompt', async () => {
+    const mockResponse = {
+      candidates: [
+        {
+          content: {
+            parts: [{ text: 'Hello world' }],
+          },
+        },
+      ],
+    };
+
+    let capturedPrompt = '';
+
+    globalThis.fetch = mock((_url, init) => {
+      const body = init?.body ? JSON.parse(init.body as string) : null;
+      capturedPrompt = body?.contents?.[0]?.parts?.[0]?.text ?? '';
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(mockResponse),
+      } as Response);
+    });
+
+    await transcribeAudio(
+      'base64audio',
+      'test-api-key',
+      'gemini-3-flash-preview',
+      { customKeywords: 'Bun = bull, b u n\nTypeScript' }
+    );
+
+    expect(capturedPrompt).toContain('User keywords and corrections:');
+    expect(capturedPrompt).toContain('- Bun (aliases: bull, b u n)');
+    expect(capturedPrompt).toContain('- TypeScript');
+  });
 });

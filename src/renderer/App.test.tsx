@@ -56,6 +56,19 @@ const createMockAudioWorkletNode = () => {
   () => createMockAudioWorkletNode()
 );
 
+const defaultSettings = {
+  apiKey: 'test-api-key',
+  model: 'gemini-3-flash-preview',
+  languages: [] as string[],
+  speechDomain: 'programming',
+  customDomainHint: '',
+  customKeywords: '',
+  microphoneDeviceId: '',
+  silenceDetectionEnabled: true,
+  silenceDurationMs: 2500,
+  launchAtStartup: false,
+};
+
 // Mock window.electronAPI
 const mockElectronAPI = {
   getApiKey: mock(() => Promise.resolve('test-api-key')),
@@ -64,7 +77,7 @@ const mockElectronAPI = {
   onToggleRecording: mock((callback: () => void) => {
     return () => {};
   }),
-  getSettings: mock(() => Promise.resolve({ apiKey: 'test-api-key', model: 'gemini-3-flash-preview', customPrompt: '', languages: [] })),
+  getSettings: mock(() => Promise.resolve({ ...defaultSettings })),
   saveSettings: mock(() => Promise.resolve(true)),
   openSettingsWindow: mock(() => Promise.resolve(true)),
   closeSettingsWindow: mock(() => Promise.resolve(true)),
@@ -120,7 +133,7 @@ describe('App', () => {
       copyToClipboard: mock(() => Promise.resolve(true)),
       getApiKey: mock(() => Promise.resolve('test-api-key')),
       getModel: mock(() => Promise.resolve('gemini-3-flash-preview')),
-      getSettings: mock(() => Promise.resolve({ apiKey: 'test-api-key', model: 'gemini-3-flash-preview', customPrompt: '', languages: [] })),
+      getSettings: mock(() => Promise.resolve({ ...defaultSettings })),
       saveSettings: mock(() => Promise.resolve(true)),
       onToggleRecording: mock((callback: () => void) => {
         return () => {};
@@ -317,7 +330,7 @@ describe('App', () => {
       window.electronAPI = {
         ...window.electronAPI,
         getApiKey: mock(() => Promise.resolve('')),
-        getSettings: mock(() => Promise.resolve({ apiKey: '', model: 'gemini-3-flash-preview', customPrompt: '', languages: [] })),
+        getSettings: mock(() => Promise.resolve({ ...defaultSettings, apiKey: '' })),
       };
 
       render(<App />);
