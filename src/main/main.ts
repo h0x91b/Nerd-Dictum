@@ -238,7 +238,6 @@ function createWindow() {
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
@@ -337,6 +336,8 @@ function updateTrayMenu() {
 
   const isVisible = mainWindow?.isVisible() ?? false;
 
+  const isDevToolsOpen = mainWindow?.webContents.isDevToolsOpened() ?? false;
+
   const contextMenu = Menu.buildFromTemplate([
     {
       label: isVisible ? 'Hide Widget' : 'Show Widget',
@@ -357,6 +358,19 @@ function updateTrayMenu() {
       label: 'Settings',
       click: () => {
         createSettingsWindow();
+      },
+    },
+    {
+      label: isDevToolsOpen ? 'Hide Developer Tools' : 'Show Developer Tools',
+      click: () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          if (mainWindow.webContents.isDevToolsOpened()) {
+            mainWindow.webContents.closeDevTools();
+          } else {
+            mainWindow.webContents.openDevTools({ mode: 'detach' });
+          }
+          updateTrayMenu();
+        }
       },
     },
     { type: 'separator' },

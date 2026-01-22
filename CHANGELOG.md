@@ -44,3 +44,4 @@
 [2026-01-22 17:05] Feature — Add info button (i) with popup explaining how to use the app
 [2026-01-22 17:05] Feature — Add info button (i) in bottom-right corner opening separate window with usage instructions
 [2026-01-22 22:35] Bug — Fix Settings and Info windows moving together with main widget when dragging (removed parent window dependency)
+[2026-01-22 22:15] Feature — Add "Developer Tools" toggle in system tray menu; removed auto-open DevTools in dev mode
