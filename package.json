@@ -43,7 +43,16 @@
     ],
     "mac": {
       "category": "public.app-category.utilities",
-      "target": ["dmg", "zip"],
+      "target": [
+        {
+          "target": "dmg",
+          "arch": "universal"
+        },
+        {
+          "target": "zip",
+          "arch": "universal"
+        }
+      ],
       "identity": "Arseny Pavlenko (7972FR33R4)",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
