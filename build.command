@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build script for Voice Recognition Widget
+# Build script for Nerd Dictum
 # Double-click to open in Terminal
 
 cd "$(dirname "$0")"

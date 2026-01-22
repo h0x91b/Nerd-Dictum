@@ -7,7 +7,7 @@ test.describe('Voice Widget - UI', () => {
 
   test('should display the voice widget with microphone button', async ({ page }) => {
     // Check page title
-    await expect(page).toHaveTitle('Voice Widget');
+    await expect(page).toHaveTitle('Nerd Dictum');
 
     // Check microphone button is visible and in idle state
     const micButton = page.getByRole('button', { name: 'Start recording' });

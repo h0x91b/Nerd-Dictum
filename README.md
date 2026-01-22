@@ -1,4 +1,4 @@
-# Voice Recognition Widget
+# Nerd Dictum
 
 A minimal floating window for voice-to-text transcription using Google Gemini...
 

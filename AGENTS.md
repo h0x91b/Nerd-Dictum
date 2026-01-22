@@ -1,4 +1,4 @@
-# Voice Recognition Widget
+# Nerd Dictum
 
 A minimal floating window with a single button for voice-to-text transcription. Press the button to start recording, press again to transcribe using Google Gemini and copy the result to clipboard.
 

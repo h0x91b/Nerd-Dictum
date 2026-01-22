@@ -1,5 +1,5 @@
 @echo off
-REM Build script for Voice Recognition Widget
+REM Build script for Nerd Dictum
 REM Double-click to run
 
 cd /d "%~dp0"

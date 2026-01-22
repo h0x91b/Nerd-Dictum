@@ -1,5 +1,5 @@
 {
-  "name": "voice-recognition-widget",
+  "name": "nerd-dictum",
   "version": "0.1.0",
   "description": "A minimal floating window for voice-to-text transcription using Google Gemini",
   "type": "module",
@@ -22,8 +22,8 @@
     "dist:linux": "bun run build && electron-builder --linux"
   },
   "build": {
-    "appId": "com.voicewidget.app",
-    "productName": "Voice Recognition Widget",
+    "appId": "com.h0x91b.nerddictum",
+    "productName": "Nerd Dictum",
     "copyright": "Copyright © 2026 Arseny Pavlenko",
     "directories": {
       "output": "release"

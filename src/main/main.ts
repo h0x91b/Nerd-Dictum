@@ -274,7 +274,7 @@ function createTray() {
   }
 
   tray = new Tray(icon);
-  tray.setToolTip('Voice Recognition — ⌘⇧R to record');
+  tray.setToolTip('Nerd Dictum — ⌘⇧R to record');
 
   updateTrayMenu();
 }
