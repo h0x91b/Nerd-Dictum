@@ -97,6 +97,17 @@ After every meaningful change, add an entry to `CHANGELOG.md`:
 - Breaking changes
 - Significant refactoring
 
+### Version Bump
+
+**After adding a changelog entry, always bump the application version in `package.json`.**
+
+Use semantic versioning:
+- **patch** (0.1.0 → 0.1.1): Bug fixes, minor changes
+- **minor** (0.1.1 → 0.2.0): New features, non-breaking changes
+- **major** (0.2.0 → 1.0.0): Breaking changes, major features
+
+This ensures the About screen shows the correct version for each release.
+
 ---
 
 ## Bug Fixing Policy
