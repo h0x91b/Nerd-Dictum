@@ -25,7 +25,7 @@ interface AppSettings {
 const DEFAULT_SETTINGS: AppSettings = {
   apiKey: '',
   model: 'gemini-3-flash-preview',
-  languages: [],
+  languages: ['en', 'he'],
   speechDomain: 'programming',
   customDomainHint: '',
   customKeywords: '',
