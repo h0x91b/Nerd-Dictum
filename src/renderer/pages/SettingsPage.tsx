@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import type { AppSettings } from '../types/electron';
 import { useTheme, ThemeMode } from '../contexts/ThemeContext';
+import { ApiKeySetup } from '../components/ApiKeySetup';
+import { ApiKeyHelp } from '../components/ApiKeyHelp';
 import './SettingsPage.css';
 
 const AVAILABLE_LANGUAGES = [
@@ -163,12 +165,22 @@ export function SettingsPage() {
     window.electronAPI.closeSettingsWindow();
   };
 
+  // Show onboarding if no API key is set
+  const handleApiKeySubmit = (newApiKey: string) => {
+    setApiKey(newApiKey);
+  };
+
   if (isLoading) {
     return (
       <div className="settings-page">
         <div className="settings-loading">Loading...</div>
       </div>
     );
+  }
+
+  // Show onboarding screen if no API key
+  if (!apiKey) {
+    return <ApiKeySetup onApiKeySubmit={handleApiKeySubmit} />;
   }
 
   return (
@@ -184,16 +196,7 @@ export function SettingsPage() {
             placeholder="Enter your API key"
             autoComplete="off"
           />
-          <span className="settings-hint">
-            Get your key from{' '}
-            <a
-              href="https://aistudio.google.com/apikey"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Google AI Studio
-            </a>
-          </span>
+          <ApiKeyHelp />
         </div>
 
         <div className="settings-field">

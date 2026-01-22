@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, clipboard, globalShortcut, Tray, Menu, nativeImage, screen, systemPreferences } from 'electron';
+import { app, BrowserWindow, ipcMain, clipboard, globalShortcut, Tray, Menu, nativeImage, screen, systemPreferences, shell } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -570,4 +570,14 @@ ipcMain.handle('get-microphone-permission-status', () => {
 
 ipcMain.handle('request-microphone-permission', async () => {
   return requestMicrophonePermission();
+});
+
+// Open external URL in default browser
+ipcMain.handle('open-external-url', (_event, url: string) => {
+  // Only allow https URLs for security
+  if (url.startsWith('https://')) {
+    shell.openExternal(url);
+    return true;
+  }
+  return false;
 });

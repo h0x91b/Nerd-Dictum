@@ -30,4 +30,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   closeSettingsWindow: () => ipcRenderer.invoke('close-settings-window'),
   getMicrophonePermissionStatus: () => ipcRenderer.invoke('get-microphone-permission-status'),
   requestMicrophonePermission: () => ipcRenderer.invoke('request-microphone-permission'),
+  openExternalUrl: (url: string) => ipcRenderer.invoke('open-external-url', url),
 });
