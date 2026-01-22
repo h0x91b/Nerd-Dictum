@@ -139,7 +139,6 @@ function createSettingsWindow() {
     minimizable: false,
     maximizable: false,
     title: 'Settings',
-    parent: mainWindow || undefined,
     modal: false,
     show: false,
     webPreferences: {
@@ -180,7 +179,6 @@ function createInfoWindow() {
     minimizable: false,
     maximizable: false,
     title: 'How to Use',
-    parent: mainWindow || undefined,
     modal: false,
     show: false,
     webPreferences: {
@@ -262,6 +260,13 @@ function createWindow() {
   });
 
   mainWindow.on('closed', () => {
+    // Close child windows when main window is closed
+    if (settingsWindow && !settingsWindow.isDestroyed()) {
+      settingsWindow.close();
+    }
+    if (infoWindow && !infoWindow.isDestroyed()) {
+      infoWindow.close();
+    }
     mainWindow = null;
   });
 }

@@ -222,12 +222,3 @@ The widget has three states:
 3. API returns transcript → Copy to clipboard → State: `Transcribing` → `Idle`
 4. Show flash message: "Copied to clipboard"
 
----
-
-## Known Bugs
-
-### Info window disappears when dragged to another macOS desktop (Space)
-- **Status:** Open
-- **Description:** The Info window (`How to Use`) disappears and cannot be reopened when dragged to a different macOS desktop/Space. The main widget works fine with `visibleOnAllWorkspaces: true`, but the Info window (which has `parent: mainWindow`) doesn't behave correctly.
-- **Workaround:** Keep the Info window on the same desktop as the widget, or close and reopen it after switching desktops.
-- **Possible fix:** Investigate Electron's window parenting behavior with `visibleOnAllWorkspaces`, or remove the `parent` property from the Info window.

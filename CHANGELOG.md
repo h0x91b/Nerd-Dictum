@@ -43,3 +43,4 @@
 [2026-01-22 16:55] Feature — Add onboarding screen with step-by-step instructions for getting Google Gemini API key; opens AI Studio link in user's browser via shell.openExternal
 [2026-01-22 17:05] Feature — Add info button (i) with popup explaining how to use the app
 [2026-01-22 17:05] Feature — Add info button (i) in bottom-right corner opening separate window with usage instructions
+[2026-01-22 22:35] Bug — Fix Settings and Info windows moving together with main widget when dragging (removed parent window dependency)
