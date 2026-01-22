@@ -1,6 +1,6 @@
 # Voice Recognition Widget
 
-A minimal floating window for voice-to-text transcription using Google Gemini.
+A minimal floating window for voice-to-text transcription using Google Gemini...
 
 ## Requirements
 
