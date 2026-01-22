@@ -229,6 +229,16 @@ function getIconPath(): string {
   }
 }
 
+function getAppIconPath(): string {
+  if (!app.isPackaged) {
+    // In development, use the icon from build folder
+    return path.join(app.getAppPath(), 'build', 'icon.png');
+  } else {
+    // In production, electron-builder handles this automatically
+    return path.join(process.resourcesPath, 'icon.png');
+  }
+}
+
 function createTray() {
   const iconPath = getIconPath();
   let icon = nativeImage.createFromPath(iconPath);
@@ -442,6 +452,15 @@ async function requestMicrophonePermission(): Promise<boolean> {
 app.whenReady().then(async () => {
   // Load settings on app start
   appSettings = loadSettings();
+
+  // Set dock icon on macOS (especially useful in dev mode)
+  if (process.platform === 'darwin' && app.dock) {
+    const appIconPath = getAppIconPath();
+    const appIcon = nativeImage.createFromPath(appIconPath);
+    if (!appIcon.isEmpty()) {
+      app.dock.setIcon(appIcon);
+    }
+  }
 
   // Request microphone permission on macOS before creating window
   const micPermission = await requestMicrophonePermission();
