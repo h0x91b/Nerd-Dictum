@@ -138,7 +138,7 @@ function createSettingsWindow() {
     resizable: false,
     minimizable: false,
     maximizable: false,
-    title: 'Settings',
+    title: 'Nerd Dictum — Settings',
     modal: false,
     show: false,
     webPreferences: {
@@ -178,7 +178,7 @@ function createInfoWindow() {
     resizable: false,
     minimizable: false,
     maximizable: false,
-    title: 'How to Use',
+    title: 'Nerd Dictum — How to Use',
     modal: false,
     show: false,
     webPreferences: {
