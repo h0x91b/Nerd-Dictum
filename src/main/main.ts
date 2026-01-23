@@ -602,7 +602,21 @@ function checkForUpdates() {
 
 function installUpdate() {
   if (updateDownloaded) {
-    autoUpdater.quitAndInstall();
+    (app as any).isQuitting = true;
+
+    // Destroy tray to prevent menu callbacks
+    if (tray) {
+      tray.destroy();
+      tray = null;
+    }
+
+    // Close all windows
+    BrowserWindow.getAllWindows().forEach(win => win.destroy());
+
+    // Small delay to ensure cleanup, then install
+    setImmediate(() => {
+      autoUpdater.quitAndInstall(false, true);
+    });
   }
 }
 
