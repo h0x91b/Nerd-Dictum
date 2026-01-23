@@ -72,6 +72,7 @@ jobs:
           path: |
             release/*.dmg
             release/*.zip
+            release/*.yml
           if-no-files-found: error
 
   build-windows:
@@ -105,6 +106,7 @@ jobs:
           name: windows-build
           path: |
             release/*.exe
+            release/*.yml
           if-no-files-found: error
 
   build-linux:
@@ -139,6 +141,7 @@ jobs:
           path: |
             release/*.AppImage
             release/*.deb
+            release/*.yml
           if-no-files-found: error
 
   create-release:
