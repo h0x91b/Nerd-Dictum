@@ -23,7 +23,10 @@
     "dist:unsigned": "bun run build && electron-builder --mac -c.mac.identity=null",
     "dist:win": "bun run build && electron-builder --win",
     "dist:linux": "bun run build && electron-builder --linux",
-    "release": "bun run build && APPLE_KEYCHAIN_PROFILE=AC_PASSWORD electron-builder --mac --publish always"
+    "release": "bun run build && APPLE_KEYCHAIN_PROFILE=AC_PASSWORD electron-builder --mac --publish always",
+    "bump": "bun run scripts/bump.ts",
+    "bump:minor": "bun run scripts/bump.ts minor",
+    "bump:major": "bun run scripts/bump.ts major"
   },
   "build": {
     "appId": "com.h0x91b.nerddictum",
