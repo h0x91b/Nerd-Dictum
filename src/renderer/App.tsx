@@ -53,6 +53,7 @@ export function App() {
   const [state, setState] = useState<AppState>('idle');
   const [message, setMessage] = useState<FlashMessage | null>(null);
   const [audioLevel, setAudioLevel] = useState<number>(0);
+  const [appVersion, setAppVersion] = useState<string>('');
   const audioLevelRef = useRef<number>(0); // For lerp smoothing
   const recorderRef = useRef<AudioRecorder | null>(null);
   const lastAudioRef = useRef<string | null>(null);
@@ -272,8 +273,14 @@ export function App() {
     };
   }, [handleToggleRecording, state]);
 
+  // Load app version on mount
+  useEffect(() => {
+    window.electronAPI.getAppVersion().then(setAppVersion);
+  }, []);
+
   return (
     <div className="widget">
+      {appVersion && <span className="version-hint">v{appVersion}</span>}
       <InfoButton />
       <SettingsButton />
       <span className="shortcut-hint">⌘⇧R</span>

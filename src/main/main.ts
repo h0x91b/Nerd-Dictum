@@ -420,6 +420,11 @@ function updateTrayMenu() {
 
   const contextMenu = Menu.buildFromTemplate([
     {
+      label: `Nerd Dictum v${app.getVersion()}`,
+      enabled: false,
+    },
+    { type: 'separator' },
+    {
       label: isVisible ? 'Hide Widget' : 'Show Widget',
       click: () => {
         if (mainWindow) {
@@ -821,4 +826,9 @@ ipcMain.handle('open-external-url', (_event, url: string) => {
 ipcMain.handle('open-info-window', () => {
   createInfoWindow();
   return true;
+});
+
+// Get app version
+ipcMain.handle('get-app-version', () => {
+  return app.getVersion();
 });

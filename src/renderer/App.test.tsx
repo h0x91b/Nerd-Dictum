@@ -83,6 +83,7 @@ const mockElectronAPI = {
   closeSettingsWindow: mock(() => Promise.resolve(true)),
   getMicrophonePermissionStatus: mock(() => Promise.resolve('granted' as const)),
   requestMicrophonePermission: mock(() => Promise.resolve(true)),
+  getAppVersion: mock(() => Promise.resolve('0.3.1')),
 };
 
 describe('App', () => {
@@ -142,6 +143,7 @@ describe('App', () => {
       closeSettingsWindow: mock(() => Promise.resolve(true)),
       getMicrophonePermissionStatus: mock(() => Promise.resolve('granted' as const)),
       requestMicrophonePermission: mock(() => Promise.resolve(true)),
+      getAppVersion: mock(() => Promise.resolve('0.3.1')),
     };
   });
 

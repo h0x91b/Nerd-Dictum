@@ -26,6 +26,7 @@ export interface ElectronAPI {
   getMicrophonePermissionStatus: () => Promise<MicrophonePermissionStatus>;
   requestMicrophonePermission: () => Promise<boolean>;
   openExternalUrl: (url: string) => Promise<boolean>;
+  getAppVersion: () => Promise<string>;
 }
 
 declare global {
