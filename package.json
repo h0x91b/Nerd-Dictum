@@ -1,6 +1,6 @@
 {
   "name": "nerd-dictum",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "A minimal floating window for voice-to-text transcription using Google Gemini",
   "type": "module",
   "main": "dist/main/main.js",
