@@ -52,3 +52,4 @@
 [2026-01-22 23:10] Feature — Settings and Info windows now open on the same screen as the widget (multi-monitor support)
 [2026-01-22 23:45] Feature — Add auto-update support via electron-updater with GitHub Releases; checks hourly and on startup; tray menu shows "Check for Updates" or "Install Update" when ready
 [2026-01-23 21:30] Bug — Fix quitAndInstall not working on macOS: properly close tray and windows before installing update
+[2026-01-23 23:45] Feature — Add GitHub Actions release workflow for cross-platform builds (macOS, Windows, Linux) without code signing
