@@ -730,9 +730,18 @@ async function requestMicrophonePermission(): Promise<boolean> {
   return false;
 }
 
+// Log certificate errors for debugging
+app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
+  log('[App] Certificate error:', { url, error, issuer: certificate.issuerName });
+  // Don't prevent default - just log
+});
+
 app.whenReady().then(async () => {
   log('[App] Starting Nerd Dictum v' + app.getVersion());
   log('[App] isPackaged:', app.isPackaged, 'platform:', process.platform);
+  log('[App] execPath:', process.execPath);
+  log('[App] cwd:', process.cwd());
+  log('[App] env.HOME:', process.env.HOME);
 
   // Load settings on app start
   appSettings = loadSettings();
