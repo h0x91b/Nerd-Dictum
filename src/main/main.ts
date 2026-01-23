@@ -3,12 +3,24 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { autoUpdater } from 'electron-updater';
+import electronLog from 'electron-log';
 import { decode as decodeBase65 } from '../lib/base65';
 import { getDisplayBounds, isPositionValid } from './window-position';
 import type { WindowPosition } from './window-position';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Configure electron-log
+// Logs go to: ~/Library/Logs/Nerd Dictum/main.log (macOS)
+// Also visible in Console.app and terminal
+electronLog.transports.file.level = 'info';
+electronLog.transports.console.level = 'info';
+
+// Wrapper function for consistent logging interface
+function log(...args: unknown[]): void {
+  electronLog.info(...args);
+}
 
 // Settings persistence
 interface AppSettings {
@@ -54,7 +66,7 @@ function loadSettings(): AppSettings {
       return settings;
     }
   } catch (error) {
-    console.error('[Settings] Failed to load settings:', error);
+    log('[Settings] Failed to load settings:', error);
   }
   return { ...DEFAULT_SETTINGS };
 }
@@ -70,7 +82,7 @@ function saveSettings(settings: AppSettings): boolean {
     });
     return true;
   } catch (error) {
-    console.error('[Settings] Failed to save:', error);
+    log('[Settings] Failed to save:', error);
     return false;
   }
 }
@@ -94,7 +106,7 @@ function loadWindowPosition(): WindowPosition | null {
         displays.length,
         getDisplayBounds(displays)
       );
-      console.log('[TEST] Window position validation:', {
+      log('[WindowPosition] Validation:', {
         displayCount: displays.length,
         isValid: isValidPosition,
       });
@@ -106,7 +118,7 @@ function loadWindowPosition(): WindowPosition | null {
       return parsed;
     }
   } catch (error) {
-    console.error('[WindowPosition] Failed to load position:', error);
+    log('[WindowPosition] Failed to load position:', error);
   }
   return null;
 }
@@ -118,7 +130,7 @@ function saveWindowPosition(x: number, y: number): void {
     const positionPath = getWindowPositionPath();
     fs.writeFileSync(positionPath, JSON.stringify(position, null, 2), 'utf-8');
   } catch (error) {
-    console.error('[WindowPosition] Failed to save position:', error);
+    log('[WindowPosition] Failed to save position:', error);
   }
 }
 
@@ -493,7 +505,7 @@ function registerGlobalShortcuts() {
   });
 
   if (!registered) {
-    console.error('[Shortcut] Failed to register global shortcut:', TOGGLE_RECORDING_SHORTCUT);
+    log('[Shortcut] Failed to register global shortcut:', TOGGLE_RECORDING_SHORTCUT);
   }
 }
 
@@ -594,9 +606,14 @@ let updateCheckInterval: NodeJS.Timeout | null = null;
 const FORCE_UPDATE_CHECK = process.env.FORCE_UPDATE_CHECK === 'true';
 
 function checkForUpdates() {
-  if (!app.isPackaged && !FORCE_UPDATE_CHECK) return;
+  log('[AutoUpdater] checkForUpdates called, isPackaged:', app.isPackaged, 'FORCE_UPDATE_CHECK:', FORCE_UPDATE_CHECK);
+  if (!app.isPackaged && !FORCE_UPDATE_CHECK) {
+    log('[AutoUpdater] Skipping update check (not packaged)');
+    return;
+  }
+  log('[AutoUpdater] Starting update check...');
   autoUpdater.checkForUpdates().catch((error) => {
-    console.error('[AutoUpdater] Check failed:', error.message);
+    log('[AutoUpdater] Check failed:', error.message);
   });
 }
 
@@ -621,8 +638,13 @@ function installUpdate() {
 }
 
 function setupAutoUpdater() {
-  if (!app.isPackaged && !FORCE_UPDATE_CHECK) return;
+  log('[AutoUpdater] setupAutoUpdater called, isPackaged:', app.isPackaged);
+  if (!app.isPackaged && !FORCE_UPDATE_CHECK) {
+    log('[AutoUpdater] Skipping setup (not packaged)');
+    return;
+  }
 
+  log('[AutoUpdater] Setting up auto-updater...');
   const token = decodeBase65(GH_RELEASES_TOKEN_ENCODED);
   autoUpdater.requestHeaders = { Authorization: `token ${token}` };
 
@@ -633,20 +655,24 @@ function setupAutoUpdater() {
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 
+  autoUpdater.on('checking-for-update', () => {
+    log('[AutoUpdater] Checking for update...');
+  });
+
   autoUpdater.on('update-available', (info) => {
-    console.log('[AutoUpdater] Update available:', info.version);
+    log('[AutoUpdater] Update available:', info.version);
   });
 
   autoUpdater.on('update-not-available', (info) => {
-    console.log('[AutoUpdater] Up to date:', info.version);
+    log('[AutoUpdater] Up to date:', info.version);
   });
 
   autoUpdater.on('download-progress', (progress) => {
-    console.log(`[AutoUpdater] Downloading: ${Math.round(progress.percent)}%`);
+    log(`[AutoUpdater] Downloading: ${Math.round(progress.percent)}%`);
   });
 
   autoUpdater.on('update-downloaded', (info) => {
-    console.log('[AutoUpdater] Downloaded:', info.version);
+    log('[AutoUpdater] Downloaded:', info.version);
     updateDownloaded = true;
     downloadedVersion = info.version;
     updateTrayMenu();
@@ -666,14 +692,16 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on('error', (error) => {
-    console.error('[AutoUpdater] Error:', error.message);
+    log('[AutoUpdater] Error:', error.message, error.stack);
   });
 
   // Initial check for updates
+  log('[AutoUpdater] Scheduling initial check...');
   checkForUpdates();
 
   // Check for updates every hour
   updateCheckInterval = setInterval(checkForUpdates, 60 * 60 * 1000);
+  log('[AutoUpdater] Setup complete');
 }
 
 async function requestMicrophonePermission(): Promise<boolean> {
@@ -682,7 +710,7 @@ async function requestMicrophonePermission(): Promise<boolean> {
   }
 
   const status = systemPreferences.getMediaAccessStatus('microphone');
-  console.log('[Permissions] Microphone access status:', status);
+  log('[Permissions] Microphone access status:', status);
 
   if (status === 'granted') {
     return true;
@@ -691,16 +719,19 @@ async function requestMicrophonePermission(): Promise<boolean> {
   if (status === 'not-determined') {
     // Request permission - this will show the macOS permission dialog
     const granted = await systemPreferences.askForMediaAccess('microphone');
-    console.log('[Permissions] Microphone permission request result:', granted);
+    log('[Permissions] Microphone permission request result:', granted);
     return granted;
   }
 
   // status is 'denied' or 'restricted'
-  console.error('[Permissions] Microphone access denied. Please enable in System Preferences > Privacy & Security > Microphone');
+  log('[Permissions] Microphone access denied. Please enable in System Preferences > Privacy & Security > Microphone');
   return false;
 }
 
 app.whenReady().then(async () => {
+  log('[App] Starting Nerd Dictum v' + app.getVersion());
+  log('[App] isPackaged:', app.isPackaged, 'platform:', process.platform);
+
   // Load settings on app start
   appSettings = loadSettings();
 
@@ -718,7 +749,7 @@ app.whenReady().then(async () => {
   // Request microphone permission on macOS before creating window
   const micPermission = await requestMicrophonePermission();
   if (!micPermission) {
-    console.warn('[Permissions] Microphone permission not granted - recording may not work');
+    log('[Permissions] Microphone permission not granted - recording may not work');
   }
 
   createApplicationMenu();
