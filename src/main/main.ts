@@ -697,9 +697,12 @@ function setupAutoUpdater() {
     log('[AutoUpdater] Error:', error.message, error.stack);
   });
 
-  // Initial check for updates
-  log('[AutoUpdater] Scheduling initial check...');
-  checkForUpdates();
+  // Initial check for updates (delay to ensure network stack is ready)
+  log('[AutoUpdater] Scheduling initial check with 5s delay...');
+  setTimeout(() => {
+    log('[AutoUpdater] Running delayed initial check...');
+    checkForUpdates();
+  }, 5000);
 
   // Check for updates every hour
   updateCheckInterval = setInterval(checkForUpdates, 60 * 60 * 1000);
@@ -740,8 +743,15 @@ app.whenReady().then(async () => {
   log('[App] Starting Nerd Dictum v' + app.getVersion());
   log('[App] isPackaged:', app.isPackaged, 'platform:', process.platform);
   log('[App] execPath:', process.execPath);
-  log('[App] cwd:', process.cwd());
+  log('[App] cwd (before):', process.cwd());
   log('[App] env.HOME:', process.env.HOME);
+
+  // Fix cwd when launched from Finder (macOS sets it to '/')
+  if (process.cwd() === '/') {
+    const userHome = app.getPath('home');
+    process.chdir(userHome);
+    log('[App] cwd changed to:', process.cwd());
+  }
 
   // Load settings on app start
   appSettings = loadSettings();
