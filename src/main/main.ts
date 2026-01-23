@@ -648,7 +648,16 @@ function setupAutoUpdater() {
   const token = decodeBase65(GH_RELEASES_TOKEN_ENCODED);
   // Log token prefix for debugging (don't log full token for security)
   log('[AutoUpdater] Token decoded, prefix:', token.substring(0, 10) + '..., length:', token.length);
-  autoUpdater.requestHeaders = { Authorization: `token ${token}` };
+
+  // Configure for private GitHub repo - use API instead of atom feed
+  autoUpdater.setFeedURL({
+    provider: 'github',
+    owner: 'h0x91b',
+    repo: 'Nerd-Dictum',
+    private: true,
+    token: token,
+  });
+  log('[AutoUpdater] Feed URL configured for private repo');
 
   if (FORCE_UPDATE_CHECK && !app.isPackaged) {
     autoUpdater.forceDevUpdateConfig = true;
