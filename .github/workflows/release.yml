@@ -33,7 +33,7 @@ jobs:
         run: bun run build
 
       - name: Build macOS (unsigned)
-        run: electron-builder --mac -c.mac.identity=null -c.mac.notarize=false
+        run: bunx electron-builder --mac -c.mac.identity=null -c.mac.notarize=false
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -67,7 +67,7 @@ jobs:
         run: bun run build
 
       - name: Build Windows (unsigned)
-        run: electron-builder --win
+        run: bunx electron-builder --win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -100,7 +100,7 @@ jobs:
         run: bun run build
 
       - name: Build Linux
-        run: electron-builder --linux
+        run: bunx electron-builder --linux
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
