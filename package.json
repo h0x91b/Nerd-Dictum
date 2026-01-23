@@ -31,6 +31,7 @@
   "build": {
     "appId": "com.h0x91b.nerddictum",
     "productName": "Nerd Dictum",
+    "artifactName": "${name}-${version}-${arch}.${ext}",
     "copyright": "Copyright © 2026 Arseny Pavlenko",
     "directories": {
       "output": "release"
