@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, clipboard, globalShortcut, Tray, Menu, nativeImage, screen, systemPreferences, shell, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, clipboard, globalShortcut, Tray, Menu, nativeImage, screen, systemPreferences, shell, dialog, net } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -699,7 +699,38 @@ function setupAutoUpdater() {
 
   // Initial check for updates (delay to ensure network stack is ready)
   log('[AutoUpdater] Scheduling initial check with 5s delay...');
-  setTimeout(() => {
+  setTimeout(async () => {
+    // Test direct HTTP request first
+    log('[AutoUpdater] Testing direct GitHub API request...');
+    const token = decodeBase65(GH_RELEASES_TOKEN_ENCODED);
+    try {
+      const request = net.request({
+        method: 'GET',
+        url: 'https://api.github.com/repos/h0x91b/Nerd-Dictum/releases/latest',
+      });
+      request.setHeader('Authorization', `token ${token}`);
+      request.setHeader('User-Agent', 'Nerd-Dictum-Updater');
+
+      request.on('response', (response) => {
+        log('[AutoUpdater] Direct API response status:', response.statusCode);
+        let data = '';
+        response.on('data', (chunk) => { data += chunk.toString(); });
+        response.on('end', () => {
+          if (response.statusCode === 200) {
+            log('[AutoUpdater] Direct API success, data length:', data.length);
+          } else {
+            log('[AutoUpdater] Direct API failed:', data.substring(0, 500));
+          }
+        });
+      });
+      request.on('error', (error) => {
+        log('[AutoUpdater] Direct API request error:', error);
+      });
+      request.end();
+    } catch (e) {
+      log('[AutoUpdater] Direct API exception:', e);
+    }
+
     log('[AutoUpdater] Running delayed initial check...');
     checkForUpdates();
   }, 5000);
