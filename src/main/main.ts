@@ -697,7 +697,33 @@ function setupAutoUpdater() {
       defaultId: 0,
     }).then((result) => {
       if (result.response === 0) {
-        autoUpdater.quitAndInstall();
+        log('[AutoUpdater] User clicked Restart Now, initiating quit and install...');
+
+        (app as any).isQuitting = true;
+
+        // Destroy tray to prevent menu callbacks
+        if (tray) {
+          tray.destroy();
+          tray = null;
+        }
+
+        // Close all windows
+        BrowserWindow.getAllWindows().forEach(win => win.destroy());
+
+        // Force quit after 5 seconds if quitAndInstall doesn't work
+        const forceQuitTimeout = setTimeout(() => {
+          log('[AutoUpdater] Force quitting after timeout...');
+          app.exit(0);
+        }, 5000);
+
+        // Small delay to ensure cleanup, then install
+        setImmediate(() => {
+          log('[AutoUpdater] Calling quitAndInstall...');
+          autoUpdater.quitAndInstall(false, true);
+
+          // Clear force quit if quitAndInstall worked
+          clearTimeout(forceQuitTimeout);
+        });
       }
     });
   });

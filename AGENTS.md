@@ -50,7 +50,7 @@ src/
 | Bug fixes | Write failing test first, then fix |
 | Testability | Every change needs testing instructions |
 | Theming | Use CSS tokens (`--bg-*`, `--text-*`), never hardcode colors |
-| Changelog | Update `CHANGELOG.md` + bump version in `package.json` |
+| Changelog | Update `CHANGELOG.md` |
 
 ### Common Tasks
 
@@ -58,13 +58,13 @@ src/
 1. Understand where it fits in the architecture
 2. Implement with proper theming tokens
 3. Add testing instructions
-4. Update changelog and version
+4. Update changelog
 
 **Fixing bugs:**
 1. Write a failing test that reproduces the bug
 2. Fix the code
 3. Verify test passes
-4. Update changelog and version
+4. Update changelog
 
 **Changing transcription:**
 - Prompt is in `src/lib/api/gemini.ts`
