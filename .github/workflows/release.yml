@@ -58,9 +58,8 @@ jobs:
           rm $RUNNER_TEMP/certificate.p12
 
       - name: Build macOS (signed + notarized)
-        run: bunx electron-builder --mac
+        run: bunx electron-builder --mac --publish never
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -96,9 +95,7 @@ jobs:
         run: bun run build
 
       - name: Build Windows (unsigned)
-        run: bunx electron-builder --win
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bunx electron-builder --win --publish never
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
@@ -130,9 +127,7 @@ jobs:
         run: bun run build
 
       - name: Build Linux
-        run: bunx electron-builder --linux
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bunx electron-builder --linux --publish never
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
