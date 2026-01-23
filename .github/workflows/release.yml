@@ -132,7 +132,7 @@ jobs:
         with:
           tag_name: ${{ inputs.tag || github.ref_name }}
           name: Release ${{ inputs.tag || github.ref_name }}
-          draft: true
+          draft: false
           files: |
             artifacts/macos-build/*
             artifacts/windows-build/*
