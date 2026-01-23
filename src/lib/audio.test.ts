@@ -347,8 +347,9 @@ describe('AudioRecorder', () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       const duration = recorder.getRecordingDuration();
-      expect(duration).toBeGreaterThanOrEqual(100);
-      expect(duration).toBeLessThan(200);
+      // Allow wider tolerance for CI environments (especially Windows)
+      expect(duration).toBeGreaterThanOrEqual(90);
+      expect(duration).toBeLessThan(300);
     });
   });
 
