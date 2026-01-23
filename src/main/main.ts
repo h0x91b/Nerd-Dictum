@@ -646,6 +646,8 @@ function setupAutoUpdater() {
 
   log('[AutoUpdater] Setting up auto-updater...');
   const token = decodeBase65(GH_RELEASES_TOKEN_ENCODED);
+  // Log token prefix for debugging (don't log full token for security)
+  log('[AutoUpdater] Token decoded, prefix:', token.substring(0, 10) + '..., length:', token.length);
   autoUpdater.requestHeaders = { Authorization: `token ${token}` };
 
   if (FORCE_UPDATE_CHECK && !app.isPackaged) {
