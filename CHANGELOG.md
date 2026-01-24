@@ -1,5 +1,6 @@
 # Changelog
 
+[2026-01-24 21:30] Bug — Fix macOS microphone indicator staying active after recording stops; add cleanup on component unmount and window close
 [2026-01-24 00:25] Bug — Fix auto-updater not quitting app after user clicks "Restart Now"; add tray/window cleanup, proper quitAndInstall args, and 5-second force quit timeout
 [2026-01-20 12:40] Feature — Initial project skeleton with Electron + React + Vite setup
 [2026-01-20 12:45] Bug — Fix invisible window by adding background color to widget container

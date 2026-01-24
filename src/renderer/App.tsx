@@ -278,6 +278,22 @@ export function App() {
     window.electronAPI.getAppVersion().then(setAppVersion);
   }, []);
 
+  // Cleanup recorder on unmount or window close to release microphone
+  useEffect(() => {
+    const cleanup = () => {
+      if (recorderRef.current?.getIsRecording()) {
+        recorderRef.current.cancel();
+        recorderRef.current = null;
+      }
+    };
+
+    window.addEventListener('beforeunload', cleanup);
+    return () => {
+      window.removeEventListener('beforeunload', cleanup);
+      cleanup();
+    };
+  }, []);
+
   return (
     <div className="widget">
       {appVersion && <span className="version-hint">v{appVersion}</span>}
