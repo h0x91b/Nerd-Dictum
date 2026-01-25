@@ -902,6 +902,82 @@ test.describe('Settings Page - Accessibility', () => {
   });
 });
 
+test.describe('Settings Page - Unsaved Changes Dialog', () => {
+  test('should NOT show discard dialog after successful Save with changes', async ({ page }) => {
+    // This test reproduces a bug where clicking Save shows the "Unsaved Changes" dialog
+    // after successfully saving. The dialog should NOT appear after Save.
+    //
+    // The bug occurs because:
+    // 1. User makes changes (hasUnsavedChanges = true)
+    // 2. User clicks Save
+    // 3. Save succeeds, but beforeunload fires when closeSettingsWindow() is called
+    // 4. beforeunload handler sees hasUnsavedChanges is still true (state not yet updated)
+    // 5. Dialog appears incorrectly
+
+    await page.addInitScript(() => {
+      (window as any).closeWindowCalled = false;
+      (window as any).electronAPI = {
+        getSettings: () =>
+          Promise.resolve({
+            apiKey: 'test-key',
+            model: 'gemini-3-flash-preview',
+            languages: ['en'],
+            speechDomain: 'programming',
+            customDomainHint: '',
+            customKeywords: '',
+            microphoneDeviceId: '',
+            silenceDetectionEnabled: true,
+            silenceDurationMs: 2500,
+            launchAtStartup: false,
+            clarificationEnabled: true,
+            previousTranscriptContextEnabled: true,
+          }),
+        saveSettings: () => Promise.resolve(true),
+        closeSettingsWindow: () => {
+          (window as any).closeWindowCalled = true;
+          // Simulate what Electron does - trigger beforeunload when closing window
+          window.dispatchEvent(new Event('beforeunload', { cancelable: true }));
+        },
+        openSettingsWindow: () => {},
+        openExternalUrl: () => Promise.resolve(true),
+      };
+    });
+
+    await page.goto(SETTINGS_URL);
+
+    // Wait for settings to load
+    await expect(page.locator('.settings-loading')).not.toBeVisible();
+
+    // Switch to Languages tab and add a language
+    const languagesTab = page.locator('[role="tab"]').filter({ hasText: 'Languages' });
+    await languagesTab.click();
+
+    // Toggle Russian language
+    const russianCheckbox = page.locator('.language-option').filter({ hasText: 'Russian' }).locator('input');
+    await russianCheckbox.click();
+    await expect(russianCheckbox).toBeChecked();
+
+    // Click Save
+    const saveBtn = page.locator('.settings-btn-primary');
+    await saveBtn.click();
+
+    // Wait for "Saved!" message to appear
+    const saveMessage = page.locator('.settings-message');
+    await expect(saveMessage).toContainText('Saved!');
+
+    // Wait a bit for the window close timeout (500ms in code)
+    await page.waitForTimeout(600);
+
+    // closeSettingsWindow should have been called (which triggers beforeunload)
+    const closeCalled = await page.evaluate(() => (window as any).closeWindowCalled);
+    expect(closeCalled).toBe(true);
+
+    // The "Unsaved Changes" dialog should NOT appear after Save
+    const discardDialog = page.locator('.confirm-dialog');
+    await expect(discardDialog).not.toBeVisible();
+  });
+});
+
 test.describe('Settings Page - Link to Google AI Studio', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {

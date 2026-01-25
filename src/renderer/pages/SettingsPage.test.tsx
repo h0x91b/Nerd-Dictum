@@ -181,7 +181,23 @@ describe('SettingsPage - Unsaved Changes Dialog', () => {
   });
 
   it('should NOT show dialog after successful Save', async () => {
-    const mockAPI = createMockElectronAPI();
+    // This test reproduces the bug where Save shows the "Unsaved Changes" dialog.
+    // The bug occurs because:
+    // 1. User makes changes (hasUnsavedChanges = true)
+    // 2. User clicks Save
+    // 3. Save succeeds, initialSettingsRef is updated
+    // 4. After 500ms, closeSettingsWindow() is called
+    // 5. closeSettingsWindow triggers beforeunload
+    // 6. beforeunload handler checks hasUnsavedChanges - should be false now
+
+    // Create mock that triggers beforeunload when closeSettingsWindow is called
+    // (simulating what Electron does when closing a window)
+    const mockAPI = createMockElectronAPI({
+      closeSettingsWindow: mock(() => {
+        window.dispatchEvent(new Event('beforeunload', { cancelable: true }));
+        return Promise.resolve();
+      }),
+    });
     renderSettingsPage(mockAPI);
 
     // Wait for settings to load
@@ -202,13 +218,12 @@ describe('SettingsPage - Unsaved Changes Dialog', () => {
       expect(mockAPI.saveSettings).toHaveBeenCalled();
     });
 
-    // After save, hasUnsavedChanges should be false
-    // The window closes after 500ms timeout, but let's verify dialog doesn't appear
-    // by simulating beforeunload event
-    const beforeUnloadEvent = new Event('beforeunload', { cancelable: true });
-    window.dispatchEvent(beforeUnloadEvent);
+    // Wait for the 500ms timeout that triggers closeSettingsWindow
+    await waitFor(() => {
+      expect(mockAPI.closeSettingsWindow).toHaveBeenCalled();
+    }, { timeout: 1000 });
 
-    // Dialog should NOT appear because initialSettingsRef was updated
+    // Dialog should NOT appear because initialSettingsRef was updated before close
     expect(screen.queryByText('Unsaved Changes')).toBeNull();
   });
 
@@ -221,7 +236,7 @@ describe('SettingsPage - Unsaved Changes Dialog', () => {
       expect(screen.queryByText('Loading...')).toBeNull();
     });
 
-    // Test checkbox change (Launch at startup)
+    // Test checkbox change (Launch at startup) - on General tab by default
     const launchCheckbox = screen.getByLabelText('Launch at startup');
     fireEvent.click(launchCheckbox);
 
@@ -240,6 +255,10 @@ describe('SettingsPage - Unsaved Changes Dialog', () => {
     await waitFor(() => {
       expect(screen.queryByText('Loading...')).toBeNull();
     });
+
+    // Switch to Languages tab first
+    const languagesTab = screen.getByRole('tab', { name: 'Languages' });
+    fireEvent.click(languagesTab);
 
     // Toggle a language
     const russianCheckbox = screen.getByLabelText('Russian');

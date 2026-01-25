@@ -361,6 +361,7 @@ export function SettingsPage() {
         };
         setSaveMessage('Saved!');
         setTimeout(() => {
+          isClosingRef.current = true;
           window.electronAPI.closeSettingsWindow();
         }, 500);
       } else {
