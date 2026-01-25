@@ -799,7 +799,7 @@ async function requestMicrophonePermission(): Promise<boolean> {
   return false;
 }
 
-app.whenReady().then(async () => {
+app.whenReady().then(() => {
   log('[App] Starting Nerd Dictum v' + app.getVersion());
 
   // Load settings on app start
@@ -816,19 +816,23 @@ app.whenReady().then(async () => {
     app.dock.hide();
   }
 
-  // Request microphone permission on macOS before creating window
-  const micPermission = await requestMicrophonePermission();
-  if (!micPermission) {
-    log('[Permissions] Microphone permission not granted - recording may not work');
-  }
-
+  // Create UI immediately without waiting for background tasks
   createApplicationMenu();
   createWindow();
   createTray();
   registerGlobalShortcuts();
 
-  // Check for updates after app is ready
-  setupAutoUpdater();
+  // Request microphone permission in background (don't block UI)
+  requestMicrophonePermission().then((granted) => {
+    if (!granted) {
+      log('[Permissions] Microphone permission not granted - recording may not work');
+    }
+  });
+
+  // Check for updates in background after a short delay (don't block UI startup)
+  setTimeout(() => {
+    setupAutoUpdater();
+  }, 2000);
 });
 
 app.on('window-all-closed', () => {

@@ -1,5 +1,6 @@
 # Changelog
 
+[2026-01-25] Performance — Move update check and microphone permission request to background; UI now appears instantly on startup instead of waiting for these operations
 [2026-01-25 15:30] Feature — Add Clarification setting (enabled by default) to clean up speech disfluencies (uh, um, stutters, filler words) for clearer transcription output
 [2026-01-25 12:00] Feature — Add custom language input and reorderable selected languages list; users can now add any language and arrange priority order
 [2026-01-25] Feature — Rename onboarding screen to "Welcome"; add "Reset Welcome Screen" button in Settings to re-show it
