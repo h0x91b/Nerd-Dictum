@@ -344,6 +344,21 @@ export function SettingsPage() {
         previousTranscriptContextEnabled,
       });
       if (success) {
+        // Update initial settings so hasUnsavedChanges becomes false
+        initialSettingsRef.current = {
+          apiKey,
+          model,
+          languages: [...languages],
+          speechDomain,
+          customDomainHint: customDomainHint.trim(),
+          customKeywords: customKeywords.trim(),
+          microphoneDeviceId,
+          silenceDetectionEnabled,
+          silenceDurationMs,
+          launchAtStartup,
+          clarificationEnabled,
+          previousTranscriptContextEnabled,
+        };
         setSaveMessage('Saved!');
         setTimeout(() => {
           window.electronAPI.closeSettingsWindow();
