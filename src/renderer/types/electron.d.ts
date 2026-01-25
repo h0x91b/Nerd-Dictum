@@ -10,6 +10,7 @@ export interface AppSettings {
   silenceDurationMs: number;
   launchAtStartup: boolean;
   clarificationEnabled: boolean;
+  previousTranscriptContextEnabled: boolean;
 }
 
 export type MicrophonePermissionStatus = 'not-determined' | 'granted' | 'denied' | 'restricted' | 'unknown';
@@ -28,6 +29,7 @@ export interface ElectronAPI {
   requestMicrophonePermission: () => Promise<boolean>;
   openExternalUrl: (url: string) => Promise<boolean>;
   getAppVersion: () => Promise<string>;
+  getRecentTranscript: () => Promise<string | null>;
 }
 
 declare global {

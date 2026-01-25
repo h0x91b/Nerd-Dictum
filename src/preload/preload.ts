@@ -11,6 +11,8 @@ export interface AppSettings {
   silenceDetectionEnabled: boolean;
   silenceDurationMs: number;
   launchAtStartup: boolean;
+  clarificationEnabled: boolean;
+  previousTranscriptContextEnabled: boolean;
 }
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -33,4 +35,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   requestMicrophonePermission: () => ipcRenderer.invoke('request-microphone-permission'),
   openExternalUrl: (url: string) => ipcRenderer.invoke('open-external-url', url),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+  getRecentTranscript: () => ipcRenderer.invoke('get-recent-transcript'),
 });

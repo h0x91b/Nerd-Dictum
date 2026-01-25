@@ -62,6 +62,7 @@ export function SettingsPage() {
   const [silenceDurationMs, setSilenceDurationMs] = useState(2500);
   const [launchAtStartup, setLaunchAtStartup] = useState(false);
   const [clarificationEnabled, setClarificationEnabled] = useState(true);
+  const [previousTranscriptContextEnabled, setPreviousTranscriptContextEnabled] = useState(true);
   const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
   const [customLanguageInput, setCustomLanguageInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -112,6 +113,7 @@ export function SettingsPage() {
         setSilenceDurationMs(settings.silenceDurationMs || 2500);
         setLaunchAtStartup(settings.launchAtStartup ?? false);
         setClarificationEnabled(settings.clarificationEnabled ?? true);
+        setPreviousTranscriptContextEnabled(settings.previousTranscriptContextEnabled ?? true);
       } catch (error) {
         console.error('[Settings] Failed to load:', error);
       } finally {
@@ -178,6 +180,7 @@ export function SettingsPage() {
         silenceDurationMs,
         launchAtStartup,
         clarificationEnabled,
+        previousTranscriptContextEnabled,
       });
       if (success) {
         setSaveMessage('Saved!');
@@ -322,6 +325,20 @@ export function SettingsPage() {
           </label>
           <span className="settings-hint">
             Clean up speech disfluencies (uh, um, stutters, filler words) for clearer text
+          </span>
+        </div>
+
+        <div className="settings-field">
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={previousTranscriptContextEnabled}
+              onChange={(e) => setPreviousTranscriptContextEnabled(e.target.checked)}
+            />
+            <span>Use previous transcript as context</span>
+          </label>
+          <span className="settings-hint">
+            Include the previous transcription to improve accuracy for related speech
           </span>
         </div>
 

@@ -72,6 +72,7 @@ export interface TranscribeOptions {
   customDomainHint?: string;
   customKeywords?: string;
   clarificationEnabled?: boolean;
+  previousTranscript?: string;
 }
 
 export interface TranscribeRequestOptions extends TranscribeOptions {
@@ -190,6 +191,18 @@ Domain hint: ${options.customDomainHint}`;
   const customKeywordsSection = buildCustomKeywordsSection(options?.customKeywords);
   if (customKeywordsSection) {
     prompt += customKeywordsSection;
+  }
+
+  // Add previous transcript as context if provided
+  if (options?.previousTranscript) {
+    // Escape < and > to prevent injection into XML structure
+    const escapedTranscript = options.previousTranscript
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    prompt += `\n\nContext from previous transcription (the current audio may be related):
+<previous_transcript>
+${escapedTranscript}
+</previous_transcript>`;
   }
 
   return prompt;

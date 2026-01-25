@@ -8,6 +8,7 @@ import { decode as decodeBase65 } from '../lib/base65';
 import { getDisplayBounds, isPositionValid } from './window-position';
 import type { WindowPosition } from './window-position';
 import { captureCurrentClipboard, addTranscriptionToHistory, restoreClipboardEntry, getClipboardHistory, getEntryLabel } from './clipboard-history';
+import { loadTranscriptHistory, addTranscriptToHistory, getRecentTranscript } from './transcript-history';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,6 +37,7 @@ interface AppSettings {
   silenceDurationMs: number;
   launchAtStartup: boolean;
   clarificationEnabled: boolean;
+  previousTranscriptContextEnabled: boolean;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -50,6 +52,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   silenceDurationMs: 2500,
   launchAtStartup: false,
   clarificationEnabled: true,
+  previousTranscriptContextEnabled: true,
 };
 
 function getSettingsPath(): string {
@@ -805,6 +808,9 @@ app.whenReady().then(() => {
   // Load settings on app start
   appSettings = loadSettings();
 
+  // Load transcript history for context feature
+  loadTranscriptHistory();
+
   // Set dock icon on macOS (especially useful in dev mode)
   if (process.platform === 'darwin' && app.dock) {
     const appIconPath = getAppIconPath();
@@ -872,6 +878,8 @@ ipcMain.handle('copy-to-clipboard', (_event, text: string) => {
   clipboard.writeText(text);
   // Add our transcribed text to history too
   addTranscriptionToHistory(text);
+  // Store transcript for context feature
+  addTranscriptToHistory(text);
   // Update tray menu to show new history
   updateTrayMenu();
   return true;
@@ -904,6 +912,7 @@ ipcMain.handle('get-settings', () => {
     silenceDurationMs: appSettings.silenceDurationMs,
     launchAtStartup: openAtLogin,
     clarificationEnabled: appSettings.clarificationEnabled,
+    previousTranscriptContextEnabled: appSettings.previousTranscriptContextEnabled,
   };
 });
 
@@ -957,4 +966,9 @@ ipcMain.handle('open-info-window', () => {
 // Get app version
 ipcMain.handle('get-app-version', () => {
   return app.getVersion();
+});
+
+// Get recent transcript for context
+ipcMain.handle('get-recent-transcript', () => {
+  return getRecentTranscript();
 });
