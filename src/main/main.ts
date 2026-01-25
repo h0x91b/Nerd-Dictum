@@ -14,6 +14,25 @@ import type { AppSettings } from '../shared/types';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Ensure single instance of the application
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  // Another instance is already running, quit immediately
+  app.quit();
+} else {
+  // This is the first instance - register handler for when another instance tries to start
+  app.on('second-instance', () => {
+    // Someone tried to run a second instance, focus our window instead
+    if (mainWindow) {
+      if (!mainWindow.isVisible()) {
+        mainWindow.show();
+      }
+      mainWindow.focus();
+    }
+  });
+}
+
 // Configure electron-log
 // Logs go to: ~/Library/Logs/Nerd Dictum/main.log (macOS)
 // Also visible in Console.app and terminal
