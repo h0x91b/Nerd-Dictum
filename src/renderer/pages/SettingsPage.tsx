@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import type { AppSettings } from '../types/electron';
 import { useTheme, ThemeMode } from '../contexts/ThemeContext';
 import { Welcome } from '../components/Welcome';
 import { ApiKeyHelp } from '../components/ApiKeyHelp';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import './SettingsPage.css';
 
 const AVAILABLE_LANGUAGES: Array<{ code: string; name: string }> = [
@@ -69,12 +70,63 @@ export function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [showWelcome, setShowWelcome] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const isClosingRef = useRef(false);
+
+  // Store initial settings for comparison
+  const initialSettingsRef = useRef<{
+    apiKey: string;
+    model: string;
+    languages: string[];
+    speechDomain: string;
+    customDomainHint: string;
+    customKeywords: string;
+    microphoneDeviceId: string;
+    silenceDetectionEnabled: boolean;
+    silenceDurationMs: number;
+    launchAtStartup: boolean;
+    clarificationEnabled: boolean;
+    previousTranscriptContextEnabled: boolean;
+  } | null>(null);
 
   const themeOptions: Array<{ value: ThemeMode; label: string; previewTheme: 'dark' | 'light' }> = [
     { value: 'light', label: 'Light', previewTheme: 'light' },
     { value: 'dark', label: 'Dark', previewTheme: 'dark' },
     { value: 'system', label: 'System', previewTheme: systemTheme },
   ];
+
+  // Check if there are unsaved changes
+  const hasUnsavedChanges = useMemo(() => {
+    if (!initialSettingsRef.current) return false;
+    const initial = initialSettingsRef.current;
+    return (
+      apiKey !== initial.apiKey ||
+      model !== initial.model ||
+      JSON.stringify(languages) !== JSON.stringify(initial.languages) ||
+      speechDomain !== initial.speechDomain ||
+      customDomainHint !== initial.customDomainHint ||
+      customKeywords !== initial.customKeywords ||
+      microphoneDeviceId !== initial.microphoneDeviceId ||
+      silenceDetectionEnabled !== initial.silenceDetectionEnabled ||
+      silenceDurationMs !== initial.silenceDurationMs ||
+      launchAtStartup !== initial.launchAtStartup ||
+      clarificationEnabled !== initial.clarificationEnabled ||
+      previousTranscriptContextEnabled !== initial.previousTranscriptContextEnabled
+    );
+  }, [
+    apiKey,
+    model,
+    languages,
+    speechDomain,
+    customDomainHint,
+    customKeywords,
+    microphoneDeviceId,
+    silenceDetectionEnabled,
+    silenceDurationMs,
+    launchAtStartup,
+    clarificationEnabled,
+    previousTranscriptContextEnabled,
+  ]);
 
   // Load audio devices
   useEffect(() => {
@@ -102,18 +154,47 @@ export function SettingsPage() {
     async function loadSettings() {
       try {
         const settings = await window.electronAPI.getSettings();
-        setApiKey(settings.apiKey);
-        setModel(settings.model);
-        setSpeechDomain(settings.speechDomain || 'programming');
-        setCustomDomainHint(settings.customDomainHint || '');
-        setCustomKeywords(settings.customKeywords || '');
-        setLanguages(settings.languages || []);
-        setMicrophoneDeviceId(settings.microphoneDeviceId || '');
-        setSilenceDetectionEnabled(settings.silenceDetectionEnabled ?? true);
-        setSilenceDurationMs(settings.silenceDurationMs || 2500);
-        setLaunchAtStartup(settings.launchAtStartup ?? false);
-        setClarificationEnabled(settings.clarificationEnabled ?? true);
-        setPreviousTranscriptContextEnabled(settings.previousTranscriptContextEnabled ?? true);
+        const loadedApiKey = settings.apiKey;
+        const loadedModel = settings.model;
+        const loadedSpeechDomain = settings.speechDomain || 'programming';
+        const loadedCustomDomainHint = settings.customDomainHint || '';
+        const loadedCustomKeywords = settings.customKeywords || '';
+        const loadedLanguages = settings.languages || [];
+        const loadedMicrophoneDeviceId = settings.microphoneDeviceId || '';
+        const loadedSilenceDetectionEnabled = settings.silenceDetectionEnabled ?? true;
+        const loadedSilenceDurationMs = settings.silenceDurationMs || 2500;
+        const loadedLaunchAtStartup = settings.launchAtStartup ?? false;
+        const loadedClarificationEnabled = settings.clarificationEnabled ?? true;
+        const loadedPreviousTranscriptContextEnabled = settings.previousTranscriptContextEnabled ?? true;
+
+        setApiKey(loadedApiKey);
+        setModel(loadedModel);
+        setSpeechDomain(loadedSpeechDomain);
+        setCustomDomainHint(loadedCustomDomainHint);
+        setCustomKeywords(loadedCustomKeywords);
+        setLanguages(loadedLanguages);
+        setMicrophoneDeviceId(loadedMicrophoneDeviceId);
+        setSilenceDetectionEnabled(loadedSilenceDetectionEnabled);
+        setSilenceDurationMs(loadedSilenceDurationMs);
+        setLaunchAtStartup(loadedLaunchAtStartup);
+        setClarificationEnabled(loadedClarificationEnabled);
+        setPreviousTranscriptContextEnabled(loadedPreviousTranscriptContextEnabled);
+
+        // Store initial settings for unsaved changes comparison
+        initialSettingsRef.current = {
+          apiKey: loadedApiKey,
+          model: loadedModel,
+          languages: [...loadedLanguages],
+          speechDomain: loadedSpeechDomain,
+          customDomainHint: loadedCustomDomainHint,
+          customKeywords: loadedCustomKeywords,
+          microphoneDeviceId: loadedMicrophoneDeviceId,
+          silenceDetectionEnabled: loadedSilenceDetectionEnabled,
+          silenceDurationMs: loadedSilenceDurationMs,
+          launchAtStartup: loadedLaunchAtStartup,
+          clarificationEnabled: loadedClarificationEnabled,
+          previousTranscriptContextEnabled: loadedPreviousTranscriptContextEnabled,
+        };
       } catch (error) {
         console.error('[Settings] Failed to load:', error);
       } finally {
@@ -198,8 +279,36 @@ export function SettingsPage() {
   };
 
   const handleCancel = () => {
+    if (hasUnsavedChanges) {
+      setShowCancelDialog(true);
+    } else {
+      window.electronAPI.closeSettingsWindow();
+    }
+  };
+
+  const handleConfirmCancel = () => {
+    isClosingRef.current = true;
+    setShowCancelDialog(false);
     window.electronAPI.closeSettingsWindow();
   };
+
+  const handleCancelDialogClose = () => {
+    setShowCancelDialog(false);
+  };
+
+  // Handle window close (beforeunload) with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges && !isClosingRef.current) {
+        e.preventDefault();
+        // Show custom dialog instead of browser default
+        setShowCancelDialog(true);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   // Show onboarding if no API key is set
   const handleApiKeySubmit = (newApiKey: string) => {
@@ -535,6 +644,16 @@ export function SettingsPage() {
           {isSaving ? 'Saving...' : 'Save'}
         </button>
       </div>
+
+      <ConfirmDialog
+        isOpen={showCancelDialog}
+        title="Unsaved Changes"
+        message="Are you sure? All changes will be lost."
+        confirmLabel="Discard"
+        cancelLabel="Stay"
+        onConfirm={handleConfirmCancel}
+        onCancel={handleCancelDialogClose}
+      />
     </div>
   );
 }
