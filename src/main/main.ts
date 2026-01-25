@@ -9,6 +9,7 @@ import { getDisplayBounds, isPositionValid } from './window-position';
 import type { WindowPosition } from './window-position';
 import { captureCurrentClipboard, addTranscriptionToHistory, restoreClipboardEntry, getClipboardHistory, getEntryLabel } from './clipboard-history';
 import { loadTranscriptHistory, addTranscriptToHistory, getRecentTranscript } from './transcript-history';
+import type { AppSettings } from '../shared/types';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,22 +23,6 @@ electronLog.transports.console.level = 'info';
 // Wrapper function for consistent logging interface
 function log(...args: unknown[]): void {
   electronLog.info(...args);
-}
-
-// Settings persistence
-interface AppSettings {
-  apiKey: string;
-  model: string;
-  languages: string[];
-  speechDomain: string;
-  customDomainHint: string;
-  customKeywords: string;
-  microphoneDeviceId: string;
-  silenceDetectionEnabled: boolean;
-  silenceDurationMs: number;
-  launchAtStartup: boolean;
-  clarificationEnabled: boolean;
-  previousTranscriptContextEnabled: boolean;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
