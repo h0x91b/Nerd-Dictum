@@ -97,6 +97,16 @@ const SPEECH_DOMAINS = [
 const MAX_CUSTOM_HINT_LENGTH = 500;
 const MAX_CUSTOM_KEYWORDS_LENGTH = 1000;
 
+// Tab definitions
+type SettingsTab = 'general' | 'languages' | 'appearance' | 'advanced';
+
+const SETTINGS_TABS: Array<{ id: SettingsTab; label: string }> = [
+  { id: 'general', label: 'General' },
+  { id: 'languages', label: 'Languages' },
+  { id: 'appearance', label: 'Appearance' },
+  { id: 'advanced', label: 'Advanced' },
+];
+
 interface AudioDevice {
   deviceId: string;
   label: string;
@@ -118,6 +128,7 @@ export function SettingsPage() {
   const [previousTranscriptContextEnabled, setPreviousTranscriptContextEnabled] = useState(true);
   const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
   const [languageSearch, setLanguageSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
@@ -404,337 +415,371 @@ export function SettingsPage() {
 
   return (
     <div className="settings-page">
+      {/* Tab Navigation */}
+      <div className="settings-tabs" role="tablist">
+        {SETTINGS_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            className={`settings-tab${activeTab === tab.id ? ' is-active' : ''}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       <div className="settings-content">
-        <div className="settings-field">
-          <label htmlFor="api-key">Gemini API Key</label>
-          <input
-            id="api-key"
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="Enter your API key"
-            autoComplete="off"
-          />
-          <ApiKeyHelp />
-        </div>
-
-        <div className="settings-field">
-          <label htmlFor="model">Model</label>
-          <input
-            id="model"
-            type="text"
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-            placeholder="gemini-3-flash-preview"
-          />
-          <span className="settings-hint">Default: gemini-3-flash-preview</span>
-        </div>
-
-        <div className="settings-field">
-          <label>Theme</label>
-          <div className="settings-theme-options" role="radiogroup" aria-label="Theme">
-            {themeOptions.map((option) => (
-              <label
-                key={option.value}
-                className={`settings-theme-option${theme === option.value ? ' is-selected' : ''}`}
-              >
-                <span className="settings-theme-label">
-                  <input
-                    type="radio"
-                    name="theme"
-                    value={option.value}
-                    checked={theme === option.value}
-                    onChange={() => setTheme(option.value)}
-                  />
-                  <span>{option.label}</span>
-                </span>
-                <span className="settings-theme-preview" data-theme={option.previewTheme} aria-hidden="true">
-                  <span className="settings-theme-swatch settings-theme-swatch--bg" />
-                  <span className="settings-theme-swatch settings-theme-swatch--surface" />
-                  <span className="settings-theme-swatch settings-theme-swatch--text">Aa</span>
-                </span>
-              </label>
-            ))}
-          </div>
-          <span className="settings-hint">System follows your OS appearance.</span>
-        </div>
-
-        <div className="settings-field">
-          <label htmlFor="speech-domain">Speech Domain</label>
-          <select
-            id="speech-domain"
-            value={speechDomain}
-            onChange={(e) => setSpeechDomain(e.target.value)}
-          >
-            {SPEECH_DOMAINS.map((domain) => (
-              <option key={domain.id} value={domain.id}>
-                {domain.name}
-              </option>
-            ))}
-          </select>
-          <span className="settings-hint">
-            {SPEECH_DOMAINS.find((d) => d.id === speechDomain)?.hint || 'Select domain for better accuracy'}
-          </span>
-          {speechDomain === 'custom' && (
-            <>
+        {/* General Tab */}
+        {activeTab === 'general' && (
+          <>
+            <div className="settings-field">
+              <label htmlFor="api-key">Gemini API Key</label>
               <input
-                id="custom-domain-hint"
-                type="text"
-                value={customDomainHint}
-                onChange={(e) => handleCustomHintChange(e.target.value)}
-                placeholder="e.g., gardening terms, music production, sports commentary..."
-                style={{ marginTop: '8px' }}
+                id="api-key"
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="Enter your API key"
+                autoComplete="off"
               />
-              <span className="settings-hint">
-                {customDomainHint.length}/{MAX_CUSTOM_HINT_LENGTH} characters
-              </span>
-            </>
-          )}
-        </div>
-
-        <div className="settings-field">
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={clarificationEnabled}
-              onChange={(e) => setClarificationEnabled(e.target.checked)}
-            />
-            <span>Clarification</span>
-          </label>
-          <span className="settings-hint">
-            Clean up speech disfluencies (uh, um, stutters, filler words) for clearer text
-          </span>
-        </div>
-
-        <div className="settings-field">
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={previousTranscriptContextEnabled}
-              onChange={(e) => setPreviousTranscriptContextEnabled(e.target.checked)}
-            />
-            <span>Use previous transcript as context</span>
-          </label>
-          <span className="settings-hint">
-            Include the previous transcription to improve accuracy for related speech
-          </span>
-        </div>
-
-        <div className="settings-field">
-          <label htmlFor="custom-keywords">Custom Keywords</label>
-          <textarea
-            id="custom-keywords"
-            value={customKeywords}
-            onChange={(e) => handleCustomKeywordsChange(e.target.value)}
-            placeholder={`Default keywords (always included):\nCLAUDE.md = Cloud MD\nWIX = vix\n\nAdd your own below...`}
-            rows={4}
-          />
-          <span className="settings-hint">
-            One per line. Use "Target = alias1, alias2" for corrections.
-          </span>
-          <span className="settings-hint">
-            {customKeywords.length}/{MAX_CUSTOM_KEYWORDS_LENGTH} characters
-          </span>
-        </div>
-
-        <div className="settings-field">
-          <label htmlFor="microphone">Microphone</label>
-          <select
-            id="microphone"
-            value={microphoneDeviceId}
-            onChange={(e) => setMicrophoneDeviceId(e.target.value)}
-          >
-            <option value="">System Default</option>
-            {audioDevices.map((device) => (
-              <option key={device.deviceId} value={device.deviceId}>
-                {device.label}
-              </option>
-            ))}
-          </select>
-          <span className="settings-hint">
-            Select audio input device
-          </span>
-        </div>
-
-        <div className="settings-field">
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={silenceDetectionEnabled}
-              onChange={(e) => setSilenceDetectionEnabled(e.target.checked)}
-            />
-            <span>Auto-stop on silence</span>
-          </label>
-          {silenceDetectionEnabled && (
-            <div className="slider-container">
-              <input
-                type="range"
-                min="1000"
-                max="10000"
-                step="500"
-                value={silenceDurationMs}
-                onChange={(e) => setSilenceDurationMs(Number(e.target.value))}
-              />
-              <span className="slider-value">{(silenceDurationMs / 1000).toFixed(1)}s</span>
+              <ApiKeyHelp />
             </div>
-          )}
-          <span className="settings-hint">
-            Automatically stop recording after a period of silence
-          </span>
-        </div>
 
-        <div className="settings-field">
-          <label>Primary Languages</label>
+            <div className="settings-field">
+              <label htmlFor="model">Model</label>
+              <input
+                id="model"
+                type="text"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                placeholder="gemini-3-flash-preview"
+              />
+              <span className="settings-hint">Default: gemini-3-flash-preview</span>
+            </div>
 
-          {/* Selected languages with reordering */}
-          {languages.length > 0 && (
-            <div className="selected-languages">
-              <span className="selected-languages-label">Selected (first is primary):</span>
-              <div className="selected-languages-list">
-                {languages.map((code, index) => (
-                  <div key={code} className="selected-language-item">
-                    <span className="selected-language-name">{getLanguageName(code)}</span>
-                    <div className="selected-language-controls">
-                      <button
-                        type="button"
-                        className="language-move-btn"
-                        onClick={() => handleMoveLanguage(index, 'up')}
-                        disabled={index === 0}
-                        title="Move up"
-                      >
-                        ↑
-                      </button>
-                      <button
-                        type="button"
-                        className="language-move-btn"
-                        onClick={() => handleMoveLanguage(index, 'down')}
-                        disabled={index === languages.length - 1}
-                        title="Move down"
-                      >
-                        ↓
-                      </button>
-                      <button
-                        type="button"
-                        className="language-remove-btn"
-                        onClick={() => handleRemoveLanguage(code)}
-                        title="Remove"
-                      >
-                        ×
-                      </button>
+            <div className="settings-field">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={launchAtStartup}
+                  onChange={(e) => setLaunchAtStartup(e.target.checked)}
+                />
+                <span>Launch at startup</span>
+              </label>
+              <span className="settings-hint">
+                Automatically start the app when you log in
+              </span>
+            </div>
+
+            <div className="settings-field">
+              <button
+                className="settings-btn settings-btn-secondary"
+                onClick={handleResetWelcome}
+                type="button"
+              >
+                Reset Welcome Screen
+              </button>
+              <span className="settings-hint">
+                Show the initial setup screen again
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* Languages Tab */}
+        {activeTab === 'languages' && (
+          <>
+            <div className="settings-field">
+              <label>Primary Languages</label>
+
+              {/* Selected languages with reordering */}
+              {languages.length > 0 && (
+                <div className="selected-languages">
+                  <span className="selected-languages-label">Selected (first is primary):</span>
+                  <div className="selected-languages-list">
+                    {languages.map((code, index) => (
+                      <div key={code} className="selected-language-item">
+                        <span className="selected-language-name">{getLanguageName(code)}</span>
+                        <div className="selected-language-controls">
+                          <button
+                            type="button"
+                            className="language-move-btn"
+                            onClick={() => handleMoveLanguage(index, 'up')}
+                            disabled={index === 0}
+                            title="Move up"
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            className="language-move-btn"
+                            onClick={() => handleMoveLanguage(index, 'down')}
+                            disabled={index === languages.length - 1}
+                            title="Move down"
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            className="language-remove-btn"
+                            onClick={() => handleRemoveLanguage(code)}
+                            title="Remove"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Search input */}
+              <div className="language-search">
+                <input
+                  type="text"
+                  value={languageSearch}
+                  onChange={(e) => setLanguageSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && isCustomLanguageCandidate) {
+                      e.preventDefault();
+                      handleAddCustomLanguage();
+                    }
+                  }}
+                  placeholder="Search languages..."
+                />
+              </div>
+
+              {/* Language groups */}
+              <div className="language-groups">
+                {/* Popular languages */}
+                {filteredPopular.length > 0 && (
+                  <div className="language-group">
+                    {!languageSearch.trim() && (
+                      <span className="language-group-label">Popular</span>
+                    )}
+                    <div className="language-grid">
+                      {filteredPopular.map((lang) => (
+                        <label key={lang.code} className="language-option">
+                          <input
+                            type="checkbox"
+                            checked={languages.includes(lang.code)}
+                            onChange={() => handleLanguageToggle(lang.code)}
+                          />
+                          <span>{lang.name}</span>
+                        </label>
+                      ))}
                     </div>
                   </div>
+                )}
+
+                {/* Other languages */}
+                {filteredOther.length > 0 && (
+                  <div className="language-group">
+                    {!languageSearch.trim() && (
+                      <span className="language-group-label">More</span>
+                    )}
+                    <div className="language-grid">
+                      {filteredOther.map((lang) => (
+                        <label key={lang.code} className="language-option">
+                          <input
+                            type="checkbox"
+                            checked={languages.includes(lang.code)}
+                            onChange={() => handleLanguageToggle(lang.code)}
+                          />
+                          <span>{lang.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* No results - offer to add custom */}
+                {isCustomLanguageCandidate && (
+                  <div className="language-no-results">
+                    <span>No language found for "{searchTrimmed}"</span>
+                    <button
+                      type="button"
+                      className="add-custom-language-btn"
+                      onClick={handleAddCustomLanguage}
+                    >
+                      Add "{searchTrimmed}" as custom language
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <span className="settings-hint">
+                Search to filter, or type a custom language name and press Enter to add.
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* Appearance Tab */}
+        {activeTab === 'appearance' && (
+          <>
+            <div className="settings-field">
+              <label>Theme</label>
+              <div className="settings-theme-options" role="radiogroup" aria-label="Theme">
+                {themeOptions.map((option) => (
+                  <label
+                    key={option.value}
+                    className={`settings-theme-option${theme === option.value ? ' is-selected' : ''}`}
+                  >
+                    <span className="settings-theme-label">
+                      <input
+                        type="radio"
+                        name="theme"
+                        value={option.value}
+                        checked={theme === option.value}
+                        onChange={() => setTheme(option.value)}
+                      />
+                      <span>{option.label}</span>
+                    </span>
+                    <span className="settings-theme-preview" data-theme={option.previewTheme} aria-hidden="true">
+                      <span className="settings-theme-swatch settings-theme-swatch--bg" />
+                      <span className="settings-theme-swatch settings-theme-swatch--surface" />
+                      <span className="settings-theme-swatch settings-theme-swatch--text">Aa</span>
+                    </span>
+                  </label>
                 ))}
               </div>
+              <span className="settings-hint">System follows your OS appearance.</span>
             </div>
-          )}
+          </>
+        )}
 
-          {/* Search input */}
-          <div className="language-search">
-            <input
-              type="text"
-              value={languageSearch}
-              onChange={(e) => setLanguageSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && isCustomLanguageCandidate) {
-                  e.preventDefault();
-                  handleAddCustomLanguage();
-                }
-              }}
-              placeholder="Search languages..."
-            />
-          </div>
+        {/* Advanced Tab */}
+        {activeTab === 'advanced' && (
+          <>
+            <div className="settings-field">
+              <label htmlFor="speech-domain">Speech Domain</label>
+              <select
+                id="speech-domain"
+                value={speechDomain}
+                onChange={(e) => setSpeechDomain(e.target.value)}
+              >
+                {SPEECH_DOMAINS.map((domain) => (
+                  <option key={domain.id} value={domain.id}>
+                    {domain.name}
+                  </option>
+                ))}
+              </select>
+              <span className="settings-hint">
+                {SPEECH_DOMAINS.find((d) => d.id === speechDomain)?.hint || 'Select domain for better accuracy'}
+              </span>
+              {speechDomain === 'custom' && (
+                <>
+                  <input
+                    id="custom-domain-hint"
+                    type="text"
+                    value={customDomainHint}
+                    onChange={(e) => handleCustomHintChange(e.target.value)}
+                    placeholder="e.g., gardening terms, music production, sports commentary..."
+                    style={{ marginTop: '8px' }}
+                  />
+                  <span className="settings-hint">
+                    {customDomainHint.length}/{MAX_CUSTOM_HINT_LENGTH} characters
+                  </span>
+                </>
+              )}
+            </div>
 
-          {/* Language groups */}
-          <div className="language-groups">
-            {/* Popular languages */}
-            {filteredPopular.length > 0 && (
-              <div className="language-group">
-                {!languageSearch.trim() && (
-                  <span className="language-group-label">Popular</span>
-                )}
-                <div className="language-grid">
-                  {filteredPopular.map((lang) => (
-                    <label key={lang.code} className="language-option">
-                      <input
-                        type="checkbox"
-                        checked={languages.includes(lang.code)}
-                        onChange={() => handleLanguageToggle(lang.code)}
-                      />
-                      <span>{lang.name}</span>
-                    </label>
-                  ))}
+            <div className="settings-field">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={clarificationEnabled}
+                  onChange={(e) => setClarificationEnabled(e.target.checked)}
+                />
+                <span>Clarification</span>
+              </label>
+              <span className="settings-hint">
+                Clean up speech disfluencies (uh, um, stutters, filler words) for clearer text
+              </span>
+            </div>
+
+            <div className="settings-field">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={previousTranscriptContextEnabled}
+                  onChange={(e) => setPreviousTranscriptContextEnabled(e.target.checked)}
+                />
+                <span>Use previous transcript as context</span>
+              </label>
+              <span className="settings-hint">
+                Include the previous transcription to improve accuracy for related speech
+              </span>
+            </div>
+
+            <div className="settings-field">
+              <label htmlFor="custom-keywords">Custom Keywords</label>
+              <textarea
+                id="custom-keywords"
+                value={customKeywords}
+                onChange={(e) => handleCustomKeywordsChange(e.target.value)}
+                placeholder={`Default keywords (always included):\nCLAUDE.md = Cloud MD\nWIX = vix\n\nAdd your own below...`}
+                rows={4}
+              />
+              <span className="settings-hint">
+                One per line. Use "Target = alias1, alias2" for corrections.
+              </span>
+              <span className="settings-hint">
+                {customKeywords.length}/{MAX_CUSTOM_KEYWORDS_LENGTH} characters
+              </span>
+            </div>
+
+            <div className="settings-field">
+              <label htmlFor="microphone">Microphone</label>
+              <select
+                id="microphone"
+                value={microphoneDeviceId}
+                onChange={(e) => setMicrophoneDeviceId(e.target.value)}
+              >
+                <option value="">System Default</option>
+                {audioDevices.map((device) => (
+                  <option key={device.deviceId} value={device.deviceId}>
+                    {device.label}
+                  </option>
+                ))}
+              </select>
+              <span className="settings-hint">
+                Select audio input device
+              </span>
+            </div>
+
+            <div className="settings-field">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={silenceDetectionEnabled}
+                  onChange={(e) => setSilenceDetectionEnabled(e.target.checked)}
+                />
+                <span>Auto-stop on silence</span>
+              </label>
+              {silenceDetectionEnabled && (
+                <div className="slider-container">
+                  <input
+                    type="range"
+                    min="1000"
+                    max="10000"
+                    step="500"
+                    value={silenceDurationMs}
+                    onChange={(e) => setSilenceDurationMs(Number(e.target.value))}
+                  />
+                  <span className="slider-value">{(silenceDurationMs / 1000).toFixed(1)}s</span>
                 </div>
-              </div>
-            )}
-
-            {/* Other languages */}
-            {filteredOther.length > 0 && (
-              <div className="language-group">
-                {!languageSearch.trim() && (
-                  <span className="language-group-label">More</span>
-                )}
-                <div className="language-grid">
-                  {filteredOther.map((lang) => (
-                    <label key={lang.code} className="language-option">
-                      <input
-                        type="checkbox"
-                        checked={languages.includes(lang.code)}
-                        onChange={() => handleLanguageToggle(lang.code)}
-                      />
-                      <span>{lang.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* No results - offer to add custom */}
-            {isCustomLanguageCandidate && (
-              <div className="language-no-results">
-                <span>No language found for "{searchTrimmed}"</span>
-                <button
-                  type="button"
-                  className="add-custom-language-btn"
-                  onClick={handleAddCustomLanguage}
-                >
-                  Add "{searchTrimmed}" as custom language
-                </button>
-              </div>
-            )}
-          </div>
-
-          <span className="settings-hint">
-            Search to filter, or type a custom language name and press Enter to add.
-          </span>
-        </div>
-
-        <div className="settings-field">
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={launchAtStartup}
-              onChange={(e) => setLaunchAtStartup(e.target.checked)}
-            />
-            <span>Launch at startup</span>
-          </label>
-          <span className="settings-hint">
-            Automatically start the app when you log in
-          </span>
-        </div>
-
-        <div className="settings-field">
-          <button
-            className="settings-btn settings-btn-secondary"
-            onClick={handleResetWelcome}
-            type="button"
-          >
-            Reset Welcome Screen
-          </button>
-          <span className="settings-hint">
-            Show the initial setup screen again
-          </span>
-        </div>
-
+              )}
+              <span className="settings-hint">
+                Automatically stop recording after a period of silence
+              </span>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="settings-footer">

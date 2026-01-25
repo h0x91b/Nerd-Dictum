@@ -1,6 +1,7 @@
 # Changelog
 
 [2026-01-25] UX — Add explicit cancel indication during transcription: hover shows ✕ icon over spinner, tooltip "Click to cancel", improved accessibility with aria-label
+[2026-01-25] UX — Split settings page into 4 tabs: General (API key, model, launch at startup), Languages, Appearance (theme), Advanced (speech domain, clarification, keywords, microphone, silence detection); improves navigation in large settings page
 [2026-01-25] UX — Add confirmation dialog when canceling settings with unsaved changes; prevents accidental data loss via Cancel button or window close
 [2026-01-25] UX — Improve language selection: add search field to filter languages, group by popularity (Popular first, then alphabetical), unified search+add UX for custom languages
 [2026-01-25] Bug — Fix race condition in transcribeWithRetry: abort existing transcription before starting new one, ensure atomic request ID assignment to prevent duplicate API calls under rapid user interaction
