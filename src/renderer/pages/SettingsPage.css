@@ -222,16 +222,65 @@
   box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.2);
 }
 
-.language-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+/* Language search input */
+.language-search {
+  margin-bottom: 8px;
+}
+
+.language-search input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.language-search input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.2);
+}
+
+.language-search input::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* Language groups container */
+.language-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   padding: 8px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-default);
   border-radius: 6px;
-  max-height: 120px;
+  max-height: 200px;
   overflow-y: auto;
+}
+
+.language-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.language-group-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-tertiary);
+  padding: 0 4px;
+}
+
+.language-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 4px;
 }
 
 .language-option {
@@ -341,30 +390,22 @@
   color: var(--color-error, #ef4444);
 }
 
-/* Custom language input */
-.custom-language-input {
+/* No results - add custom language */
+.language-no-results {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 8px;
-  margin-top: 8px;
+  padding: 12px;
+  text-align: center;
 }
 
-.custom-language-input input {
-  flex: 1;
-  padding: 8px 10px;
-  border: 1px solid var(--border-default);
-  border-radius: 6px;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
+.language-no-results span {
   font-size: 13px;
+  color: var(--text-secondary);
 }
 
-.custom-language-input input:focus {
-  outline: none;
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.2);
-}
-
-.add-language-btn {
+.add-custom-language-btn {
   padding: 8px 14px;
   border: 1px solid var(--accent-primary);
   border-radius: 6px;
@@ -376,13 +417,8 @@
   transition: background 0.15s ease;
 }
 
-.add-language-btn:hover:not(:disabled) {
+.add-custom-language-btn:hover {
   background: var(--accent-hover);
-}
-
-.add-language-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .settings-hint {

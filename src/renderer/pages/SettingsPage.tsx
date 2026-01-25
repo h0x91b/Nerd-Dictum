@@ -6,23 +6,75 @@ import { ApiKeyHelp } from '../components/ApiKeyHelp';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import './SettingsPage.css';
 
-const AVAILABLE_LANGUAGES: Array<{ code: string; name: string }> = [
+// Popular languages shown first (top 10 by native speakers)
+const POPULAR_LANGUAGES: Array<{ code: string; name: string }> = [
   { code: 'en', name: 'English' },
-  { code: 'ru', name: 'Russian' },
-  { code: 'he', name: 'Hebrew' },
+  { code: 'zh', name: 'Chinese' },
   { code: 'es', name: 'Spanish' },
+  { code: 'hi', name: 'Hindi' },
+  { code: 'ar', name: 'Arabic' },
+  { code: 'pt', name: 'Portuguese' },
+  { code: 'ru', name: 'Russian' },
+  { code: 'ja', name: 'Japanese' },
   { code: 'fr', name: 'French' },
   { code: 'de', name: 'German' },
-  { code: 'zh', name: 'Chinese' },
-  { code: 'ja', name: 'Japanese' },
-  { code: 'ko', name: 'Korean' },
-  { code: 'pt', name: 'Portuguese' },
-  { code: 'it', name: 'Italian' },
-  { code: 'ar', name: 'Arabic' },
-  { code: 'hi', name: 'Hindi' },
-  { code: 'uk', name: 'Ukrainian' },
-  { code: 'pl', name: 'Polish' },
 ];
+
+// Other languages in alphabetical order (top 50 total)
+const OTHER_LANGUAGES: Array<{ code: string; name: string }> = [
+  { code: 'af', name: 'Afrikaans' },
+  { code: 'sq', name: 'Albanian' },
+  { code: 'am', name: 'Amharic' },
+  { code: 'hy', name: 'Armenian' },
+  { code: 'az', name: 'Azerbaijani' },
+  { code: 'bn', name: 'Bengali' },
+  { code: 'bg', name: 'Bulgarian' },
+  { code: 'my', name: 'Burmese' },
+  { code: 'ca', name: 'Catalan' },
+  { code: 'hr', name: 'Croatian' },
+  { code: 'cs', name: 'Czech' },
+  { code: 'da', name: 'Danish' },
+  { code: 'nl', name: 'Dutch' },
+  { code: 'fi', name: 'Finnish' },
+  { code: 'ka', name: 'Georgian' },
+  { code: 'el', name: 'Greek' },
+  { code: 'gu', name: 'Gujarati' },
+  { code: 'he', name: 'Hebrew' },
+  { code: 'hu', name: 'Hungarian' },
+  { code: 'id', name: 'Indonesian' },
+  { code: 'it', name: 'Italian' },
+  { code: 'kn', name: 'Kannada' },
+  { code: 'kk', name: 'Kazakh' },
+  { code: 'ko', name: 'Korean' },
+  { code: 'lv', name: 'Latvian' },
+  { code: 'lt', name: 'Lithuanian' },
+  { code: 'mk', name: 'Macedonian' },
+  { code: 'ms', name: 'Malay' },
+  { code: 'ml', name: 'Malayalam' },
+  { code: 'mr', name: 'Marathi' },
+  { code: 'mn', name: 'Mongolian' },
+  { code: 'ne', name: 'Nepali' },
+  { code: 'no', name: 'Norwegian' },
+  { code: 'fa', name: 'Persian' },
+  { code: 'pl', name: 'Polish' },
+  { code: 'pa', name: 'Punjabi' },
+  { code: 'ro', name: 'Romanian' },
+  { code: 'sr', name: 'Serbian' },
+  { code: 'sk', name: 'Slovak' },
+  { code: 'sl', name: 'Slovenian' },
+  { code: 'sw', name: 'Swahili' },
+  { code: 'sv', name: 'Swedish' },
+  { code: 'ta', name: 'Tamil' },
+  { code: 'te', name: 'Telugu' },
+  { code: 'th', name: 'Thai' },
+  { code: 'tr', name: 'Turkish' },
+  { code: 'uk', name: 'Ukrainian' },
+  { code: 'ur', name: 'Urdu' },
+  { code: 'uz', name: 'Uzbek' },
+  { code: 'vi', name: 'Vietnamese' },
+];
+
+const AVAILABLE_LANGUAGES = [...POPULAR_LANGUAGES, ...OTHER_LANGUAGES];
 
 // Helper to get language name by code
 const getLanguageName = (code: string): string => {
@@ -65,7 +117,7 @@ export function SettingsPage() {
   const [clarificationEnabled, setClarificationEnabled] = useState(true);
   const [previousTranscriptContextEnabled, setPreviousTranscriptContextEnabled] = useState(true);
   const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
-  const [customLanguageInput, setCustomLanguageInput] = useState('');
+  const [languageSearch, setLanguageSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
@@ -211,12 +263,29 @@ export function SettingsPage() {
   };
 
   const handleAddCustomLanguage = () => {
-    const trimmed = customLanguageInput.trim();
+    const trimmed = languageSearch.trim();
     if (trimmed && !languages.includes(trimmed)) {
       setLanguages((prev) => [...prev, trimmed]);
-      setCustomLanguageInput('');
+      setLanguageSearch('');
     }
   };
+
+  // Filter languages based on search
+  const filterLanguages = (langList: typeof AVAILABLE_LANGUAGES) => {
+    if (!languageSearch.trim()) return langList;
+    const search = languageSearch.toLowerCase();
+    return langList.filter((lang) => lang.name.toLowerCase().includes(search));
+  };
+
+  const filteredPopular = filterLanguages(POPULAR_LANGUAGES);
+  const filteredOther = filterLanguages(OTHER_LANGUAGES);
+  const hasSearchResults = filteredPopular.length > 0 || filteredOther.length > 0;
+
+  // Check if search term could be a custom language
+  const searchTrimmed = languageSearch.trim();
+  const isCustomLanguageCandidate = searchTrimmed.length > 0 &&
+    !hasSearchResults &&
+    !languages.includes(searchTrimmed);
 
   const handleRemoveLanguage = (code: string) => {
     setLanguages((prev) => prev.filter((l) => l !== code));
@@ -520,7 +589,7 @@ export function SettingsPage() {
           {/* Selected languages with reordering */}
           {languages.length > 0 && (
             <div className="selected-languages">
-              <span className="selected-languages-label">Selected (drag to reorder):</span>
+              <span className="selected-languages-label">Selected (first is primary):</span>
               <div className="selected-languages-list">
                 {languages.map((code, index) => (
                   <div key={code} className="selected-language-item">
@@ -559,46 +628,83 @@ export function SettingsPage() {
             </div>
           )}
 
-          {/* Available languages grid */}
-          <div className="language-grid">
-            {AVAILABLE_LANGUAGES.map((lang) => (
-              <label key={lang.code} className="language-option">
-                <input
-                  type="checkbox"
-                  checked={languages.includes(lang.code)}
-                  onChange={() => handleLanguageToggle(lang.code)}
-                />
-                <span>{lang.name}</span>
-              </label>
-            ))}
-          </div>
-
-          {/* Custom language input */}
-          <div className="custom-language-input">
+          {/* Search input */}
+          <div className="language-search">
             <input
               type="text"
-              value={customLanguageInput}
-              onChange={(e) => setCustomLanguageInput(e.target.value)}
+              value={languageSearch}
+              onChange={(e) => setLanguageSearch(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                if (e.key === 'Enter' && isCustomLanguageCandidate) {
                   e.preventDefault();
                   handleAddCustomLanguage();
                 }
               }}
-              placeholder="Add custom language (e.g., Yiddish, Esperanto)"
+              placeholder="Search languages..."
             />
-            <button
-              type="button"
-              className="add-language-btn"
-              onClick={handleAddCustomLanguage}
-              disabled={!customLanguageInput.trim()}
-            >
-              Add
-            </button>
+          </div>
+
+          {/* Language groups */}
+          <div className="language-groups">
+            {/* Popular languages */}
+            {filteredPopular.length > 0 && (
+              <div className="language-group">
+                {!languageSearch.trim() && (
+                  <span className="language-group-label">Popular</span>
+                )}
+                <div className="language-grid">
+                  {filteredPopular.map((lang) => (
+                    <label key={lang.code} className="language-option">
+                      <input
+                        type="checkbox"
+                        checked={languages.includes(lang.code)}
+                        onChange={() => handleLanguageToggle(lang.code)}
+                      />
+                      <span>{lang.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Other languages */}
+            {filteredOther.length > 0 && (
+              <div className="language-group">
+                {!languageSearch.trim() && (
+                  <span className="language-group-label">More</span>
+                )}
+                <div className="language-grid">
+                  {filteredOther.map((lang) => (
+                    <label key={lang.code} className="language-option">
+                      <input
+                        type="checkbox"
+                        checked={languages.includes(lang.code)}
+                        onChange={() => handleLanguageToggle(lang.code)}
+                      />
+                      <span>{lang.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* No results - offer to add custom */}
+            {isCustomLanguageCandidate && (
+              <div className="language-no-results">
+                <span>No language found for "{searchTrimmed}"</span>
+                <button
+                  type="button"
+                  className="add-custom-language-btn"
+                  onClick={handleAddCustomLanguage}
+                >
+                  Add "{searchTrimmed}" as custom language
+                </button>
+              </div>
+            )}
           </div>
 
           <span className="settings-hint">
-            Select languages for better transcription. Order matters - first language is primary.
+            Search to filter, or type a custom language name and press Enter to add.
           </span>
         </div>
 

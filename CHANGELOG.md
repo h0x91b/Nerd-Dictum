@@ -1,6 +1,7 @@
 # Changelog
 
 [2026-01-25] UX — Add confirmation dialog when canceling settings with unsaved changes; prevents accidental data loss via Cancel button or window close
+[2026-01-25] UX — Improve language selection: add search field to filter languages, group by popularity (Popular first, then alphabetical), unified search+add UX for custom languages
 [2026-01-25] Bug — Fix race condition in transcribeWithRetry: abort existing transcription before starting new one, ensure atomic request ID assignment to prevent duplicate API calls under rapid user interaction
 [2026-01-25] Feature — Add "Use previous transcript as context" setting (enabled by default) to include the last transcription as context for Gemini API, improving accuracy for related speech
 [2026-01-25] Performance — Move update check and microphone permission request to background; UI now appears instantly on startup instead of waiting for these operations
