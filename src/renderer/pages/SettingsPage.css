@@ -19,6 +19,7 @@
 .settings-content {
   flex: 1;
   padding: 20px;
+  padding-bottom: 80px; /* Space for sticky footer */
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -448,8 +449,12 @@
   justify-content: flex-end;
   gap: 10px;
   padding: 16px 20px;
-  border-top: 1px solid var(--border-subtle);
+  border-top: 1px solid var(--border-default);
   background: var(--bg-secondary);
+  position: sticky;
+  bottom: 0;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10;
 }
 
 .settings-message {
