@@ -72,9 +72,6 @@ export function ApiKeyHelp() {
           <p className="api-key-help-warning">
             Use a personal Gmail account, not Google Workspace (enterprise).
           </p>
-          <p className="api-key-help-warning">
-            Use a personal Gmail account, not Google Workspace (enterprise).
-          </p>
         </div>
       )}
     </div>

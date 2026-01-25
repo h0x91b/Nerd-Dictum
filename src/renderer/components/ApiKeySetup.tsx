@@ -38,7 +38,8 @@ export function ApiKeySetup({ onApiKeySubmit }: ApiKeySetupProps) {
     <div className="api-key-setup">
       <div className="setup-header">
         <h1>Welcome!</h1>
-        <p>To use voice transcription, you need a Google Gemini API key from a <strong>personal Gmail account</strong> (not Google Workspace/enterprise).</p>
+        <p>To use voice transcription, you need a Google Gemini API key.</p>
+        <p className="setup-warning">Use a personal Gmail account, not Google Workspace (enterprise).</p>
       </div>
 
       <div className="setup-steps">
