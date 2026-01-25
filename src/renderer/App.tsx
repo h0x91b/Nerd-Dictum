@@ -333,9 +333,13 @@ export function App() {
                 ? 'Stop recording'
                 : 'Cancel transcription'
           }
+          title={state === 'transcribing' ? 'Click to cancel' : undefined}
         >
           {state === 'transcribing' ? (
-            <span className="spinner" />
+            <>
+              <span className="spinner" />
+              <span className="cancel-icon" aria-hidden="true">✕</span>
+            </>
           ) : state === 'success' ? (
             <svg
               viewBox="0 0 24 24"

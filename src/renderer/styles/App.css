@@ -106,6 +106,28 @@
   color: #1a1a1a;
 }
 
+.mic-button.transcribing:hover {
+  background: #f57c00;
+}
+
+.cancel-icon {
+  position: absolute;
+  font-size: 20px;
+  font-weight: bold;
+  color: #1a1a1a;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.mic-button.transcribing:hover .cancel-icon {
+  opacity: 1;
+}
+
+.mic-button.transcribing:hover .spinner {
+  opacity: 0.3;
+}
+
 .mic-button.success {
   background: var(--color-success, #4caf50);
   color: #1a1a1a;
@@ -158,6 +180,7 @@
   border-top-color: transparent;
   border-radius: 50%;
   animation: spin 1s linear infinite;
+  transition: opacity 0.15s ease;
 }
 
 @keyframes spin {
