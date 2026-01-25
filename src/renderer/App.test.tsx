@@ -67,6 +67,7 @@ const defaultSettings = {
   silenceDetectionEnabled: true,
   silenceDurationMs: 2500,
   launchAtStartup: false,
+  clarificationEnabled: true,
 };
 
 // Mock window.electronAPI

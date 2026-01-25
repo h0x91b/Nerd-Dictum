@@ -29,6 +29,7 @@ function buildTranscribeOptions(settings: AppSettings): TranscribeOptions {
   if (settings.customKeywords) {
     options.customKeywords = settings.customKeywords;
   }
+  options.clarificationEnabled = settings.clarificationEnabled ?? true;
   return options;
 }
 

@@ -35,6 +35,7 @@ interface AppSettings {
   silenceDetectionEnabled: boolean;
   silenceDurationMs: number;
   launchAtStartup: boolean;
+  clarificationEnabled: boolean;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -48,6 +49,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   silenceDetectionEnabled: true,
   silenceDurationMs: 2500,
   launchAtStartup: false,
+  clarificationEnabled: true,
 };
 
 function getSettingsPath(): string {
@@ -897,6 +899,7 @@ ipcMain.handle('get-settings', () => {
     silenceDetectionEnabled: appSettings.silenceDetectionEnabled,
     silenceDurationMs: appSettings.silenceDurationMs,
     launchAtStartup: openAtLogin,
+    clarificationEnabled: appSettings.clarificationEnabled,
   };
 });
 

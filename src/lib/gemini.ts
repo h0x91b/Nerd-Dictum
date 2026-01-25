@@ -71,6 +71,7 @@ export interface TranscribeOptions {
   speechDomain?: string;
   customDomainHint?: string;
   customKeywords?: string;
+  clarificationEnabled?: boolean;
 }
 
 export interface TranscribeRequestOptions extends TranscribeOptions {
@@ -175,6 +176,11 @@ Domain hint: ${options.customDomainHint}`;
   }
 
   let prompt = basePrompt;
+
+  // Add clarification instruction if enabled (default behavior)
+  if (options?.clarificationEnabled !== false) {
+    prompt += `\n\nClarification: Clean up speech disfluencies such as "uh", "um", "eh", stutters, false starts, and filler words. Produce clear, readable text while preserving the speaker's intended meaning.`;
+  }
 
   if (options?.languages && options.languages.length > 0) {
     const languageHint = `\n\nPrimary languages: ${options.languages.join(', ')}. The speaker may mix these languages.`;

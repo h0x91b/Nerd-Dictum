@@ -9,6 +9,7 @@ export interface AppSettings {
   silenceDetectionEnabled: boolean;
   silenceDurationMs: number;
   launchAtStartup: boolean;
+  clarificationEnabled: boolean;
 }
 
 export type MicrophonePermissionStatus = 'not-determined' | 'granted' | 'denied' | 'restricted' | 'unknown';
