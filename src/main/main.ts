@@ -233,7 +233,7 @@ function createInfoWindow() {
     const { workArea } = display;
     // Center the info window on the same display
     const width = 400;
-    const height = 380;
+    const height = 580;
     windowBounds = {
       x: Math.round(workArea.x + (workArea.width - width) / 2),
       y: Math.round(workArea.y + (workArea.height - height) / 2),
@@ -244,7 +244,7 @@ function createInfoWindow() {
 
   infoWindow = new BrowserWindow({
     width: 400,
-    height: 380,
+    height: 580,
     ...(windowBounds && { x: windowBounds.x, y: windowBounds.y }),
     frame: true,
     resizable: false,

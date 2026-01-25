@@ -7,9 +7,11 @@ export function InfoPage() {
 
       <p className="info-description">
         Voice recognition tuned for developers and technical speech.
-        Understands code terms, CLI commands, file paths, and tech jargon
+        Understands <strong>code terms</strong>, <strong>CLI commands</strong>, <strong>file paths</strong>, and tech jargon
         that regular dictation apps mess up.
       </p>
+
+      <div className="info-divider" />
 
       <div className="info-steps">
         <div className="info-step">
@@ -26,6 +28,11 @@ export function InfoPage() {
           <span className="step-icon">3</span>
           <p>Text is <strong>copied to clipboard</strong> automatically</p>
         </div>
+      </div>
+
+      <div className="info-cancel">
+        <span className="cancel-label">To cancel:</span>
+        <p>Click the mic again while transcribing to abort</p>
       </div>
 
       <div className="info-shortcut">
