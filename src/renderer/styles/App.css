@@ -43,7 +43,7 @@
 
 .grip-dots {
   display: block;
-  width: 20px;
+  width: 18px;
   height: 6px;
   background-image: radial-gradient(circle, #666 1.5px, transparent 1.5px);
   background-size: 6px 6px;
