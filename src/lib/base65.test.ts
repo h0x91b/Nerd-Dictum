@@ -73,6 +73,27 @@ describe('base65', () => {
       expect(decoded).toBe(input);
     });
 
+    test('string starting with null bytes', () => {
+      const input = '\x00\x00hello';
+      const encoded = encode(input);
+      const decoded = decode(encoded);
+      expect(decoded).toBe(input);
+    });
+
+    test('single null byte', () => {
+      const input = '\x00';
+      const encoded = encode(input);
+      const decoded = decode(encoded);
+      expect(decoded).toBe(input);
+    });
+
+    test('multiple null bytes only', () => {
+      const input = '\x00\x00\x00';
+      const encoded = encode(input);
+      const decoded = decode(encoded);
+      expect(decoded).toBe(input);
+    });
+
     test('all printable ASCII characters', () => {
       let input = '';
       for (let i = 32; i < 127; i++) {

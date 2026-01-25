@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { isPositionValid } from './window-position';
-import type { DisplayBounds, WindowPosition } from './window-position';
+import { isPositionValid, getDisplayBounds } from './window-position';
+import type { DisplayBounds, WindowPosition, DisplayLike } from './window-position';
 
 describe('window-position', () => {
   describe('isPositionValid', () => {
@@ -76,6 +76,46 @@ describe('window-position', () => {
       // x=1920 is outside the display (0-1919 inclusive)
       const position: WindowPosition = { x: 1920, y: 0, displayCount: 1 };
       expect(isPositionValid(position, 1, singleDisplay)).toBe(false);
+    });
+  });
+
+  describe('getDisplayBounds', () => {
+    it('should extract bounds from a single display', () => {
+      const displays: DisplayLike[] = [
+        { bounds: { x: 0, y: 0, width: 1920, height: 1080 } }
+      ];
+      const result = getDisplayBounds(displays);
+      expect(result).toEqual([{ x: 0, y: 0, width: 1920, height: 1080 }]);
+    });
+
+    it('should extract bounds from multiple displays', () => {
+      const displays: DisplayLike[] = [
+        { bounds: { x: 0, y: 0, width: 1920, height: 1080 } },
+        { bounds: { x: 1920, y: 0, width: 2560, height: 1440 } }
+      ];
+      const result = getDisplayBounds(displays);
+      expect(result).toEqual([
+        { x: 0, y: 0, width: 1920, height: 1080 },
+        { x: 1920, y: 0, width: 2560, height: 1440 }
+      ]);
+    });
+
+    it('should return empty array for no displays', () => {
+      const displays: DisplayLike[] = [];
+      const result = getDisplayBounds(displays);
+      expect(result).toEqual([]);
+    });
+
+    it('should handle displays with negative coordinates', () => {
+      const displays: DisplayLike[] = [
+        { bounds: { x: -1920, y: 0, width: 1920, height: 1080 } },
+        { bounds: { x: 0, y: 0, width: 1920, height: 1080 } }
+      ];
+      const result = getDisplayBounds(displays);
+      expect(result).toEqual([
+        { x: -1920, y: 0, width: 1920, height: 1080 },
+        { x: 0, y: 0, width: 1920, height: 1080 }
+      ]);
     });
   });
 });
