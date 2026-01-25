@@ -7,6 +7,7 @@ import electronLog from 'electron-log';
 import { decode as decodeBase65 } from '../lib/base65';
 import { getDisplayBounds, isPositionValid } from './window-position';
 import type { WindowPosition } from './window-position';
+import { captureCurrentClipboard, addTranscriptionToHistory, restoreClipboardEntry, getClipboardHistory, getEntryLabel } from './clipboard-history';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -430,6 +431,20 @@ function updateTrayMenu() {
     });
   }
 
+  // Build clipboard history submenu
+  const clipboardHistory = getClipboardHistory();
+  const clipboardSubmenu: Electron.MenuItemConstructorOptions[] = clipboardHistory.length > 0
+    ? clipboardHistory.map((entry, index) => ({
+        label: getEntryLabel(entry),
+        click: () => {
+          restoreClipboardEntry(entry.id);
+          log('[Clipboard] Restored entry:', entry.id);
+        },
+        // Add keyboard accelerator for first item (previous clipboard)
+        ...(index === 0 ? { accelerator: 'CommandOrControl+Shift+V' } : {}),
+      }))
+    : [{ label: 'No history', enabled: false }];
+
   const contextMenu = Menu.buildFromTemplate([
     {
       label: `Nerd Dictum v${app.getVersion()}`,
@@ -449,6 +464,11 @@ function updateTrayMenu() {
           updateTrayMenu();
         }
       },
+    },
+    { type: 'separator' },
+    {
+      label: 'Previous Clipboard',
+      submenu: clipboardSubmenu,
     },
     { type: 'separator' },
     {
@@ -496,6 +516,7 @@ function updateTrayMenu() {
 
 // Default shortcut: Cmd+Shift+R on macOS, Ctrl+Shift+R on other platforms
 const TOGGLE_RECORDING_SHORTCUT = process.platform === 'darwin' ? 'CommandOrControl+Shift+R' : 'CommandOrControl+Shift+R';
+const RESTORE_CLIPBOARD_SHORTCUT = 'CommandOrControl+Shift+V';
 
 function registerGlobalShortcuts() {
   const registered = globalShortcut.register(TOGGLE_RECORDING_SHORTCUT, () => {
@@ -504,8 +525,20 @@ function registerGlobalShortcuts() {
     }
   });
 
+  // Register shortcut to restore previous clipboard
+  const clipboardRestoreRegistered = globalShortcut.register(RESTORE_CLIPBOARD_SHORTCUT, () => {
+    const history = getClipboardHistory();
+    if (history.length > 0) {
+      restoreClipboardEntry(history[0].id);
+      log('[Clipboard] Restored previous clipboard via shortcut');
+    }
+  });
+
   if (!registered) {
     log('[Shortcut] Failed to register global shortcut:', TOGGLE_RECORDING_SHORTCUT);
+  }
+  if (!clipboardRestoreRegistered) {
+    log('[Shortcut] Failed to register clipboard restore shortcut:', RESTORE_CLIPBOARD_SHORTCUT);
   }
 }
 
@@ -828,7 +861,13 @@ app.on('activate', () => {
 
 // IPC handlers
 ipcMain.handle('copy-to-clipboard', (_event, text: string) => {
+  // Capture current clipboard content before overwriting
+  captureCurrentClipboard();
   clipboard.writeText(text);
+  // Add our transcribed text to history too
+  addTranscriptionToHistory(text);
+  // Update tray menu to show new history
+  updateTrayMenu();
   return true;
 });
 
