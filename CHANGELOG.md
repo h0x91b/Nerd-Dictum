@@ -1,5 +1,6 @@
 # Changelog
 
+[2026-01-25] Bug — Fix race condition in transcribeWithRetry: abort existing transcription before starting new one, ensure atomic request ID assignment to prevent duplicate API calls under rapid user interaction
 [2026-01-25] Feature — Add "Use previous transcript as context" setting (enabled by default) to include the last transcription as context for Gemini API, improving accuracy for related speech
 [2026-01-25] Performance — Move update check and microphone permission request to background; UI now appears instantly on startup instead of waiting for these operations
 [2026-01-25 15:30] Feature — Add Clarification setting (enabled by default) to clean up speech disfluencies (uh, um, stutters, filler words) for clearer transcription output

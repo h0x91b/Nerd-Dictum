@@ -85,9 +85,16 @@ export function App() {
   }, [showMessage]);
 
   const transcribeWithRetry = useCallback(async (audioBase64: string) => {
+    // Increment first, atomically determine our ID
+    transcribeRequestIdRef.current += 1;
+    const requestId = transcribeRequestIdRef.current;
+
+    // Cancel any existing transcription before starting new one
+    if (transcribeAbortRef.current) {
+      transcribeAbortRef.current.abort();
+    }
+
     setState('transcribing');
-    const requestId = transcribeRequestIdRef.current + 1;
-    transcribeRequestIdRef.current = requestId;
     const controller = new AbortController();
     transcribeAbortRef.current = controller;
 
