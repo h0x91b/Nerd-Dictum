@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'bun:test';
 import { isPositionValid, getDisplayBounds } from './window-position';
 import type { DisplayBounds, WindowPosition, DisplayLike } from './window-position';
 

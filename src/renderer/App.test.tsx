@@ -68,6 +68,7 @@ const defaultSettings = {
   silenceDurationMs: 2500,
   launchAtStartup: false,
   clarificationEnabled: true,
+  previousTranscriptContextEnabled: false,
 };
 
 // Mock window.electronAPI
@@ -82,9 +83,12 @@ const mockElectronAPI = {
   saveSettings: mock(() => Promise.resolve(true)),
   openSettingsWindow: mock(() => Promise.resolve(true)),
   closeSettingsWindow: mock(() => Promise.resolve(true)),
+  openInfoWindow: mock(() => Promise.resolve(true)),
   getMicrophonePermissionStatus: mock(() => Promise.resolve('granted' as const)),
   requestMicrophonePermission: mock(() => Promise.resolve(true)),
+  openExternalUrl: mock(() => Promise.resolve(true)),
   getAppVersion: mock(() => Promise.resolve('0.3.1')),
+  getRecentTranscript: mock(() => Promise.resolve(null)),
 };
 
 describe('App', () => {
@@ -142,9 +146,12 @@ describe('App', () => {
       }),
       openSettingsWindow: mock(() => Promise.resolve(true)),
       closeSettingsWindow: mock(() => Promise.resolve(true)),
+      openInfoWindow: mock(() => Promise.resolve(true)),
       getMicrophonePermissionStatus: mock(() => Promise.resolve('granted' as const)),
       requestMicrophonePermission: mock(() => Promise.resolve(true)),
+      openExternalUrl: mock(() => Promise.resolve(true)),
       getAppVersion: mock(() => Promise.resolve('0.3.1')),
+      getRecentTranscript: mock(() => Promise.resolve(null)),
     };
   });
 

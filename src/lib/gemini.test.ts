@@ -25,7 +25,7 @@ describe('transcribeAudio', () => {
         status: 200,
         json: () => Promise.resolve(mockResponse),
       } as Response)
-    );
+    ) as unknown as typeof fetch;
 
     const result = await transcribeAudio('base64audio', 'test-api-key');
 
@@ -40,7 +40,7 @@ describe('transcribeAudio', () => {
         status: 401,
         json: () => Promise.resolve({ error: { message: 'Invalid API key' } }),
       } as Response)
-    );
+    ) as unknown as typeof fetch;
 
     await expect(transcribeAudio('base64audio', 'invalid-key')).rejects.toThrow(
       'Invalid or missing API key'
@@ -58,7 +58,7 @@ describe('transcribeAudio', () => {
         status: 200,
         json: () => Promise.resolve(mockResponse),
       } as Response)
-    );
+    ) as unknown as typeof fetch;
 
     await expect(transcribeAudio('base64audio', 'test-api-key')).rejects.toThrow(
       'Empty response from API'
@@ -88,7 +88,7 @@ describe('transcribeAudio', () => {
           { once: true }
         );
       }) as Promise<Response>;
-    });
+    }) as unknown as typeof fetch;
 
     const controller = new AbortController();
     const promise = transcribeAudio(
@@ -125,7 +125,7 @@ describe('transcribeAudio', () => {
         status: 200,
         json: () => Promise.resolve(mockResponse),
       } as Response);
-    });
+    }) as unknown as typeof fetch;
 
     await transcribeAudio(
       'base64audio',
@@ -146,7 +146,7 @@ describe('transcribeAudio', () => {
         status: 403,
         json: () => Promise.resolve({ error: { message: 'Forbidden' } }),
       } as Response)
-    );
+    ) as unknown as typeof fetch;
 
     await expect(transcribeAudio('base64audio', 'test-key')).rejects.toThrow(
       'Invalid or missing API key'
@@ -160,7 +160,7 @@ describe('transcribeAudio', () => {
         status: 400,
         json: () => Promise.resolve({ error: { message: 'Bad request' } }),
       } as Response)
-    );
+    ) as unknown as typeof fetch;
 
     await expect(transcribeAudio('base64audio', 'test-key')).rejects.toThrow(
       'Bad request'
@@ -174,7 +174,7 @@ describe('transcribeAudio', () => {
         status: 422,
         json: () => Promise.resolve({}),
       } as Response)
-    );
+    ) as unknown as typeof fetch;
 
     await expect(transcribeAudio('base64audio', 'test-key')).rejects.toThrow(
       'Bad request'
@@ -188,7 +188,7 @@ describe('transcribeAudio', () => {
         status: 500,
         json: () => Promise.resolve({}),
       } as Response)
-    );
+    ) as unknown as typeof fetch;
 
     await expect(transcribeAudio('base64audio', 'test-key')).rejects.toThrow(
       'HTTP error: 500'
@@ -209,7 +209,7 @@ describe('transcribeAudio', () => {
         status: 200,
         json: () => Promise.resolve(mockResponse),
       } as Response)
-    );
+    ) as unknown as typeof fetch;
 
     await expect(transcribeAudio('base64audio', 'test-key')).rejects.toThrow(
       'Model overloaded'
@@ -237,7 +237,7 @@ describe('transcribeAudio', () => {
         status: 200,
         json: () => Promise.resolve(mockResponse),
       } as Response);
-    });
+    }) as unknown as typeof fetch;
 
     await transcribeAudio(
       'base64audio',
@@ -270,7 +270,7 @@ describe('transcribeAudio', () => {
         status: 200,
         json: () => Promise.resolve(mockResponse),
       } as Response);
-    });
+    }) as unknown as typeof fetch;
 
     await transcribeAudio(
       'base64audio',
@@ -304,7 +304,7 @@ describe('transcribeAudio', () => {
         status: 200,
         json: () => Promise.resolve(mockResponse),
       } as Response);
-    });
+    }) as unknown as typeof fetch;
 
     await transcribeAudio(
       'base64audio',
@@ -338,7 +338,7 @@ describe('transcribeAudio', () => {
         status: 200,
         json: () => Promise.resolve(mockResponse),
       } as Response);
-    });
+    }) as unknown as typeof fetch;
 
     await transcribeAudio(
       'base64audio',
@@ -374,7 +374,7 @@ describe('transcribeAudio', () => {
         status: 200,
         json: () => Promise.resolve(mockResponse),
       } as Response);
-    });
+    }) as unknown as typeof fetch;
 
     const result = await transcribeAudio('base64audio', 'test-api-key');
 
@@ -392,7 +392,7 @@ describe('transcribeAudio', () => {
         status: 401,
         json: () => Promise.resolve({ error: { message: 'Invalid API key' } }),
       } as Response);
-    });
+    }) as unknown as typeof fetch;
 
     await expect(transcribeAudio('base64audio', 'test-key')).rejects.toThrow(
       'Invalid or missing API key'
@@ -432,7 +432,7 @@ describe('transcribeAudio', () => {
         status: 200,
         json: () => Promise.resolve(mockResponse),
       } as Response);
-    });
+    }) as unknown as typeof fetch;
 
     await transcribeAudio(
       'base64audio',
@@ -467,7 +467,7 @@ describe('transcribeAudio', () => {
         status: 200,
         json: () => Promise.resolve(mockResponse),
       } as Response);
-    });
+    }) as unknown as typeof fetch;
 
     await transcribeAudio(
       'base64audio',
@@ -502,7 +502,7 @@ describe('transcribeAudio', () => {
         status: 200,
         json: () => Promise.resolve(mockResponse),
       } as Response);
-    });
+    }) as unknown as typeof fetch;
 
     await transcribeAudio(
       'base64audio',

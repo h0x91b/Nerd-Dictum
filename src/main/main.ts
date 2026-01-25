@@ -285,7 +285,6 @@ function createWindow() {
     resizable: false,
     skipTaskbar: true,
     hasShadow: false,
-    visibleOnAllWorkspaces: true,
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.js'),
       contextIsolation: true,
