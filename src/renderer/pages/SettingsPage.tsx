@@ -5,7 +5,7 @@ import { ApiKeySetup } from '../components/ApiKeySetup';
 import { ApiKeyHelp } from '../components/ApiKeyHelp';
 import './SettingsPage.css';
 
-const AVAILABLE_LANGUAGES = [
+const AVAILABLE_LANGUAGES: Array<{ code: string; name: string }> = [
   { code: 'en', name: 'English' },
   { code: 'ru', name: 'Russian' },
   { code: 'he', name: 'Hebrew' },
@@ -22,6 +22,12 @@ const AVAILABLE_LANGUAGES = [
   { code: 'uk', name: 'Ukrainian' },
   { code: 'pl', name: 'Polish' },
 ];
+
+// Helper to get language name by code
+const getLanguageName = (code: string): string => {
+  const lang = AVAILABLE_LANGUAGES.find((l) => l.code === code);
+  return lang ? lang.name : code; // Return code as name for custom languages
+};
 
 const SPEECH_DOMAINS = [
   { id: 'programming', name: 'Programming', hint: 'Code, APIs, technical terms' },
@@ -56,6 +62,7 @@ export function SettingsPage() {
   const [silenceDurationMs, setSilenceDurationMs] = useState(2500);
   const [launchAtStartup, setLaunchAtStartup] = useState(false);
   const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
+  const [customLanguageInput, setCustomLanguageInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
@@ -115,6 +122,28 @@ export function SettingsPage() {
     setLanguages((prev) =>
       prev.includes(code) ? prev.filter((l) => l !== code) : [...prev, code]
     );
+  };
+
+  const handleAddCustomLanguage = () => {
+    const trimmed = customLanguageInput.trim();
+    if (trimmed && !languages.includes(trimmed)) {
+      setLanguages((prev) => [...prev, trimmed]);
+      setCustomLanguageInput('');
+    }
+  };
+
+  const handleRemoveLanguage = (code: string) => {
+    setLanguages((prev) => prev.filter((l) => l !== code));
+  };
+
+  const handleMoveLanguage = (index: number, direction: 'up' | 'down') => {
+    setLanguages((prev) => {
+      const newList = [...prev];
+      const newIndex = direction === 'up' ? index - 1 : index + 1;
+      if (newIndex < 0 || newIndex >= newList.length) return prev;
+      [newList[index], newList[newIndex]] = [newList[newIndex], newList[index]];
+      return newList;
+    });
   };
 
   const handleCustomHintChange = (value: string) => {
@@ -338,6 +367,50 @@ export function SettingsPage() {
 
         <div className="settings-field">
           <label>Primary Languages</label>
+
+          {/* Selected languages with reordering */}
+          {languages.length > 0 && (
+            <div className="selected-languages">
+              <span className="selected-languages-label">Selected (drag to reorder):</span>
+              <div className="selected-languages-list">
+                {languages.map((code, index) => (
+                  <div key={code} className="selected-language-item">
+                    <span className="selected-language-name">{getLanguageName(code)}</span>
+                    <div className="selected-language-controls">
+                      <button
+                        type="button"
+                        className="language-move-btn"
+                        onClick={() => handleMoveLanguage(index, 'up')}
+                        disabled={index === 0}
+                        title="Move up"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className="language-move-btn"
+                        onClick={() => handleMoveLanguage(index, 'down')}
+                        disabled={index === languages.length - 1}
+                        title="Move down"
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        className="language-remove-btn"
+                        onClick={() => handleRemoveLanguage(code)}
+                        title="Remove"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Available languages grid */}
           <div className="language-grid">
             {AVAILABLE_LANGUAGES.map((lang) => (
               <label key={lang.code} className="language-option">
@@ -350,8 +423,33 @@ export function SettingsPage() {
               </label>
             ))}
           </div>
+
+          {/* Custom language input */}
+          <div className="custom-language-input">
+            <input
+              type="text"
+              value={customLanguageInput}
+              onChange={(e) => setCustomLanguageInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddCustomLanguage();
+                }
+              }}
+              placeholder="Add custom language (e.g., Yiddish, Esperanto)"
+            />
+            <button
+              type="button"
+              className="add-language-btn"
+              onClick={handleAddCustomLanguage}
+              disabled={!customLanguageInput.trim()}
+            >
+              Add
+            </button>
+          </div>
+
           <span className="settings-hint">
-            Select your primary languages for better transcription accuracy
+            Select languages for better transcription. Order matters - first language is primary.
           </span>
         </div>
 
