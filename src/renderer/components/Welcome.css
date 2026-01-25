@@ -1,4 +1,4 @@
-.api-key-setup {
+.welcome {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -165,8 +165,8 @@
   max-width: 300px;
 }
 
-.setup-warning {
-  margin: 8px 0 0 0;
+.setup-header .setup-warning {
+  margin: 16px 0 0 0;
   padding: 8px 12px;
   background: rgba(239, 68, 68, 0.15);
   border: 1px solid rgba(239, 68, 68, 0.4);

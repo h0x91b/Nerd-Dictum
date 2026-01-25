@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import './ApiKeySetup.css';
+import './Welcome.css';
 
-interface ApiKeySetupProps {
+interface WelcomeProps {
   onApiKeySubmit: (apiKey: string) => void;
+  initialApiKey?: string;
 }
 
-export function ApiKeySetup({ onApiKeySubmit }: ApiKeySetupProps) {
-  const [apiKey, setApiKey] = useState('');
+export function Welcome({ onApiKeySubmit, initialApiKey = '' }: WelcomeProps) {
+  const [apiKey, setApiKey] = useState(initialApiKey);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleOpenAIStudio = () => {
@@ -22,7 +23,7 @@ export function ApiKeySetup({ onApiKeySubmit }: ApiKeySetupProps) {
       await window.electronAPI.saveSettings({ apiKey: trimmedKey });
       onApiKeySubmit(trimmedKey);
     } catch (error) {
-      console.error('[ApiKeySetup] Failed to save API key:', error);
+      console.error('[Welcome] Failed to save API key:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -35,7 +36,7 @@ export function ApiKeySetup({ onApiKeySubmit }: ApiKeySetupProps) {
   };
 
   return (
-    <div className="api-key-setup">
+    <div className="welcome">
       <div className="setup-header">
         <h1>Welcome!</h1>
         <p>To use voice transcription, you need a Google Gemini API key.</p>

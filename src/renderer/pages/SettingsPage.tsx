@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { AppSettings } from '../types/electron';
 import { useTheme, ThemeMode } from '../contexts/ThemeContext';
-import { ApiKeySetup } from '../components/ApiKeySetup';
+import { Welcome } from '../components/Welcome';
 import { ApiKeyHelp } from '../components/ApiKeyHelp';
 import './SettingsPage.css';
 
@@ -66,6 +66,7 @@ export function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
+  const [showWelcome, setShowWelcome] = useState(false);
 
   const themeOptions: Array<{ value: ThemeMode; label: string; previewTheme: 'dark' | 'light' }> = [
     { value: 'light', label: 'Light', previewTheme: 'light' },
@@ -197,6 +198,11 @@ export function SettingsPage() {
   // Show onboarding if no API key is set
   const handleApiKeySubmit = (newApiKey: string) => {
     setApiKey(newApiKey);
+    setShowWelcome(false);
+  };
+
+  const handleResetWelcome = () => {
+    setShowWelcome(true);
   };
 
   if (isLoading) {
@@ -207,9 +213,9 @@ export function SettingsPage() {
     );
   }
 
-  // Show onboarding screen if no API key
-  if (!apiKey) {
-    return <ApiKeySetup onApiKeySubmit={handleApiKeySubmit} />;
+  // Show Welcome screen if no API key or if explicitly requested
+  if (!apiKey || showWelcome) {
+    return <Welcome onApiKeySubmit={handleApiKeySubmit} initialApiKey={apiKey} />;
   }
 
   return (
@@ -464,6 +470,19 @@ export function SettingsPage() {
           </label>
           <span className="settings-hint">
             Automatically start the app when you log in
+          </span>
+        </div>
+
+        <div className="settings-field">
+          <button
+            className="settings-btn settings-btn-secondary"
+            onClick={handleResetWelcome}
+            type="button"
+          >
+            Reset Welcome Screen
+          </button>
+          <span className="settings-hint">
+            Show the initial setup screen again
           </span>
         </div>
 

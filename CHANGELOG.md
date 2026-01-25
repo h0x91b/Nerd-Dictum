@@ -1,6 +1,7 @@
 # Changelog
 
 [2026-01-25 12:00] Feature — Add custom language input and reorderable selected languages list; users can now add any language and arrange priority order
+[2026-01-25] Feature — Rename onboarding screen to "Welcome"; add "Reset Welcome Screen" button in Settings to re-show it
 [2026-01-24 21:30] Bug — Fix macOS microphone indicator staying active after recording stops; add cleanup on component unmount and window close
 [2026-01-24 00:25] Bug — Fix auto-updater not quitting app after user clicks "Restart Now"; add tray/window cleanup, proper quitAndInstall args, and 5-second force quit timeout
 [2026-01-20 12:40] Feature — Initial project skeleton with Electron + React + Vite setup
