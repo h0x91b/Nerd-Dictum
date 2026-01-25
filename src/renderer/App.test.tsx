@@ -71,8 +71,11 @@ const defaultSettings = {
   previousTranscriptContextEnabled: false,
 };
 
-// Mock window.electronAPI
-const mockElectronAPI = {
+/**
+ * Creates a complete mock ElectronAPI with all required methods.
+ * Use overrides parameter to customize specific methods for individual tests.
+ */
+const createMockElectronAPI = (overrides: Partial<typeof window.electronAPI> = {}) => ({
   getApiKey: mock(() => Promise.resolve('test-api-key')),
   getModel: mock(() => Promise.resolve('gemini-3-flash-preview')),
   copyToClipboard: mock(() => Promise.resolve(true)),
@@ -89,7 +92,8 @@ const mockElectronAPI = {
   openExternalUrl: mock(() => Promise.resolve(true)),
   getAppVersion: mock(() => Promise.resolve('0.3.1')),
   getRecentTranscript: mock(() => Promise.resolve(null)),
-};
+  ...overrides,
+});
 
 describe('App', () => {
   let originalMediaDevices: MediaDevices | undefined;
@@ -134,25 +138,8 @@ describe('App', () => {
       () => createMockAudioContext()
     );
 
-    // Mock electronAPI with settings methods
-    window.electronAPI = {
-      copyToClipboard: mock(() => Promise.resolve(true)),
-      getApiKey: mock(() => Promise.resolve('test-api-key')),
-      getModel: mock(() => Promise.resolve('gemini-3-flash-preview')),
-      getSettings: mock(() => Promise.resolve({ ...defaultSettings })),
-      saveSettings: mock(() => Promise.resolve(true)),
-      onToggleRecording: mock((callback: () => void) => {
-        return () => {};
-      }),
-      openSettingsWindow: mock(() => Promise.resolve(true)),
-      closeSettingsWindow: mock(() => Promise.resolve(true)),
-      openInfoWindow: mock(() => Promise.resolve(true)),
-      getMicrophonePermissionStatus: mock(() => Promise.resolve('granted' as const)),
-      requestMicrophonePermission: mock(() => Promise.resolve(true)),
-      openExternalUrl: mock(() => Promise.resolve(true)),
-      getAppVersion: mock(() => Promise.resolve('0.3.1')),
-      getRecentTranscript: mock(() => Promise.resolve(null)),
-    };
+    // Mock electronAPI with all methods
+    window.electronAPI = createMockElectronAPI();
   });
 
   afterEach(() => {
@@ -180,8 +167,10 @@ describe('App', () => {
     }
   });
 
-  it('should render microphone button in idle state', () => {
-    render(<App />);
+  it('should render microphone button in idle state', async () => {
+    await act(async () => {
+      render(<App />);
+    });
 
     const button = screen.getByRole('button', { name: /start recording/i });
     expect(button).toBeDefined();
@@ -189,10 +178,15 @@ describe('App', () => {
   });
 
   it('should switch to recording state on click', async () => {
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
 
     const button = screen.getByRole('button', { name: /start recording/i });
-    fireEvent.click(button);
+
+    await act(async () => {
+      fireEvent.click(button);
+    });
 
     await waitFor(() => {
       const recordingButton = screen.getByRole('button', { name: /stop recording/i });
@@ -201,22 +195,28 @@ describe('App', () => {
     });
   });
 
-  it('should have mic-button class on button', () => {
-    render(<App />);
+  it('should have mic-button class on button', async () => {
+    await act(async () => {
+      render(<App />);
+    });
 
     const button = screen.getByRole('button', { name: /start recording/i });
     expect(button.className).toContain('mic-button');
   });
 
-  it('should have widget container for drag region', () => {
-    render(<App />);
+  it('should have widget container for drag region', async () => {
+    await act(async () => {
+      render(<App />);
+    });
 
     const widget = document.querySelector('.widget');
     expect(widget).toBeDefined();
   });
 
-  it('should render settings button', () => {
-    render(<App />);
+  it('should render settings button', async () => {
+    await act(async () => {
+      render(<App />);
+    });
 
     const settingsButton = screen.getByRole('button', { name: /open settings/i });
     expect(settingsButton).toBeDefined();
@@ -236,10 +236,15 @@ describe('App', () => {
         configurable: true,
       });
 
-      render(<App />);
+      await act(async () => {
+        render(<App />);
+      });
 
       const button = screen.getByRole('button', { name: /start recording/i });
-      fireEvent.click(button);
+
+      await act(async () => {
+        fireEvent.click(button);
+      });
 
       await waitFor(() => {
         const errorMessage = screen.getByText('Microphone access denied');
@@ -261,10 +266,15 @@ describe('App', () => {
         configurable: true,
       });
 
-      render(<App />);
+      await act(async () => {
+        render(<App />);
+      });
 
       const button = screen.getByRole('button', { name: /start recording/i });
-      fireEvent.click(button);
+
+      await act(async () => {
+        fireEvent.click(button);
+      });
 
       await waitFor(() => {
         const retryHint = screen.getByText('(tap to retry)');
@@ -285,10 +295,15 @@ describe('App', () => {
         configurable: true,
       });
 
-      render(<App />);
+      await act(async () => {
+        render(<App />);
+      });
 
       const button = screen.getByRole('button', { name: /start recording/i });
-      fireEvent.click(button);
+
+      await act(async () => {
+        fireEvent.click(button);
+      });
 
       await waitFor(() => {
         const errorMessage = screen.getByText('No microphone found');
@@ -302,7 +317,9 @@ describe('App', () => {
     it('should have success class on flash message when copy succeeds', async () => {
       // This test verifies the success message styling
       // When transcription succeeds, the message should have 'success' class
-      render(<App />);
+      await act(async () => {
+        render(<App />);
+      });
 
       // Verify the component renders correctly
       const button = screen.getByRole('button', { name: /start recording/i });
@@ -322,10 +339,15 @@ describe('App', () => {
         configurable: true,
       });
 
-      render(<App />);
+      await act(async () => {
+        render(<App />);
+      });
 
       const button = screen.getByRole('button', { name: /start recording/i });
-      fireEvent.click(button);
+
+      await act(async () => {
+        fireEvent.click(button);
+      });
 
       // After error, button should return to idle state
       await waitFor(() => {
@@ -337,16 +359,20 @@ describe('App', () => {
 
     it('should show error message for missing API key', async () => {
       // Mock electronAPI to return no API key
-      window.electronAPI = {
-        ...window.electronAPI,
+      window.electronAPI = createMockElectronAPI({
         getApiKey: mock(() => Promise.resolve('')),
         getSettings: mock(() => Promise.resolve({ ...defaultSettings, apiKey: '' })),
-      };
+      });
 
-      render(<App />);
+      await act(async () => {
+        render(<App />);
+      });
 
       const button = screen.getByRole('button', { name: /start recording/i });
-      fireEvent.click(button);
+
+      await act(async () => {
+        fireEvent.click(button);
+      });
 
       // Wait for recording state
       await waitFor(() => {
@@ -371,8 +397,13 @@ describe('App', () => {
         configurable: true,
       });
 
-      render(<App />);
-      fireEvent.click(screen.getByRole('button', { name: /start recording/i }));
+      await act(async () => {
+        render(<App />);
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /start recording/i }));
+      });
 
       await waitFor(() => {
         const flashMessage = document.querySelector('.flash-message');
@@ -394,8 +425,13 @@ describe('App', () => {
         configurable: true,
       });
 
-      render(<App />);
-      fireEvent.click(screen.getByRole('button', { name: /start recording/i }));
+      await act(async () => {
+        render(<App />);
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /start recording/i }));
+      });
 
       await waitFor(() => {
         const flashMessage = document.querySelector('.flash-message');
@@ -417,8 +453,13 @@ describe('App', () => {
         configurable: true,
       });
 
-      render(<App />);
-      fireEvent.click(screen.getByRole('button', { name: /start recording/i }));
+      await act(async () => {
+        render(<App />);
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /start recording/i }));
+      });
 
       await waitFor(() => {
         const flashMessage = document.querySelector('.flash-message');
@@ -439,8 +480,13 @@ describe('App', () => {
         configurable: true,
       });
 
-      render(<App />);
-      fireEvent.click(screen.getByRole('button', { name: /start recording/i }));
+      await act(async () => {
+        render(<App />);
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /start recording/i }));
+      });
 
       await waitFor(() => {
         const flashMessage = document.querySelector('.flash-message');
@@ -462,8 +508,13 @@ describe('App', () => {
         configurable: true,
       });
 
-      render(<App />);
-      fireEvent.click(screen.getByRole('button', { name: /start recording/i }));
+      await act(async () => {
+        render(<App />);
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /start recording/i }));
+      });
 
       await waitFor(() => {
         expect(screen.getByText('Microphone access denied')).toBeDefined();
@@ -482,8 +533,13 @@ describe('App', () => {
         configurable: true,
       });
 
-      render(<App />);
-      fireEvent.click(screen.getByRole('button', { name: /start recording/i }));
+      await act(async () => {
+        render(<App />);
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /start recording/i }));
+      });
 
       await waitFor(() => {
         expect(screen.getByText('No microphone found')).toBeDefined();
@@ -540,11 +596,16 @@ describe('App', () => {
         () => mockWorkletNode
       );
 
-      render(<App />);
+      await act(async () => {
+        render(<App />);
+      });
 
       // Start recording
       const button = screen.getByRole('button', { name: /start recording/i });
-      fireEvent.click(button);
+
+      await act(async () => {
+        fireEvent.click(button);
+      });
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /stop recording/i })).toBeDefined();
@@ -562,7 +623,9 @@ describe('App', () => {
       // Process many chunks of non-silent audio
       for (let i = 0; i < 20; i++) {
         currentTime += 200;
-        capturedPortOnMessage!({ data: { type: 'audio', data: nonSilentBuffer } } as MessageEvent);
+        await act(async () => {
+          capturedPortOnMessage!({ data: { type: 'audio', data: nonSilentBuffer } } as MessageEvent);
+        });
       }
 
       Date.now = originalDateNow;
@@ -576,16 +639,17 @@ describe('App', () => {
   });
 
   describe('keyboard shortcut', () => {
-    it('should register toggle-recording listener on mount', () => {
+    it('should register toggle-recording listener on mount', async () => {
       const mockOnToggleRecording = mock((callback: () => void) => {
         return () => {};
       });
-      window.electronAPI = {
-        ...mockElectronAPI,
+      window.electronAPI = createMockElectronAPI({
         onToggleRecording: mockOnToggleRecording,
-      };
+      });
 
-      render(<App />);
+      await act(async () => {
+        render(<App />);
+      });
 
       expect(mockOnToggleRecording).toHaveBeenCalled();
     });
@@ -596,12 +660,13 @@ describe('App', () => {
         capturedCallback = callback;
         return () => {};
       });
-      window.electronAPI = {
-        ...mockElectronAPI,
+      window.electronAPI = createMockElectronAPI({
         onToggleRecording: mockOnToggleRecording,
-      };
+      });
 
-      render(<App />);
+      await act(async () => {
+        render(<App />);
+      });
 
       // Verify button is in idle state
       const button = screen.getByRole('button', { name: /start recording/i });
@@ -609,7 +674,10 @@ describe('App', () => {
 
       // Simulate global shortcut trigger
       expect(capturedCallback).not.toBeNull();
-      capturedCallback!();
+
+      await act(async () => {
+        capturedCallback!();
+      });
 
       // Verify button switches to recording state
       await waitFor(() => {
