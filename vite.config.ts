@@ -18,6 +18,7 @@ export default defineConfig({
         main: resolve(__dirname, 'src/renderer/index.html'),
         settings: resolve(__dirname, 'src/renderer/settings.html'),
         info: resolve(__dirname, 'src/renderer/info.html'),
+        hide: resolve(__dirname, 'src/renderer/hide.html'),
       },
     },
   },

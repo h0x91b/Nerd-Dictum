@@ -6,6 +6,7 @@ import { classifyError, ClassifiedError } from '../lib/errors';
 import { playSuccessSound, playErrorSound } from '../lib/sounds';
 import { SettingsButton } from './components/Settings';
 import { InfoButton } from './components/InfoButton';
+import { HideButton } from './components/HideButton';
 import { AudioLevelRing } from './components/AudioLevelRing';
 import type { AppSettings } from './types/electron';
 
@@ -330,6 +331,7 @@ export function App() {
   return (
     <div className="widget">
       {appVersion && <span className="version-hint">{appVersion === 'dev' ? 'dev' : `v${appVersion}`}</span>}
+      <HideButton />
       <InfoButton />
       <SettingsButton />
       <span className="shortcut-hint">⌘⇧R</span>

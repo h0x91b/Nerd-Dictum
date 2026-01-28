@@ -17,9 +17,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openSettingsWindow: () => ipcRenderer.invoke('open-settings-window'),
   closeSettingsWindow: () => ipcRenderer.invoke('close-settings-window'),
   openInfoWindow: () => ipcRenderer.invoke('open-info-window'),
+  openHideWindow: () => ipcRenderer.invoke('open-hide-window'),
+  closeHideWindow: () => ipcRenderer.invoke('close-hide-window'),
   getMicrophonePermissionStatus: () => ipcRenderer.invoke('get-microphone-permission-status'),
   requestMicrophonePermission: () => ipcRenderer.invoke('request-microphone-permission'),
   openExternalUrl: (url: string) => ipcRenderer.invoke('open-external-url', url),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   getRecentTranscript: () => ipcRenderer.invoke('get-recent-transcript'),
+  hideForDuration: (durationMs: number) => ipcRenderer.invoke('hide-for-duration', durationMs),
 });

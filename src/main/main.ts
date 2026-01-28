@@ -154,14 +154,17 @@ function saveWindowPosition(x: number, y: number): void {
 let mainWindow: BrowserWindow | null = null;
 let settingsWindow: BrowserWindow | null = null;
 let infoWindow: BrowserWindow | null = null;
+let hideWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+let hideTimer: NodeJS.Timeout | null = null;
 
 async function updateDockVisibility() {
   if (process.platform !== 'darwin' || !app.dock) return;
 
   const hasSecondaryWindows =
     (settingsWindow && !settingsWindow.isDestroyed()) ||
-    (infoWindow && !infoWindow.isDestroyed());
+    (infoWindow && !infoWindow.isDestroyed()) ||
+    (hideWindow && !hideWindow.isDestroyed());
 
   if (hasSecondaryWindows) {
     // Show dock first, then set icon (setIcon requires dock to be visible)
@@ -292,6 +295,66 @@ function createInfoWindow() {
 
   infoWindow.on('closed', () => {
     infoWindow = null;
+    updateDockVisibility();
+  });
+}
+
+function createHideWindow() {
+  if (hideWindow && !hideWindow.isDestroyed()) {
+    hideWindow.focus();
+    return;
+  }
+
+  // Get the display where the main window is located
+  let windowBounds: { x: number; y: number; width: number; height: number } | undefined;
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    const mainBounds = mainWindow.getBounds();
+    const display = screen.getDisplayNearestPoint({ x: mainBounds.x, y: mainBounds.y });
+    const { workArea } = display;
+    // Center the hide window on the same display
+    const width = 260;
+    const height = 260;
+    windowBounds = {
+      x: Math.round(workArea.x + (workArea.width - width) / 2),
+      y: Math.round(workArea.y + (workArea.height - height) / 2),
+      width,
+      height,
+    };
+  }
+
+  hideWindow = new BrowserWindow({
+    width: 260,
+    height: 260,
+    ...(windowBounds && { x: windowBounds.x, y: windowBounds.y }),
+    frame: true,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    title: 'Nerd Dictum — Hide Widget',
+    modal: false,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, '../preload/preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  const isDev = process.env.ELECTRON_DEV === 'true' || (!app.isPackaged && !process.env.ELECTRON_FORCE_PROD);
+
+  if (isDev) {
+    hideWindow.loadURL(`http://localhost:${DEV_PORT}/hide.html`);
+  } else {
+    hideWindow.loadFile(path.join(__dirname, '../renderer/hide.html'));
+  }
+
+  hideWindow.once('ready-to-show', () => {
+    hideWindow?.show();
+    updateDockVisibility();
+  });
+
+  hideWindow.on('closed', () => {
+    hideWindow = null;
     updateDockVisibility();
   });
 }
@@ -493,6 +556,12 @@ function updateTrayMenu() {
           if (mainWindow.isVisible()) {
             mainWindow.hide();
           } else {
+            // Clear hide timer when manually showing
+            if (hideTimer) {
+              clearTimeout(hideTimer);
+              hideTimer = null;
+              log('[Hide] Timer cleared by Show Widget');
+            }
             mainWindow.show();
             mainWindow.focus();
           }
@@ -1019,6 +1088,20 @@ ipcMain.handle('open-info-window', () => {
   return true;
 });
 
+// Open hide window
+ipcMain.handle('open-hide-window', () => {
+  createHideWindow();
+  return true;
+});
+
+// Close hide window
+ipcMain.handle('close-hide-window', () => {
+  if (hideWindow && !hideWindow.isDestroyed()) {
+    hideWindow.close();
+  }
+  return true;
+});
+
 // Get app version
 ipcMain.handle('get-app-version', () => {
   if (!app.isPackaged) {
@@ -1030,4 +1113,40 @@ ipcMain.handle('get-app-version', () => {
 // Get recent transcript for context
 ipcMain.handle('get-recent-transcript', () => {
   return getRecentTranscript();
+});
+
+// Hide widget for a specified duration
+ipcMain.handle('hide-for-duration', (_event, durationMs: number) => {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return false;
+  }
+
+  // Clear any existing timer
+  if (hideTimer) {
+    clearTimeout(hideTimer);
+    hideTimer = null;
+  }
+
+  // Close hide window if open
+  if (hideWindow && !hideWindow.isDestroyed()) {
+    hideWindow.close();
+  }
+
+  // Hide the main window
+  mainWindow.hide();
+  updateTrayMenu();
+
+  log('[Hide] Widget hidden for', durationMs, 'ms');
+
+  // Set timer to show window again
+  hideTimer = setTimeout(() => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.show();
+      updateTrayMenu();
+      log('[Hide] Widget shown after timer');
+    }
+    hideTimer = null;
+  }, durationMs);
+
+  return true;
 });

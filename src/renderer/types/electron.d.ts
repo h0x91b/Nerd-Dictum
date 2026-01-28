@@ -13,11 +13,14 @@ export interface ElectronAPI {
   openSettingsWindow: () => Promise<boolean>;
   closeSettingsWindow: () => Promise<boolean>;
   openInfoWindow: () => Promise<boolean>;
+  openHideWindow: () => Promise<boolean>;
+  closeHideWindow: () => Promise<boolean>;
   getMicrophonePermissionStatus: () => Promise<MicrophonePermissionStatus>;
   requestMicrophonePermission: () => Promise<boolean>;
   openExternalUrl: (url: string) => Promise<boolean>;
   getAppVersion: () => Promise<string>;
   getRecentTranscript: () => Promise<string | null>;
+  hideForDuration: (durationMs: number) => Promise<boolean>;
 }
 
 declare global {

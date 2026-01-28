@@ -1,0 +1,39 @@
+/* Hide Button - positioned below version hint, right side */
+.hide-button {
+  position: absolute;
+  top: 12px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  min-height: 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  padding: 0;
+  margin: 0;
+  transition: color 0.2s ease, background 0.2s ease;
+  -webkit-app-region: no-drag;
+  box-sizing: border-box;
+  z-index: 10;
+}
+
+.hide-button svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+.hide-button:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.hide-button:active {
+  color: var(--text-primary);
+  background: var(--bg-active);
+}
