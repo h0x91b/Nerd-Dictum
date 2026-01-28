@@ -195,7 +195,7 @@ describe('SettingsPage - Unsaved Changes Dialog', () => {
     const mockAPI = createMockElectronAPI({
       closeSettingsWindow: mock(() => {
         window.dispatchEvent(new Event('beforeunload', { cancelable: true }));
-        return Promise.resolve();
+        return Promise.resolve(true);
       }),
     });
     renderSettingsPage(mockAPI);

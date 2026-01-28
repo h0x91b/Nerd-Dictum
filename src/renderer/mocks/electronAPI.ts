@@ -17,6 +17,7 @@ const defaultSettings: AppSettings = {
   launchAtStartup: false,
   clarificationEnabled: false,
   previousTranscriptContextEnabled: false,
+  soundEnabled: true,
 };
 
 let mockSettings = { ...defaultSettings };

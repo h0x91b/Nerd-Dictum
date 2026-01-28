@@ -69,6 +69,7 @@ const defaultSettings = {
   launchAtStartup: false,
   clarificationEnabled: true,
   previousTranscriptContextEnabled: false,
+  soundEnabled: true,
 };
 
 /**

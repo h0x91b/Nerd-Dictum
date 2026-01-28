@@ -11,4 +11,5 @@ export interface AppSettings {
   launchAtStartup: boolean;
   clarificationEnabled: boolean;
   previousTranscriptContextEnabled: boolean;
+  soundEnabled: boolean;
 }

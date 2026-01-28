@@ -126,6 +126,7 @@ export function SettingsPage() {
   const [launchAtStartup, setLaunchAtStartup] = useState(false);
   const [clarificationEnabled, setClarificationEnabled] = useState(true);
   const [previousTranscriptContextEnabled, setPreviousTranscriptContextEnabled] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
   const [languageSearch, setLanguageSearch] = useState('');
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
@@ -150,6 +151,7 @@ export function SettingsPage() {
     launchAtStartup: boolean;
     clarificationEnabled: boolean;
     previousTranscriptContextEnabled: boolean;
+    soundEnabled: boolean;
   } | null>(null);
 
   const themeOptions: Array<{ value: ThemeMode; label: string; previewTheme: 'dark' | 'light' }> = [
@@ -174,7 +176,8 @@ export function SettingsPage() {
       silenceDurationMs !== initial.silenceDurationMs ||
       launchAtStartup !== initial.launchAtStartup ||
       clarificationEnabled !== initial.clarificationEnabled ||
-      previousTranscriptContextEnabled !== initial.previousTranscriptContextEnabled
+      previousTranscriptContextEnabled !== initial.previousTranscriptContextEnabled ||
+      soundEnabled !== initial.soundEnabled
     );
   }, [
     apiKey,
@@ -189,6 +192,7 @@ export function SettingsPage() {
     launchAtStartup,
     clarificationEnabled,
     previousTranscriptContextEnabled,
+    soundEnabled,
   ]);
 
   // Load audio devices
@@ -229,6 +233,7 @@ export function SettingsPage() {
         const loadedLaunchAtStartup = settings.launchAtStartup ?? false;
         const loadedClarificationEnabled = settings.clarificationEnabled ?? true;
         const loadedPreviousTranscriptContextEnabled = settings.previousTranscriptContextEnabled ?? true;
+        const loadedSoundEnabled = settings.soundEnabled ?? true;
 
         setApiKey(loadedApiKey);
         setModel(loadedModel);
@@ -242,6 +247,7 @@ export function SettingsPage() {
         setLaunchAtStartup(loadedLaunchAtStartup);
         setClarificationEnabled(loadedClarificationEnabled);
         setPreviousTranscriptContextEnabled(loadedPreviousTranscriptContextEnabled);
+        setSoundEnabled(loadedSoundEnabled);
 
         // Store initial settings for unsaved changes comparison
         initialSettingsRef.current = {
@@ -257,6 +263,7 @@ export function SettingsPage() {
           launchAtStartup: loadedLaunchAtStartup,
           clarificationEnabled: loadedClarificationEnabled,
           previousTranscriptContextEnabled: loadedPreviousTranscriptContextEnabled,
+          soundEnabled: loadedSoundEnabled,
         };
       } catch (error) {
         console.error('[Settings] Failed to load:', error);
@@ -342,6 +349,7 @@ export function SettingsPage() {
         launchAtStartup,
         clarificationEnabled,
         previousTranscriptContextEnabled,
+        soundEnabled,
       });
       if (success) {
         // Update initial settings so hasUnsavedChanges becomes false
@@ -358,6 +366,7 @@ export function SettingsPage() {
           launchAtStartup,
           clarificationEnabled,
           previousTranscriptContextEnabled,
+          soundEnabled,
         };
         setSaveMessage('Saved!');
         setTimeout(() => {
@@ -486,6 +495,20 @@ export function SettingsPage() {
               </label>
               <span className="settings-hint">
                 Automatically start the app when you log in
+              </span>
+            </div>
+
+            <div className="settings-field">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={soundEnabled}
+                  onChange={(e) => setSoundEnabled(e.target.checked)}
+                />
+                <span>Sound feedback</span>
+              </label>
+              <span className="settings-hint">
+                Play a sound when transcription completes or fails
               </span>
             </div>
 

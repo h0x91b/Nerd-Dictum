@@ -3,6 +3,7 @@ import './styles/App.css';
 import { AudioRecorder, AudioRecorderOptions, DEFAULT_SILENCE_DURATION_MS } from '../lib/audio';
 import { transcribeAudio, TranscribeOptions, TranscriptionCancelledError } from '../lib/gemini';
 import { classifyError, ClassifiedError } from '../lib/errors';
+import { playSuccessSound, playErrorSound } from '../lib/sounds';
 import { SettingsButton } from './components/Settings';
 import { InfoButton } from './components/InfoButton';
 import { AudioLevelRing } from './components/AudioLevelRing';
@@ -98,9 +99,13 @@ export function App() {
     const controller = new AbortController();
     transcribeAbortRef.current = controller;
 
+    // Track soundEnabled for use in both success and error paths
+    let soundEnabled = true;
+
     try {
       // Get settings from main process
       const settings = await window.electronAPI.getSettings();
+      soundEnabled = settings.soundEnabled ?? true;
 
       if (requestId !== transcribeRequestIdRef.current) {
         return;
@@ -141,6 +146,11 @@ export function App() {
       }
       showMessage('Copied to clipboard', 'success');
 
+      // Play success sound if enabled
+      if (soundEnabled) {
+        playSuccessSound();
+      }
+
       // Clear saved audio on success
       lastAudioRef.current = null;
 
@@ -158,6 +168,11 @@ export function App() {
       }
 
       const classified = showError(error);
+
+      // Play error sound if enabled
+      if (soundEnabled) {
+        playErrorSound();
+      }
 
       // Save audio for retry only if error is retryable
       if (classified.isRetryable) {

@@ -57,6 +57,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   launchAtStartup: false,
   clarificationEnabled: true,
   previousTranscriptContextEnabled: true,
+  soundEnabled: true,
 };
 
 function getSettingsPath(): string {
