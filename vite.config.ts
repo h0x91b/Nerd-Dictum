@@ -2,6 +2,9 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 
+// Dev server port - configurable via VITE_PORT env var (default: 12000)
+const DEV_PORT = parseInt(process.env.VITE_PORT || '12000', 10);
+
 export default defineConfig({
   plugins: [react()],
   root: 'src/renderer',
@@ -19,7 +22,7 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    port: DEV_PORT,
     strictPort: true,
   },
 });

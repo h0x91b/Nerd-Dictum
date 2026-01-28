@@ -112,12 +112,12 @@ describe('App', () => {
     // Mock window.location for worklet URL construction
     Object.defineProperty(window, 'location', {
       value: {
-        origin: 'http://localhost:5173',
-        href: 'http://localhost:5173/',
+        origin: 'http://localhost:12000',
+        href: 'http://localhost:12000/',
         protocol: 'http:',
-        host: 'localhost:5173',
+        host: 'localhost:12000',
         hostname: 'localhost',
-        port: '5173',
+        port: '12000',
         pathname: '/',
         search: '',
         hash: '',

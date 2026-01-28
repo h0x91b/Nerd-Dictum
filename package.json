@@ -11,7 +11,7 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "dev": "bun run build:main && bun run build:preload && concurrently \"vite\" \"wait-on http://localhost:5173 && NODE_ENV=development electron .\"",
+    "dev": "bun run build:main && bun run build:preload && concurrently \"vite\" \"wait-on http://localhost:${VITE_PORT:-12000} && NODE_ENV=development electron .\"",
     "build": "bun run build:main && bun run build:preload && vite build",
     "build:main": "bun build src/main/main.ts --outdir dist/main --target node --external electron",
     "build:preload": "bun build src/preload/preload.ts --outdir dist/preload --target node --external electron --format cjs",

@@ -14,6 +14,9 @@ import type { AppSettings } from '../shared/types';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Dev server port - must match VITE_PORT in vite.config.ts (default: 12000)
+const DEV_PORT = parseInt(process.env.VITE_PORT || '12000', 10);
+
 // Ensure single instance of the application
 const gotTheLock = app.requestSingleInstanceLock();
 
@@ -214,7 +217,7 @@ function createSettingsWindow() {
   const isDev = process.env.ELECTRON_DEV === 'true' || (!app.isPackaged && !process.env.ELECTRON_FORCE_PROD);
 
   if (isDev) {
-    settingsWindow.loadURL('http://localhost:5173/settings.html');
+    settingsWindow.loadURL(`http://localhost:${DEV_PORT}/settings.html`);
   } else {
     settingsWindow.loadFile(path.join(__dirname, '../renderer/settings.html'));
   }
@@ -274,7 +277,7 @@ function createInfoWindow() {
   const isDev = process.env.ELECTRON_DEV === 'true' || (!app.isPackaged && !process.env.ELECTRON_FORCE_PROD);
 
   if (isDev) {
-    infoWindow.loadURL('http://localhost:5173/info.html');
+    infoWindow.loadURL(`http://localhost:${DEV_PORT}/info.html`);
   } else {
     infoWindow.loadFile(path.join(__dirname, '../renderer/info.html'));
   }
@@ -321,7 +324,7 @@ function createWindow() {
   const isDev = process.env.ELECTRON_DEV === 'true' || (!app.isPackaged && !process.env.ELECTRON_FORCE_PROD);
 
   if (isDev) {
-    mainWindow.loadURL('http://localhost:5173');
+    mainWindow.loadURL(`http://localhost:${DEV_PORT}`);
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
