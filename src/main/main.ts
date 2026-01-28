@@ -969,6 +969,9 @@ ipcMain.handle('open-info-window', () => {
 
 // Get app version
 ipcMain.handle('get-app-version', () => {
+  if (!app.isPackaged) {
+    return 'dev';
+  }
   return app.getVersion();
 });
 

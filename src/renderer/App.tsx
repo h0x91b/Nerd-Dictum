@@ -329,7 +329,7 @@ export function App() {
 
   return (
     <div className="widget">
-      {appVersion && <span className="version-hint">v{appVersion}</span>}
+      {appVersion && <span className="version-hint">{appVersion === 'dev' ? 'dev' : `v${appVersion}`}</span>}
       <InfoButton />
       <SettingsButton />
       <span className="shortcut-hint">⌘⇧R</span>
