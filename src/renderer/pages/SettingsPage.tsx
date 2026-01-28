@@ -1,10 +1,12 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import type { AppSettings } from '../types/electron';
 import { useTheme, ThemeMode } from '../contexts/ThemeContext';
 import { Welcome } from '../components/Welcome';
 import { ApiKeyHelp } from '../components/ApiKeyHelp';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import './SettingsPage.css';
+
+const DEFAULT_HOTKEY = 'CommandOrControl+Shift+R';
 
 // Popular languages shown first (top 10 by native speakers)
 const POPULAR_LANGUAGES: Array<{ code: string; name: string }> = [
@@ -127,6 +129,8 @@ export function SettingsPage() {
   const [clarificationEnabled, setClarificationEnabled] = useState(true);
   const [previousTranscriptContextEnabled, setPreviousTranscriptContextEnabled] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [hotkey, setHotkey] = useState(DEFAULT_HOTKEY);
+  const [isRecordingHotkey, setIsRecordingHotkey] = useState(false);
   const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
   const [languageSearch, setLanguageSearch] = useState('');
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
@@ -136,6 +140,7 @@ export function SettingsPage() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const isClosingRef = useRef(false);
+  const hotkeyInputRef = useRef<HTMLButtonElement>(null);
 
   // Store initial settings for comparison
   const initialSettingsRef = useRef<{
@@ -152,6 +157,7 @@ export function SettingsPage() {
     clarificationEnabled: boolean;
     previousTranscriptContextEnabled: boolean;
     soundEnabled: boolean;
+    hotkey: string;
   } | null>(null);
 
   const themeOptions: Array<{ value: ThemeMode; label: string; previewTheme: 'dark' | 'light' }> = [
@@ -177,7 +183,8 @@ export function SettingsPage() {
       launchAtStartup !== initial.launchAtStartup ||
       clarificationEnabled !== initial.clarificationEnabled ||
       previousTranscriptContextEnabled !== initial.previousTranscriptContextEnabled ||
-      soundEnabled !== initial.soundEnabled
+      soundEnabled !== initial.soundEnabled ||
+      hotkey !== initial.hotkey
     );
   }, [
     apiKey,
@@ -193,6 +200,7 @@ export function SettingsPage() {
     clarificationEnabled,
     previousTranscriptContextEnabled,
     soundEnabled,
+    hotkey,
   ]);
 
   // Load audio devices
@@ -234,6 +242,7 @@ export function SettingsPage() {
         const loadedClarificationEnabled = settings.clarificationEnabled ?? true;
         const loadedPreviousTranscriptContextEnabled = settings.previousTranscriptContextEnabled ?? true;
         const loadedSoundEnabled = settings.soundEnabled ?? true;
+        const loadedHotkey = settings.hotkey || DEFAULT_HOTKEY;
 
         setApiKey(loadedApiKey);
         setModel(loadedModel);
@@ -248,6 +257,7 @@ export function SettingsPage() {
         setClarificationEnabled(loadedClarificationEnabled);
         setPreviousTranscriptContextEnabled(loadedPreviousTranscriptContextEnabled);
         setSoundEnabled(loadedSoundEnabled);
+        setHotkey(loadedHotkey);
 
         // Store initial settings for unsaved changes comparison
         initialSettingsRef.current = {
@@ -264,6 +274,7 @@ export function SettingsPage() {
           clarificationEnabled: loadedClarificationEnabled,
           previousTranscriptContextEnabled: loadedPreviousTranscriptContextEnabled,
           soundEnabled: loadedSoundEnabled,
+          hotkey: loadedHotkey,
         };
       } catch (error) {
         console.error('[Settings] Failed to load:', error);
@@ -350,6 +361,7 @@ export function SettingsPage() {
         clarificationEnabled,
         previousTranscriptContextEnabled,
         soundEnabled,
+        hotkey,
       });
       if (success) {
         // Update initial settings so hasUnsavedChanges becomes false
@@ -367,6 +379,7 @@ export function SettingsPage() {
           clarificationEnabled,
           previousTranscriptContextEnabled,
           soundEnabled,
+          hotkey,
         };
         setSaveMessage('Saved!');
         setTimeout(() => {
@@ -423,6 +436,95 @@ export function SettingsPage() {
 
   const handleResetWelcome = () => {
     setShowWelcome(true);
+  };
+
+  // Convert Electron accelerator to human-readable format
+  const formatHotkeyForDisplay = (accelerator: string): string => {
+    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+
+    return accelerator
+      .replace(/CommandOrControl/g, isMac ? '⌘' : 'Ctrl')
+      .replace(/Command/g, '⌘')
+      .replace(/Control/g, isMac ? '⌃' : 'Ctrl')
+      .replace(/Alt/g, isMac ? '⌥' : 'Alt')
+      .replace(/Shift/g, isMac ? '⇧' : 'Shift')
+      .replace(/\+/g, ' + ');
+  };
+
+  // Handle hotkey recording
+  const handleHotkeyKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!isRecordingHotkey) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Ignore modifier-only presses
+    if (['Control', 'Shift', 'Alt', 'Meta', 'CapsLock', 'Tab'].includes(e.key)) {
+      return;
+    }
+
+    // Build accelerator string
+    const parts: string[] = [];
+
+    if (e.metaKey || e.ctrlKey) {
+      parts.push('CommandOrControl');
+    }
+    if (e.altKey) {
+      parts.push('Alt');
+    }
+    if (e.shiftKey) {
+      parts.push('Shift');
+    }
+
+    // Get key name
+    let key = e.key;
+    if (key.length === 1) {
+      key = key.toUpperCase();
+    } else if (key === 'Escape') {
+      // Cancel recording on Escape
+      setIsRecordingHotkey(false);
+      return;
+    } else {
+      // Map special keys to Electron accelerator names
+      const keyMap: Record<string, string> = {
+        'ArrowUp': 'Up',
+        'ArrowDown': 'Down',
+        'ArrowLeft': 'Left',
+        'ArrowRight': 'Right',
+        ' ': 'Space',
+        'Backspace': 'Backspace',
+        'Delete': 'Delete',
+        'Enter': 'Return',
+        'Home': 'Home',
+        'End': 'End',
+        'PageUp': 'PageUp',
+        'PageDown': 'PageDown',
+        'Insert': 'Insert',
+      };
+      key = keyMap[key] || key;
+    }
+
+    parts.push(key);
+
+    // Require at least one modifier
+    if (parts.length < 2) {
+      return;
+    }
+
+    const newHotkey = parts.join('+');
+    setHotkey(newHotkey);
+    setIsRecordingHotkey(false);
+  }, [isRecordingHotkey]);
+
+  const startRecordingHotkey = () => {
+    setIsRecordingHotkey(true);
+    // Focus the button to capture key events
+    hotkeyInputRef.current?.focus();
+  };
+
+  const resetHotkey = () => {
+    setHotkey(DEFAULT_HOTKEY);
+    setIsRecordingHotkey(false);
   };
 
   if (isLoading) {
@@ -509,6 +611,37 @@ export function SettingsPage() {
               </label>
               <span className="settings-hint">
                 Play a sound when transcription completes or fails
+              </span>
+            </div>
+
+            <div className="settings-field">
+              <label>Global Hotkey</label>
+              <div className="hotkey-input-container">
+                <button
+                  ref={hotkeyInputRef}
+                  type="button"
+                  className={`hotkey-input${isRecordingHotkey ? ' is-recording' : ''}`}
+                  onClick={startRecordingHotkey}
+                  onKeyDown={handleHotkeyKeyDown}
+                  onBlur={() => setIsRecordingHotkey(false)}
+                >
+                  {isRecordingHotkey
+                    ? 'Press a key combination...'
+                    : formatHotkeyForDisplay(hotkey)}
+                </button>
+                {hotkey !== DEFAULT_HOTKEY && (
+                  <button
+                    type="button"
+                    className="hotkey-reset-btn"
+                    onClick={resetHotkey}
+                    title="Reset to default"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+              <span className="settings-hint">
+                Click to change. Use Cmd/Ctrl + other keys. Escape to cancel.
               </span>
             </div>
 

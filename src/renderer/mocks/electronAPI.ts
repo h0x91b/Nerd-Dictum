@@ -18,6 +18,7 @@ const defaultSettings: AppSettings = {
   clarificationEnabled: false,
   previousTranscriptContextEnabled: false,
   soundEnabled: true,
+  hotkey: 'CommandOrControl+Shift+R',
 };
 
 let mockSettings = { ...defaultSettings };

@@ -47,6 +47,8 @@ function log(...args: unknown[]): void {
   electronLog.info(...args);
 }
 
+const DEFAULT_HOTKEY = 'CommandOrControl+Shift+R';
+
 const DEFAULT_SETTINGS: AppSettings = {
   apiKey: '',
   model: 'gemini-3-flash-preview',
@@ -61,6 +63,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   clarificationEnabled: true,
   previousTranscriptContextEnabled: true,
   soundEnabled: true,
+  hotkey: DEFAULT_HOTKEY,
 };
 
 function getSettingsPath(): string {
@@ -413,9 +416,29 @@ function createTray() {
   }
 
   tray = new Tray(icon);
-  tray.setToolTip('Nerd Dictum — ⌘⇧R to record');
+  updateTrayTooltip();
 
   updateTrayMenu();
+}
+
+// Convert Electron accelerator to human-readable format
+function formatHotkeyForDisplay(hotkey: string): string {
+  const isMac = process.platform === 'darwin';
+
+  return hotkey
+    .replace(/CommandOrControl/g, isMac ? '⌘' : 'Ctrl')
+    .replace(/Command/g, '⌘')
+    .replace(/Control/g, isMac ? '⌃' : 'Ctrl')
+    .replace(/Alt/g, isMac ? '⌥' : 'Alt')
+    .replace(/Shift/g, isMac ? '⇧' : 'Shift')
+    .replace(/\+/g, '');
+}
+
+function updateTrayTooltip() {
+  if (!tray) return;
+  const hotkey = appSettings.hotkey || DEFAULT_HOTKEY;
+  const displayHotkey = formatHotkeyForDisplay(hotkey);
+  tray.setToolTip(`Nerd Dictum — ${displayHotkey} to record`);
 }
 
 function updateTrayMenu() {
@@ -526,31 +549,47 @@ function updateTrayMenu() {
   tray.setContextMenu(contextMenu);
 }
 
-// Default shortcut: Cmd+Shift+R on macOS, Ctrl+Shift+R on other platforms
-const TOGGLE_RECORDING_SHORTCUT = process.platform === 'darwin' ? 'CommandOrControl+Shift+R' : 'CommandOrControl+Shift+R';
 const RESTORE_CLIPBOARD_SHORTCUT = 'CommandOrControl+Shift+V';
 
+// Track currently registered hotkey for re-registration
+let currentRegisteredHotkey: string | null = null;
+
 function registerGlobalShortcuts() {
-  const registered = globalShortcut.register(TOGGLE_RECORDING_SHORTCUT, () => {
+  const hotkey = appSettings.hotkey || DEFAULT_HOTKEY;
+
+  // Unregister previous hotkey if different
+  if (currentRegisteredHotkey && currentRegisteredHotkey !== hotkey) {
+    globalShortcut.unregister(currentRegisteredHotkey);
+    log('[Shortcut] Unregistered previous hotkey:', currentRegisteredHotkey);
+  }
+
+  const registered = globalShortcut.register(hotkey, () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('toggle-recording');
     }
   });
 
-  // Register shortcut to restore previous clipboard
-  const clipboardRestoreRegistered = globalShortcut.register(RESTORE_CLIPBOARD_SHORTCUT, () => {
-    const history = getClipboardHistory();
-    if (history.length > 0) {
-      restoreClipboardEntry(history[0].id);
-      log('[Clipboard] Restored previous clipboard via shortcut');
-    }
-  });
-
-  if (!registered) {
-    log('[Shortcut] Failed to register global shortcut:', TOGGLE_RECORDING_SHORTCUT);
+  if (registered) {
+    currentRegisteredHotkey = hotkey;
+    log('[Shortcut] Registered hotkey:', hotkey);
+  } else {
+    log('[Shortcut] Failed to register global shortcut:', hotkey);
+    currentRegisteredHotkey = null;
   }
-  if (!clipboardRestoreRegistered) {
-    log('[Shortcut] Failed to register clipboard restore shortcut:', RESTORE_CLIPBOARD_SHORTCUT);
+
+  // Register shortcut to restore previous clipboard (only once)
+  if (!globalShortcut.isRegistered(RESTORE_CLIPBOARD_SHORTCUT)) {
+    const clipboardRestoreRegistered = globalShortcut.register(RESTORE_CLIPBOARD_SHORTCUT, () => {
+      const history = getClipboardHistory();
+      if (history.length > 0) {
+        restoreClipboardEntry(history[0].id);
+        log('[Clipboard] Restored previous clipboard via shortcut');
+      }
+    });
+
+    if (!clipboardRestoreRegistered) {
+      log('[Shortcut] Failed to register clipboard restore shortcut:', RESTORE_CLIPBOARD_SHORTCUT);
+    }
   }
 }
 
@@ -920,12 +959,22 @@ ipcMain.handle('get-settings', () => {
     launchAtStartup: openAtLogin,
     clarificationEnabled: appSettings.clarificationEnabled,
     previousTranscriptContextEnabled: appSettings.previousTranscriptContextEnabled,
+    hotkey: appSettings.hotkey || DEFAULT_HOTKEY,
   };
 });
 
 ipcMain.handle('save-settings', (_event, settings: Partial<AppSettings>) => {
+  const oldHotkey = appSettings.hotkey;
   appSettings = { ...appSettings, ...settings };
-  return saveSettings(appSettings);
+  const result = saveSettings(appSettings);
+
+  // Re-register hotkey if it changed
+  if (settings.hotkey !== undefined && settings.hotkey !== oldHotkey) {
+    registerGlobalShortcuts();
+    updateTrayTooltip();
+  }
+
+  return result;
 });
 
 // Open settings window

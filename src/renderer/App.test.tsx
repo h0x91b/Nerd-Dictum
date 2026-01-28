@@ -70,6 +70,7 @@ const defaultSettings = {
   clarificationEnabled: true,
   previousTranscriptContextEnabled: false,
   soundEnabled: true,
+  hotkey: 'CommandOrControl+Shift+R',
 };
 
 /**

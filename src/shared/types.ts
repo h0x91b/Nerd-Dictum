@@ -12,4 +12,5 @@ export interface AppSettings {
   clarificationEnabled: boolean;
   previousTranscriptContextEnabled: boolean;
   soundEnabled: boolean;
+  hotkey: string;
 }

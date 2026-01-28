@@ -537,3 +537,68 @@
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
+
+/* Hotkey input */
+.hotkey-input-container {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.hotkey-input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.hotkey-input:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+}
+
+.hotkey-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.2);
+}
+
+.hotkey-input.is-recording {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--text-inverse);
+  animation: pulse-recording 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-recording {
+  0%, 100% {
+    box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(74, 158, 255, 0.3);
+  }
+}
+
+.hotkey-reset-btn {
+  padding: 8px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.hotkey-reset-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}

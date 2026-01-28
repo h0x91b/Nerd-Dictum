@@ -1,5 +1,6 @@
 # Changelog
 
+[2026-01-28] Feature — Add customizable global hotkey: change the recording shortcut from default ⌘⇧R to any key combination; configure in Settings > General
 [2026-01-27] Feature — Add sound feedback on transcription completion: success chime when text is copied to clipboard, error tone on failure; toggle in Settings > General
 [2026-01-25] Feature — Enforce single instance: prevent multiple app instances from running simultaneously; second launch focuses existing window instead
 [2026-01-25] UX — Add explicit cancel indication during transcription: hover shows ✕ icon over spinner, tooltip "Click to cancel", improved accessibility with aria-label
