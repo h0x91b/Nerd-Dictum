@@ -85,6 +85,12 @@ const createMockElectronAPI = (overrides: Partial<typeof window.electronAPI> = {
   onToggleRecording: mock((callback: () => void) => {
     return () => {};
   }),
+  onStartRecording: mock((callback: () => void) => {
+    return () => {};
+  }),
+  onStopRecording: mock((callback: () => void) => {
+    return () => {};
+  }),
   getSettings: mock(() => Promise.resolve({ ...defaultSettings })),
   saveSettings: mock(() => Promise.resolve(true)),
   openSettingsWindow: mock(() => Promise.resolve(true)),

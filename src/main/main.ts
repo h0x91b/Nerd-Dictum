@@ -10,7 +10,8 @@ import { getDisplayBounds, isPositionValid } from './window-position';
 import type { WindowPosition } from './window-position';
 import { captureCurrentClipboard, addTranscriptionToHistory, restoreClipboardEntry, getClipboardHistory, getEntryLabel } from './clipboard-history';
 import { loadTranscriptHistory, addTranscriptToHistory, getRecentTranscripts } from './transcript-history';
-import type { AppSettings } from '../shared/types';
+import type { AppSettings, HoldToRecordKey } from '../shared/types';
+import { startKeyboardHook, stopKeyboardHook, updateTargetKey, isKeyboardHookRunning } from './keyboard-hook';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -66,6 +67,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   soundEnabled: true,
   hotkey: DEFAULT_HOTKEY,
   widgetHidden: false,
+  holdToRecordEnabled: true,
+  holdToRecordKey: 'RightMeta',
 };
 
 function getSettingsPath(): string {
@@ -668,6 +671,36 @@ function registerGlobalShortcuts() {
       log('[Shortcut] Failed to register clipboard restore shortcut:', RESTORE_CLIPBOARD_SHORTCUT);
     }
   }
+
+  // Setup hold-to-record if enabled
+  setupHoldToRecord();
+}
+
+function setupHoldToRecord() {
+  if (appSettings.holdToRecordEnabled) {
+    const started = startKeyboardHook(appSettings.holdToRecordKey, {
+      onKeyDown: () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          log('[HoldToRecord] Key down, starting recording');
+          mainWindow.webContents.send('start-recording');
+        }
+      },
+      onKeyUp: () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          log('[HoldToRecord] Key up, stopping recording');
+          mainWindow.webContents.send('stop-recording');
+        }
+      },
+    });
+    if (started) {
+      log('[HoldToRecord] Started with key:', appSettings.holdToRecordKey);
+    } else {
+      log('[HoldToRecord] Failed to start keyboard hook');
+    }
+  } else {
+    stopKeyboardHook();
+    log('[HoldToRecord] Disabled');
+  }
 }
 
 function createApplicationMenu() {
@@ -989,6 +1022,7 @@ app.on('before-quit', () => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
+  stopKeyboardHook();
   stopHeartbeat();
   if (tray) {
     tray.destroy();
@@ -1055,6 +1089,8 @@ ipcMain.handle('get-settings', () => {
 ipcMain.handle('save-settings', (_event, settings: Partial<AppSettings>) => {
   const oldHotkey = appSettings.hotkey;
   const oldWidgetHidden = appSettings.widgetHidden;
+  const oldHoldToRecordEnabled = appSettings.holdToRecordEnabled;
+  const oldHoldToRecordKey = appSettings.holdToRecordKey;
   appSettings = { ...appSettings, ...settings };
   const result = saveSettings(appSettings);
 
@@ -1062,6 +1098,14 @@ ipcMain.handle('save-settings', (_event, settings: Partial<AppSettings>) => {
   if (settings.hotkey !== undefined && settings.hotkey !== oldHotkey) {
     registerGlobalShortcuts();
     updateTrayTooltip();
+  }
+
+  // Update hold-to-record if settings changed
+  const holdToRecordChanged =
+    (settings.holdToRecordEnabled !== undefined && settings.holdToRecordEnabled !== oldHoldToRecordEnabled) ||
+    (settings.holdToRecordKey !== undefined && settings.holdToRecordKey !== oldHoldToRecordKey);
+  if (holdToRecordChanged) {
+    setupHoldToRecord();
   }
 
   // Show/hide widget if widgetHidden setting changed

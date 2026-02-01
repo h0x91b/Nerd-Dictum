@@ -1,3 +1,13 @@
+export type HoldToRecordKey =
+  | 'LeftControl'
+  | 'RightControl'
+  | 'LeftAlt'
+  | 'RightAlt'
+  | 'LeftMeta'
+  | 'RightMeta'
+  | 'LeftShift'
+  | 'RightShift';
+
 export interface AppSettings {
   apiKey: string;
   model: string;
@@ -14,4 +24,6 @@ export interface AppSettings {
   soundEnabled: boolean;
   hotkey: string;
   widgetHidden: boolean;
+  holdToRecordEnabled: boolean;
+  holdToRecordKey: HoldToRecordKey;
 }

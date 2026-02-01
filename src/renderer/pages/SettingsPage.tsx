@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import type { AppSettings } from '../types/electron';
+import type { AppSettings, HoldToRecordKey } from '../../shared/types';
 import { useTheme, ThemeMode } from '../contexts/ThemeContext';
 import { Welcome } from '../components/Welcome';
 import { ApiKeyHelp } from '../components/ApiKeyHelp';
@@ -7,6 +7,18 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import './SettingsPage.css';
 
 const DEFAULT_HOTKEY = 'CommandOrControl+Shift+R';
+
+// Hold-to-record key options
+const HOLD_TO_RECORD_KEYS: Array<{ value: HoldToRecordKey; label: string }> = [
+  { value: 'RightMeta', label: 'Right Command (⌘)' },
+  { value: 'LeftMeta', label: 'Left Command (⌘)' },
+  { value: 'RightAlt', label: 'Right Option (⌥)' },
+  { value: 'LeftAlt', label: 'Left Option (⌥)' },
+  { value: 'RightControl', label: 'Right Control (⌃)' },
+  { value: 'LeftControl', label: 'Left Control (⌃)' },
+  { value: 'RightShift', label: 'Right Shift (⇧)' },
+  { value: 'LeftShift', label: 'Left Shift (⇧)' },
+];
 
 // Popular languages shown first (top 10 by native speakers)
 const POPULAR_LANGUAGES: Array<{ code: string; name: string }> = [
@@ -131,6 +143,8 @@ export function SettingsPage() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [hotkey, setHotkey] = useState(DEFAULT_HOTKEY);
   const [widgetHidden, setWidgetHidden] = useState(false);
+  const [holdToRecordEnabled, setHoldToRecordEnabled] = useState(true);
+  const [holdToRecordKey, setHoldToRecordKey] = useState<HoldToRecordKey>('RightMeta');
   const [isRecordingHotkey, setIsRecordingHotkey] = useState(false);
   const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
   const [languageSearch, setLanguageSearch] = useState('');
@@ -160,6 +174,8 @@ export function SettingsPage() {
     soundEnabled: boolean;
     hotkey: string;
     widgetHidden: boolean;
+    holdToRecordEnabled: boolean;
+    holdToRecordKey: HoldToRecordKey;
   } | null>(null);
 
   const themeOptions: Array<{ value: ThemeMode; label: string; previewTheme: 'dark' | 'light' }> = [
@@ -187,7 +203,9 @@ export function SettingsPage() {
       previousTranscriptContextEnabled !== initial.previousTranscriptContextEnabled ||
       soundEnabled !== initial.soundEnabled ||
       hotkey !== initial.hotkey ||
-      widgetHidden !== initial.widgetHidden
+      widgetHidden !== initial.widgetHidden ||
+      holdToRecordEnabled !== initial.holdToRecordEnabled ||
+      holdToRecordKey !== initial.holdToRecordKey
     );
   }, [
     apiKey,
@@ -205,6 +223,8 @@ export function SettingsPage() {
     soundEnabled,
     hotkey,
     widgetHidden,
+    holdToRecordEnabled,
+    holdToRecordKey,
   ]);
 
   // Load audio devices
@@ -248,6 +268,8 @@ export function SettingsPage() {
         const loadedSoundEnabled = settings.soundEnabled ?? true;
         const loadedHotkey = settings.hotkey || DEFAULT_HOTKEY;
         const loadedWidgetHidden = settings.widgetHidden ?? false;
+        const loadedHoldToRecordEnabled = settings.holdToRecordEnabled ?? true;
+        const loadedHoldToRecordKey = settings.holdToRecordKey || 'RightMeta';
 
         setApiKey(loadedApiKey);
         setModel(loadedModel);
@@ -264,6 +286,8 @@ export function SettingsPage() {
         setSoundEnabled(loadedSoundEnabled);
         setHotkey(loadedHotkey);
         setWidgetHidden(loadedWidgetHidden);
+        setHoldToRecordEnabled(loadedHoldToRecordEnabled);
+        setHoldToRecordKey(loadedHoldToRecordKey);
 
         // Store initial settings for unsaved changes comparison
         initialSettingsRef.current = {
@@ -282,6 +306,8 @@ export function SettingsPage() {
           soundEnabled: loadedSoundEnabled,
           hotkey: loadedHotkey,
           widgetHidden: loadedWidgetHidden,
+          holdToRecordEnabled: loadedHoldToRecordEnabled,
+          holdToRecordKey: loadedHoldToRecordKey,
         };
       } catch (error) {
         console.error('[Settings] Failed to load:', error);
@@ -370,6 +396,8 @@ export function SettingsPage() {
         soundEnabled,
         hotkey,
         widgetHidden,
+        holdToRecordEnabled,
+        holdToRecordKey,
       });
       if (success) {
         // Update initial settings so hasUnsavedChanges becomes false
@@ -389,6 +417,8 @@ export function SettingsPage() {
           soundEnabled,
           hotkey,
           widgetHidden,
+          holdToRecordEnabled,
+          holdToRecordKey,
         };
         setSaveMessage('Saved!');
         setTimeout(() => {
@@ -667,6 +697,40 @@ export function SettingsPage() {
                 Click to change. Use Cmd/Ctrl + other keys. Escape to cancel.
               </span>
             </div>
+
+            <div className="settings-field">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={holdToRecordEnabled}
+                  onChange={(e) => setHoldToRecordEnabled(e.target.checked)}
+                />
+                <span>Hold-to-record</span>
+              </label>
+              <span className="settings-hint">
+                Hold a key to record, release to transcribe. Works alongside the toggle hotkey.
+              </span>
+            </div>
+
+            {holdToRecordEnabled && (
+              <div className="settings-field">
+                <label>Hold Key</label>
+                <select
+                  value={holdToRecordKey}
+                  onChange={(e) => setHoldToRecordKey(e.target.value as HoldToRecordKey)}
+                  className="settings-select"
+                >
+                  {HOLD_TO_RECORD_KEYS.map((key) => (
+                    <option key={key.value} value={key.value}>
+                      {key.label}
+                    </option>
+                  ))}
+                </select>
+                <span className="settings-hint">
+                  Note: Globe/Fn key cannot be detected by any application.
+                </span>
+              </div>
+            )}
 
             <div className="settings-field">
               <button

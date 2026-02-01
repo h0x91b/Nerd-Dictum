@@ -235,76 +235,83 @@ export function App() {
     setState('idle');
   }, [state]);
 
-  const handleToggleRecording = useCallback(async () => {
-    if (state === 'idle' || state === 'success') {
-      // Clear any pending retry audio when starting new recording
-      lastAudioRef.current = null;
-      // Clear success timeout if transitioning from success state
-      if (successTimeoutRef.current) {
-        clearTimeout(successTimeoutRef.current);
-        successTimeoutRef.current = null;
+  // Start recording (extracted for hold-to-record)
+  const startRecording = useCallback(async () => {
+    if (state !== 'idle' && state !== 'success') return;
+
+    // Clear any pending retry audio when starting new recording
+    lastAudioRef.current = null;
+    // Clear success timeout if transitioning from success state
+    if (successTimeoutRef.current) {
+      clearTimeout(successTimeoutRef.current);
+      successTimeoutRef.current = null;
+    }
+
+    try {
+      // Check and request microphone permission on macOS
+      const permissionStatus = await window.electronAPI.getMicrophonePermissionStatus();
+      console.log('[Permission] Microphone status:', permissionStatus);
+
+      if (permissionStatus === 'denied' || permissionStatus === 'restricted') {
+        showMessage('Microphone access denied. Enable in System Preferences.', 'error', false);
+        return;
       }
 
-      try {
-        // Check and request microphone permission on macOS
-        const permissionStatus = await window.electronAPI.getMicrophonePermissionStatus();
-        console.log('[Permission] Microphone status:', permissionStatus);
-
-        if (permissionStatus === 'denied' || permissionStatus === 'restricted') {
-          showMessage('Microphone access denied. Enable in System Preferences.', 'error', false);
+      if (permissionStatus === 'not-determined') {
+        const granted = await window.electronAPI.requestMicrophonePermission();
+        if (!granted) {
+          showMessage('Microphone permission required', 'error', false);
           return;
         }
+      }
 
-        if (permissionStatus === 'not-determined') {
-          const granted = await window.electronAPI.requestMicrophonePermission();
-          if (!granted) {
-            showMessage('Microphone permission required', 'error', false);
-            return;
-          }
+      // Get audio settings
+      const settings = await window.electronAPI.getSettings();
+      const recorderOptions = buildRecorderOptions(settings);
+      recorderRef.current = new AudioRecorder(undefined, recorderOptions);
+      // Set up silence detection callback for auto-stop
+      recorderRef.current.setOnSilenceStop(() => {
+        stopRecordingAndTranscribe();
+      });
+      // Set up audio level callback for visualization with smoothing
+      recorderRef.current.setOnAudioLevel((level) => {
+        const current = audioLevelRef.current;
+        let smoothed: number;
+
+        if (level > current) {
+          // Rising: simple lerp, fast
+          smoothed = current + (level - current) * AUDIO_LEVEL_LERP_UP;
+        } else {
+          // Falling: easeOut - faster at start, slower at end
+          const diff = current - level;
+          const easeOutFactor = 0.3 + diff * 0.6; // 0.3 base + up to 0.6 more based on distance
+          smoothed = current - diff * Math.min(easeOutFactor, 0.85);
         }
 
-        // Get audio settings
-        const settings = await window.electronAPI.getSettings();
-        const recorderOptions = buildRecorderOptions(settings);
-        recorderRef.current = new AudioRecorder(undefined, recorderOptions);
-        // Set up silence detection callback for auto-stop
-        recorderRef.current.setOnSilenceStop(() => {
-          stopRecordingAndTranscribe();
-        });
-        // Set up audio level callback for visualization with smoothing
-        recorderRef.current.setOnAudioLevel((level) => {
-          const current = audioLevelRef.current;
-          let smoothed: number;
+        audioLevelRef.current = smoothed;
+        setAudioLevel(smoothed);
+      });
+      await recorderRef.current.start();
+      console.log('[Recording] Started');
+      recordingStartTimeRef.current = Date.now();
+      window.electronAPI.trackEvent('recording_start');
+      setState('recording');
+    } catch (error) {
+      showError(error);
+    }
+  }, [state, showError, showMessage, stopRecordingAndTranscribe]);
 
-          if (level > current) {
-            // Rising: simple lerp, fast
-            smoothed = current + (level - current) * AUDIO_LEVEL_LERP_UP;
-          } else {
-            // Falling: easeOut - faster at start, slower at end
-            const diff = current - level;
-            const easeOutFactor = 0.3 + diff * 0.6; // 0.3 base + up to 0.6 more based on distance
-            smoothed = current - diff * Math.min(easeOutFactor, 0.85);
-          }
-
-          audioLevelRef.current = smoothed;
-          setAudioLevel(smoothed);
-        });
-        await recorderRef.current.start();
-        console.log('[Recording] Started');
-        recordingStartTimeRef.current = Date.now();
-        window.electronAPI.trackEvent('recording_start');
-        setState('recording');
-      } catch (error) {
-        showError(error);
-      }
+  const handleToggleRecording = useCallback(async () => {
+    if (state === 'idle' || state === 'success') {
+      await startRecording();
     } else if (state === 'recording') {
       await stopRecordingAndTranscribe();
     } else if (state === 'transcribing') {
       cancelTranscription();
     }
-  }, [state, showError, stopRecordingAndTranscribe, cancelTranscription]);
+  }, [state, startRecording, stopRecordingAndTranscribe, cancelTranscription]);
 
-  // Listen for global keyboard shortcut
+  // Listen for global keyboard shortcut (toggle mode)
   useEffect(() => {
     const unsubscribe = window.electronAPI.onToggleRecording(() => {
       handleToggleRecording();
@@ -313,6 +320,28 @@ export function App() {
       unsubscribe();
     };
   }, [handleToggleRecording, state]);
+
+  // Listen for hold-to-record start event
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.onStartRecording(() => {
+      startRecording();
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [startRecording]);
+
+  // Listen for hold-to-record stop event
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.onStopRecording(() => {
+      if (recorderRef.current?.getIsRecording()) {
+        stopRecordingAndTranscribe();
+      }
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [stopRecordingAndTranscribe]);
 
   // Load app version on mount
   useEffect(() => {

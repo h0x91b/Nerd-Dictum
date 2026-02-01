@@ -28,6 +28,8 @@ const createMockElectronAPI = (overrides: Partial<typeof window.electronAPI> = {
   getModel: mock(() => Promise.resolve('gemini-3-flash-preview')),
   copyToClipboard: mock(() => Promise.resolve(true)),
   onToggleRecording: mock(() => () => {}),
+  onStartRecording: mock(() => () => {}),
+  onStopRecording: mock(() => () => {}),
   openSettingsWindow: mock(() => Promise.resolve(true)),
   openInfoWindow: mock(() => Promise.resolve(true)),
   getMicrophonePermissionStatus: mock(() => Promise.resolve('granted' as const)),
