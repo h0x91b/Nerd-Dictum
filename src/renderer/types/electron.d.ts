@@ -19,7 +19,7 @@ export interface ElectronAPI {
   requestMicrophonePermission: () => Promise<boolean>;
   openExternalUrl: (url: string) => Promise<boolean>;
   getAppVersion: () => Promise<string>;
-  getRecentTranscript: () => Promise<string | null>;
+  getRecentTranscripts: () => Promise<string[]>;
   hideForDuration: (durationMs: number) => Promise<boolean>;
 }
 

@@ -23,6 +23,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   requestMicrophonePermission: () => ipcRenderer.invoke('request-microphone-permission'),
   openExternalUrl: (url: string) => ipcRenderer.invoke('open-external-url', url),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
-  getRecentTranscript: () => ipcRenderer.invoke('get-recent-transcript'),
+  getRecentTranscripts: () => ipcRenderer.invoke('get-recent-transcripts'),
   hideForDuration: (durationMs: number) => ipcRenderer.invoke('hide-for-duration', durationMs),
 });

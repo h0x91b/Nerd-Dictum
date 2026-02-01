@@ -8,7 +8,7 @@ import { decode as decodeBase65 } from '../lib/base65';
 import { getDisplayBounds, isPositionValid } from './window-position';
 import type { WindowPosition } from './window-position';
 import { captureCurrentClipboard, addTranscriptionToHistory, restoreClipboardEntry, getClipboardHistory, getEntryLabel } from './clipboard-history';
-import { loadTranscriptHistory, addTranscriptToHistory, getRecentTranscript } from './transcript-history';
+import { loadTranscriptHistory, addTranscriptToHistory, getRecentTranscripts } from './transcript-history';
 import type { AppSettings } from '../shared/types';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1110,9 +1110,9 @@ ipcMain.handle('get-app-version', () => {
   return app.getVersion();
 });
 
-// Get recent transcript for context
-ipcMain.handle('get-recent-transcript', () => {
-  return getRecentTranscript();
+// Get recent transcripts for context (last 3)
+ipcMain.handle('get-recent-transcripts', () => {
+  return getRecentTranscripts();
 });
 
 // Hide widget for a specified duration

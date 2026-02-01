@@ -17,7 +17,7 @@ const SUCCESS_STATE_TIMEOUT_MS = 5000;
 // Audio level smoothing
 const AUDIO_LEVEL_LERP_UP = 0.8;   // Very fast rise
 
-function buildTranscribeOptions(settings: AppSettings, previousTranscript?: string | null): TranscribeOptions {
+function buildTranscribeOptions(settings: AppSettings, previousTranscripts?: string[]): TranscribeOptions {
   const options: TranscribeOptions = {};
   if (settings.languages && settings.languages.length > 0) {
     options.languages = settings.languages;
@@ -32,9 +32,9 @@ function buildTranscribeOptions(settings: AppSettings, previousTranscript?: stri
     options.customKeywords = settings.customKeywords;
   }
   options.clarificationEnabled = settings.clarificationEnabled ?? true;
-  // Add previous transcript as context if enabled and available
-  if ((settings.previousTranscriptContextEnabled ?? true) && previousTranscript) {
-    options.previousTranscript = previousTranscript;
+  // Add previous transcripts as context if enabled and available
+  if ((settings.previousTranscriptContextEnabled ?? true) && previousTranscripts && previousTranscripts.length > 0) {
+    options.previousTranscripts = previousTranscripts;
   }
   return options;
 }
@@ -121,13 +121,13 @@ export function App() {
         return;
       }
 
-      // Get previous transcript for context if enabled
-      let previousTranscript: string | null = null;
+      // Get previous transcripts for context if enabled
+      let previousTranscripts: string[] = [];
       if (settings.previousTranscriptContextEnabled ?? true) {
-        previousTranscript = await window.electronAPI.getRecentTranscript();
+        previousTranscripts = await window.electronAPI.getRecentTranscripts();
       }
 
-      const options = buildTranscribeOptions(settings, previousTranscript);
+      const options = buildTranscribeOptions(settings, previousTranscripts);
       // Transcribe audio
       const transcript = await transcribeAudio(audioBase64, settings.apiKey, settings.model, {
         ...options,

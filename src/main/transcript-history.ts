@@ -72,9 +72,10 @@ export function addTranscriptToHistory(text: string): void {
   log('[TranscriptHistory] Added entry, total:', transcriptHistory.length);
 }
 
-export function getRecentTranscript(): string | null {
-  if (transcriptHistory.length === 0) {
-    return null;
-  }
-  return transcriptHistory[0].text;
+const CONTEXT_TRANSCRIPT_COUNT = 3;
+
+export function getRecentTranscripts(): string[] {
+  return transcriptHistory
+    .slice(0, CONTEXT_TRANSCRIPT_COUNT)
+    .map(entry => entry.text);
 }

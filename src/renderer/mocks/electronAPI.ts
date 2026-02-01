@@ -22,7 +22,7 @@ const defaultSettings: AppSettings = {
 };
 
 let mockSettings = { ...defaultSettings };
-let mockRecentTranscript: string | null = 'This is a mock transcript for browser development.';
+let mockRecentTranscripts: string[] = ['This is a mock transcript for browser development.'];
 
 const toggleRecordingCallbacks = new Set<() => void>();
 
@@ -120,8 +120,8 @@ export function setupElectronAPIMock() {
       return '0.0.0-browser-dev';
     },
 
-    getRecentTranscript: async (): Promise<string | null> => {
-      return mockRecentTranscript;
+    getRecentTranscripts: async (): Promise<string[]> => {
+      return mockRecentTranscripts;
     },
   };
 
@@ -141,8 +141,8 @@ if (typeof window !== 'undefined') {
     triggerToggleRecording: () => {
       toggleRecordingCallbacks.forEach(cb => cb());
     },
-    setMockTranscript: (transcript: string | null) => {
-      mockRecentTranscript = transcript;
+    setMockTranscripts: (transcripts: string[]) => {
+      mockRecentTranscripts = transcripts;
     },
     setMockSettings: (settings: Partial<AppSettings>) => {
       mockSettings = { ...mockSettings, ...settings };

@@ -33,7 +33,7 @@ const createMockElectronAPI = (overrides: Partial<typeof window.electronAPI> = {
   getMicrophonePermissionStatus: mock(() => Promise.resolve('granted' as const)),
   requestMicrophonePermission: mock(() => Promise.resolve(true)),
   getAppVersion: mock(() => Promise.resolve('1.0.0')),
-  getRecentTranscript: mock(() => Promise.resolve(null)),
+  getRecentTranscripts: mock(() => Promise.resolve([])),
   ...overrides,
 });
 

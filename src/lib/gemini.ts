@@ -72,7 +72,7 @@ export interface TranscribeOptions {
   customDomainHint?: string;
   customKeywords?: string;
   clarificationEnabled?: boolean;
-  previousTranscript?: string;
+  previousTranscripts?: string[];
 }
 
 export interface TranscribeRequestOptions extends TranscribeOptions {
@@ -193,16 +193,22 @@ Domain hint: ${options.customDomainHint}`;
     prompt += customKeywordsSection;
   }
 
-  // Add previous transcript as context if provided
-  if (options?.previousTranscript) {
+  // Add previous transcripts as context if provided
+  if (options?.previousTranscripts && options.previousTranscripts.length > 0) {
     // Escape < and > to prevent injection into XML structure
-    const escapedTranscript = options.previousTranscript
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
-    prompt += `\n\nContext from previous transcription (the current audio may be related):
-<previous_transcript>
-${escapedTranscript}
-</previous_transcript>`;
+    const escapedTranscripts = options.previousTranscripts.map(t =>
+      t.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    );
+    // Present transcripts in chronological order (oldest first)
+    // since previousTranscripts array is newest-first
+    const orderedTranscripts = [...escapedTranscripts].reverse();
+    const transcriptsBlock = orderedTranscripts
+      .map((t, i) => `<transcript index="${i + 1}">\n${t}\n</transcript>`)
+      .join('\n');
+    prompt += `\n\nContext from previous transcriptions (the current audio may be a continuation):
+<previous_transcripts>
+${transcriptsBlock}
+</previous_transcripts>`;
   }
 
   return prompt;
