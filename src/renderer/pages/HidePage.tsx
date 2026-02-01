@@ -56,14 +56,17 @@ function formatDuration(minutes: number): string {
 }
 
 export function HidePage() {
-  // Default to 1 hour
+  // Default to 1 hour (slider value ~50 on 0-100 scale)
   const [sliderValue, setSliderValue] = useState(() => minutesToSlider(60));
 
-  const minutes = sliderToMinutes(sliderValue);
+  // Slider goes 0-100 for time, 101 is "Forever"
+  const isForever = sliderValue === 101;
+  const minutes = isForever ? 0 : sliderToMinutes(Math.min(sliderValue, 100));
   const durationMs = minutes * 60 * 1000;
 
   const handleHide = () => {
-    window.electronAPI.hideForDuration(durationMs);
+    // -1 means hide forever (permanent)
+    window.electronAPI.hideForDuration(isForever ? -1 : durationMs);
   };
 
   const handleCancel = () => {
@@ -76,11 +79,13 @@ export function HidePage() {
       <p className="hide-description">Temporarily hide the voice widget.</p>
 
       <div className="hide-slider-container">
-        <div className="hide-duration-display">{formatDuration(minutes)}</div>
+        <div className="hide-duration-display">
+          {isForever ? 'Forever' : formatDuration(minutes)}
+        </div>
         <input
           type="range"
           min="0"
-          max="100"
+          max="101"
           step="1"
           value={sliderValue}
           onChange={(e) => setSliderValue(Number(e.target.value))}
@@ -88,7 +93,7 @@ export function HidePage() {
         />
         <div className="hide-slider-labels">
           <span>10 min</span>
-          <span>48 hours</span>
+          <span>Forever</span>
         </div>
       </div>
 

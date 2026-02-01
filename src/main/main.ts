@@ -65,6 +65,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   previousTranscriptContextEnabled: true,
   soundEnabled: true,
   hotkey: DEFAULT_HOTKEY,
+  widgetHidden: false,
 };
 
 function getSettingsPath(): string {
@@ -563,6 +564,12 @@ function updateTrayMenu() {
               hideTimer = null;
               log('[Hide] Timer cleared by Show Widget');
             }
+            // Reset permanent hide setting when manually showing
+            if (appSettings.widgetHidden) {
+              appSettings.widgetHidden = false;
+              saveSettings(appSettings);
+              log('[Hide] Permanent hide setting reset by Show Widget');
+            }
             mainWindow.show();
             mainWindow.focus();
           }
@@ -949,6 +956,12 @@ app.whenReady().then(() => {
   createTray();
   registerGlobalShortcuts();
 
+  // Hide widget if it was permanently hidden in settings
+  if (appSettings.widgetHidden && mainWindow) {
+    mainWindow.hide();
+    log('[Hide] Widget hidden on startup (permanent hide setting)');
+  }
+
   // Request microphone permission in background (don't block UI)
   requestMicrophonePermission().then((granted) => {
     if (!granted) {
@@ -1041,6 +1054,7 @@ ipcMain.handle('get-settings', () => {
 
 ipcMain.handle('save-settings', (_event, settings: Partial<AppSettings>) => {
   const oldHotkey = appSettings.hotkey;
+  const oldWidgetHidden = appSettings.widgetHidden;
   appSettings = { ...appSettings, ...settings };
   const result = saveSettings(appSettings);
 
@@ -1048,6 +1062,25 @@ ipcMain.handle('save-settings', (_event, settings: Partial<AppSettings>) => {
   if (settings.hotkey !== undefined && settings.hotkey !== oldHotkey) {
     registerGlobalShortcuts();
     updateTrayTooltip();
+  }
+
+  // Show/hide widget if widgetHidden setting changed
+  if (settings.widgetHidden !== undefined && settings.widgetHidden !== oldWidgetHidden) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (settings.widgetHidden) {
+        // Clear any existing timer
+        if (hideTimer) {
+          clearTimeout(hideTimer);
+          hideTimer = null;
+        }
+        mainWindow.hide();
+        log('[Settings] Widget hidden via settings');
+      } else {
+        mainWindow.show();
+        log('[Settings] Widget shown via settings');
+      }
+      updateTrayMenu();
+    }
   }
 
   return result;
@@ -1122,7 +1155,7 @@ ipcMain.handle('get-recent-transcripts', () => {
   return getRecentTranscripts();
 });
 
-// Hide widget for a specified duration
+// Hide widget for a specified duration (-1 means forever/permanent)
 ipcMain.handle('hide-for-duration', (_event, durationMs: number) => {
   if (!mainWindow || mainWindow.isDestroyed()) {
     return false;
@@ -1143,17 +1176,23 @@ ipcMain.handle('hide-for-duration', (_event, durationMs: number) => {
   mainWindow.hide();
   updateTrayMenu();
 
-  log('[Hide] Widget hidden for', durationMs, 'ms');
-
-  // Set timer to show window again
-  hideTimer = setTimeout(() => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.show();
-      updateTrayMenu();
-      log('[Hide] Widget shown after timer');
-    }
-    hideTimer = null;
-  }, durationMs);
+  // If durationMs is -1, hide forever (save to settings)
+  if (durationMs === -1) {
+    log('[Hide] Widget hidden permanently');
+    appSettings.widgetHidden = true;
+    saveSettings(appSettings);
+  } else {
+    log('[Hide] Widget hidden for', durationMs, 'ms');
+    // Set timer to show window again
+    hideTimer = setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.show();
+        updateTrayMenu();
+        log('[Hide] Widget shown after timer');
+      }
+      hideTimer = null;
+    }, durationMs);
+  }
 
   return true;
 });

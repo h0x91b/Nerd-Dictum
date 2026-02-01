@@ -130,6 +130,7 @@ export function SettingsPage() {
   const [previousTranscriptContextEnabled, setPreviousTranscriptContextEnabled] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [hotkey, setHotkey] = useState(DEFAULT_HOTKEY);
+  const [widgetHidden, setWidgetHidden] = useState(false);
   const [isRecordingHotkey, setIsRecordingHotkey] = useState(false);
   const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
   const [languageSearch, setLanguageSearch] = useState('');
@@ -158,6 +159,7 @@ export function SettingsPage() {
     previousTranscriptContextEnabled: boolean;
     soundEnabled: boolean;
     hotkey: string;
+    widgetHidden: boolean;
   } | null>(null);
 
   const themeOptions: Array<{ value: ThemeMode; label: string; previewTheme: 'dark' | 'light' }> = [
@@ -184,7 +186,8 @@ export function SettingsPage() {
       clarificationEnabled !== initial.clarificationEnabled ||
       previousTranscriptContextEnabled !== initial.previousTranscriptContextEnabled ||
       soundEnabled !== initial.soundEnabled ||
-      hotkey !== initial.hotkey
+      hotkey !== initial.hotkey ||
+      widgetHidden !== initial.widgetHidden
     );
   }, [
     apiKey,
@@ -201,6 +204,7 @@ export function SettingsPage() {
     previousTranscriptContextEnabled,
     soundEnabled,
     hotkey,
+    widgetHidden,
   ]);
 
   // Load audio devices
@@ -243,6 +247,7 @@ export function SettingsPage() {
         const loadedPreviousTranscriptContextEnabled = settings.previousTranscriptContextEnabled ?? true;
         const loadedSoundEnabled = settings.soundEnabled ?? true;
         const loadedHotkey = settings.hotkey || DEFAULT_HOTKEY;
+        const loadedWidgetHidden = settings.widgetHidden ?? false;
 
         setApiKey(loadedApiKey);
         setModel(loadedModel);
@@ -258,6 +263,7 @@ export function SettingsPage() {
         setPreviousTranscriptContextEnabled(loadedPreviousTranscriptContextEnabled);
         setSoundEnabled(loadedSoundEnabled);
         setHotkey(loadedHotkey);
+        setWidgetHidden(loadedWidgetHidden);
 
         // Store initial settings for unsaved changes comparison
         initialSettingsRef.current = {
@@ -275,6 +281,7 @@ export function SettingsPage() {
           previousTranscriptContextEnabled: loadedPreviousTranscriptContextEnabled,
           soundEnabled: loadedSoundEnabled,
           hotkey: loadedHotkey,
+          widgetHidden: loadedWidgetHidden,
         };
       } catch (error) {
         console.error('[Settings] Failed to load:', error);
@@ -362,6 +369,7 @@ export function SettingsPage() {
         previousTranscriptContextEnabled,
         soundEnabled,
         hotkey,
+        widgetHidden,
       });
       if (success) {
         // Update initial settings so hasUnsavedChanges becomes false
@@ -380,6 +388,7 @@ export function SettingsPage() {
           previousTranscriptContextEnabled,
           soundEnabled,
           hotkey,
+          widgetHidden,
         };
         setSaveMessage('Saved!');
         setTimeout(() => {
@@ -611,6 +620,20 @@ export function SettingsPage() {
               </label>
               <span className="settings-hint">
                 Play a sound when transcription completes or fails
+              </span>
+            </div>
+
+            <div className="settings-field">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={widgetHidden}
+                  onChange={(e) => setWidgetHidden(e.target.checked)}
+                />
+                <span>Hide widget permanently</span>
+              </label>
+              <span className="settings-hint">
+                The widget will be hidden. Use tray menu to show it.
               </span>
             </div>
 

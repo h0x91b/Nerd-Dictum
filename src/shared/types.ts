@@ -13,4 +13,5 @@ export interface AppSettings {
   previousTranscriptContextEnabled: boolean;
   soundEnabled: boolean;
   hotkey: string;
+  widgetHidden: boolean;
 }

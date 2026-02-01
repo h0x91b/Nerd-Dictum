@@ -19,6 +19,7 @@ const defaultSettings: AppSettings = {
   previousTranscriptContextEnabled: false,
   soundEnabled: true,
   hotkey: 'CommandOrControl+Shift+R',
+  widgetHidden: false,
 };
 
 let mockSettings = { ...defaultSettings };
@@ -122,6 +123,21 @@ export function setupElectronAPIMock() {
 
     getRecentTranscripts: async (): Promise<string[]> => {
       return mockRecentTranscripts;
+    },
+
+    openHideWindow: async (): Promise<boolean> => {
+      console.log('[Mock] Would open hide window');
+      return true;
+    },
+
+    closeHideWindow: async (): Promise<boolean> => {
+      console.log('[Mock] Would close hide window');
+      return true;
+    },
+
+    hideForDuration: async (durationMs: number): Promise<boolean> => {
+      console.log('[Mock] Would hide for duration:', durationMs, 'ms');
+      return true;
     },
   };
 

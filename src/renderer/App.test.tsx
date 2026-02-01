@@ -71,6 +71,7 @@ const defaultSettings = {
   previousTranscriptContextEnabled: false,
   soundEnabled: true,
   hotkey: 'CommandOrControl+Shift+R',
+  widgetHidden: false,
 };
 
 /**
@@ -89,6 +90,9 @@ const createMockElectronAPI = (overrides: Partial<typeof window.electronAPI> = {
   openSettingsWindow: mock(() => Promise.resolve(true)),
   closeSettingsWindow: mock(() => Promise.resolve(true)),
   openInfoWindow: mock(() => Promise.resolve(true)),
+  openHideWindow: mock(() => Promise.resolve(true)),
+  closeHideWindow: mock(() => Promise.resolve(true)),
+  hideForDuration: mock(() => Promise.resolve(true)),
   getMicrophonePermissionStatus: mock(() => Promise.resolve('granted' as const)),
   requestMicrophonePermission: mock(() => Promise.resolve(true)),
   openExternalUrl: mock(() => Promise.resolve(true)),
