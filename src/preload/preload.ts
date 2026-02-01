@@ -25,4 +25,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   getRecentTranscripts: () => ipcRenderer.invoke('get-recent-transcripts'),
   hideForDuration: (durationMs: number) => ipcRenderer.invoke('hide-for-duration', durationMs),
+  trackEvent: (name: string, params?: Record<string, string | number>) =>
+    ipcRenderer.invoke('track-event', name, params ?? {}),
 });

@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { autoUpdater } from 'electron-updater';
 import electronLog from 'electron-log';
 import { decode as decodeBase65 } from '../lib/base65';
+import { initAnalytics, trackEvent, startHeartbeat, stopHeartbeat } from '../lib/analytics';
 import { getDisplayBounds, isPositionValid } from './window-position';
 import type { WindowPosition } from './window-position';
 import { captureCurrentClipboard, addTranscriptionToHistory, restoreClipboardEntry, getClipboardHistory, getEntryLabel } from './clipboard-history';
@@ -920,6 +921,11 @@ async function requestMicrophonePermission(): Promise<boolean> {
 app.whenReady().then(() => {
   log('[App] Starting Nerd Dictum v' + app.getVersion());
 
+  // Initialize analytics, track app start, and start hourly heartbeat
+  initAnalytics(app.getVersion());
+  trackEvent('app_start');
+  startHeartbeat();
+
   // Load settings on app start
   appSettings = loadSettings();
 
@@ -970,6 +976,7 @@ app.on('before-quit', () => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
+  stopHeartbeat();
   if (tray) {
     tray.destroy();
     tray = null;
@@ -1149,4 +1156,9 @@ ipcMain.handle('hide-for-duration', (_event, durationMs: number) => {
   }, durationMs);
 
   return true;
+});
+
+// Analytics event tracking from renderer
+ipcMain.handle('track-event', (_event, name: string, params: Record<string, string | number> = {}) => {
+  trackEvent(name, params);
 });

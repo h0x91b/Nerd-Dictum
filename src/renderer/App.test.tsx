@@ -94,6 +94,10 @@ const createMockElectronAPI = (overrides: Partial<typeof window.electronAPI> = {
   openExternalUrl: mock(() => Promise.resolve(true)),
   getAppVersion: mock(() => Promise.resolve('0.3.1')),
   getRecentTranscripts: mock(() => Promise.resolve([])),
+  openHideWindow: mock(() => Promise.resolve(true)),
+  closeHideWindow: mock(() => Promise.resolve(true)),
+  hideForDuration: mock(() => Promise.resolve(true)),
+  trackEvent: mock(() => Promise.resolve()),
   ...overrides,
 });
 

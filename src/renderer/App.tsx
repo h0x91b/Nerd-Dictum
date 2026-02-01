@@ -64,6 +64,7 @@ export function App() {
   const audioLevelRef = useRef<number>(0); // For lerp smoothing
   const recorderRef = useRef<AudioRecorder | null>(null);
   const lastAudioRef = useRef<string | null>(null);
+  const recordingStartTimeRef = useRef<number>(0); // For tracking recording duration
   const messageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const transcribeAbortRef = useRef<AbortController | null>(null);
@@ -146,6 +147,7 @@ export function App() {
         return;
       }
       showMessage('Copied to clipboard', 'success');
+      window.electronAPI.trackEvent('transcription_success', { transcript_length: transcript.length });
 
       // Play success sound if enabled
       if (soundEnabled) {
@@ -169,6 +171,7 @@ export function App() {
       }
 
       const classified = showError(error);
+      window.electronAPI.trackEvent('transcription_error', { error_type: classified.type });
 
       // Play error sound if enabled
       if (soundEnabled) {
@@ -205,7 +208,9 @@ export function App() {
 
     try {
       const audioBase64 = await recorderRef.current.stop();
+      const recordingDuration = Date.now() - recordingStartTimeRef.current;
       console.log('[Recording] Stopped');
+      window.electronAPI.trackEvent('recording_stop', { duration_ms: recordingDuration });
       await transcribeWithRetry(audioBase64);
     } catch (error) {
       // Recording stop error (too short, etc.)
@@ -286,6 +291,8 @@ export function App() {
         });
         await recorderRef.current.start();
         console.log('[Recording] Started');
+        recordingStartTimeRef.current = Date.now();
+        window.electronAPI.trackEvent('recording_start');
         setState('recording');
       } catch (error) {
         showError(error);

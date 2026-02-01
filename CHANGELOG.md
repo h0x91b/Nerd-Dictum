@@ -1,5 +1,6 @@
 # Changelog
 
+[2026-02-01] Feature — Add Google Analytics 4 integration for real-time usage tracking: app_start, recording_start, recording_stop, transcription_success, transcription_error events
 [2026-01-28] Feature — Expand conversation context: include last 3 transcripts (instead of 1) for better accuracy in ongoing conversations
 [2026-01-28] Feature — Add customizable global hotkey: change the recording shortcut from default ⌘⇧R to any key combination; configure in Settings > General
 [2026-01-28] Feature — Add hide button (eye icon) in top-right corner with popup menu to temporarily hide widget for 10 minutes, 1 hour, 3 hours, or until end of day; widget automatically reappears after selected duration
