@@ -70,7 +70,7 @@
         "NSMicrophoneUsageDescription": "This app needs microphone access to record and transcribe your voice."
       },
       "notarize": true,
-      "singleArchFiles": "node_modules/uiohook-napi/build/**"
+      "singleArchFiles": "**/uiohook-napi/**"
     },
     "win": {
       "target": [
