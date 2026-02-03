@@ -36,6 +36,7 @@
     "directories": {
       "output": "release"
     },
+    "npmRebuild": false,
     "files": [
       "dist/**/*",
       "node_modules/**/*",
@@ -54,17 +55,11 @@
       "target": [
         {
           "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
+          "arch": "universal"
         },
         {
           "target": "zip",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
+          "arch": "universal"
         }
       ],
       "identity": "Arseny Pavlenko (7972FR33R4)",
@@ -75,7 +70,8 @@
       "extendInfo": {
         "NSMicrophoneUsageDescription": "This app needs microphone access to record and transcribe your voice."
       },
-      "notarize": true
+      "notarize": true,
+      "singleArchFiles": "**/uiohook-napi/**/*.node"
     },
     "win": {
       "target": [
