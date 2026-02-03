@@ -1116,7 +1116,6 @@ app.on('before-quit', () => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
-  stopKeyboardHook();
   stopHeartbeat();
   if (tray) {
     tray.destroy();

@@ -1,5 +1,6 @@
 # Changelog
 
+[2026-02-03] Bug — Fix crash on quit: remove call to undefined stopKeyboardHook() left over from uiohook-napi removal
 [2026-02-03] Bug — Fix macOS microphone indicator staying active when opening Settings; properly release MediaStream after enumerating audio devices
 [2026-02-03] Feature — Auto-lower volume during recording: lowers system volume to 10% when recording starts, restores original level after transcription completes (macOS only); works universally with any app playing audio
 [2026-02-03] Feature — Add usage statistics: track total transcriptions, words, characters, recording time with 30-day activity graph; view stats via bar chart button (left of widget); includes streak counter, most active day, time saved estimate, and reset option
