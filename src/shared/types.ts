@@ -27,3 +27,29 @@ export interface AppSettings {
   holdToRecordEnabled: boolean;
   holdToRecordKey: HoldToRecordKey;
 }
+
+export interface DailyStats {
+  date: string; // ISO format: "2025-01-15"
+  transcriptions: number;
+  words: number;
+  characters: number;
+  recordingTimeMs: number;
+}
+
+export interface StatsData {
+  totalTranscriptions: number;
+  totalWords: number;
+  totalCharacters: number;
+  totalRecordingTimeMs: number;
+  firstUseDate: string; // ISO date
+  lastUseDate: string; // ISO date
+  dailyStats: DailyStats[];
+}
+
+export interface DerivedStats {
+  averageWordsPerTranscription: number;
+  mostActiveDay: string;
+  timeSavedSeconds: number;
+}
+
+export type StatsWithDerived = StatsData & DerivedStats;

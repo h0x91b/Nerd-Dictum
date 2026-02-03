@@ -2,7 +2,7 @@
  * Mock implementation of electronAPI for browser development.
  * This allows the UI to be developed and tested without Electron.
  */
-import type { AppSettings, MicrophonePermissionStatus } from '../types/electron';
+import type { AppSettings, MicrophonePermissionStatus, StatsWithDerived } from '../types/electron';
 
 const defaultSettings: AppSettings = {
   apiKey: '',
@@ -20,9 +20,25 @@ const defaultSettings: AppSettings = {
   soundEnabled: true,
   hotkey: 'CommandOrControl+Shift+R',
   widgetHidden: false,
+  holdToRecordEnabled: true,
+  holdToRecordKey: 'RightMeta',
+};
+
+const defaultStats: StatsWithDerived = {
+  totalTranscriptions: 0,
+  totalWords: 0,
+  totalCharacters: 0,
+  totalRecordingTimeMs: 0,
+  firstUseDate: '',
+  lastUseDate: '',
+  dailyStats: [],
+  averageWordsPerTranscription: 0,
+  mostActiveDay: 'N/A',
+  timeSavedSeconds: 0,
 };
 
 let mockSettings = { ...defaultSettings };
+let mockStats = { ...defaultStats };
 let mockRecentTranscripts: string[] = ['This is a mock transcript for browser development.'];
 
 const toggleRecordingCallbacks = new Set<() => void>();
@@ -160,6 +176,37 @@ export function setupElectronAPIMock() {
 
     resumeMedia: async (): Promise<void> => {
       console.log('[Mock] Would resume media playback');
+    },
+
+    openStatsWindow: async (): Promise<boolean> => {
+      console.log('[Mock] Would open stats window');
+      window.open('/stats.html', '_blank', 'width=420,height=720');
+      return true;
+    },
+
+    closeStatsWindow: async (): Promise<boolean> => {
+      console.log('[Mock] Would close stats window');
+      return true;
+    },
+
+    getStats: async (): Promise<StatsWithDerived> => {
+      return { ...mockStats };
+    },
+
+    resetStats: async (): Promise<boolean> => {
+      mockStats = { ...defaultStats };
+      console.log('[Mock] Stats reset');
+      return true;
+    },
+
+    recordTranscriptionStats: async (transcript: string, recordingDurationMs: number): Promise<boolean> => {
+      const words = transcript.trim().split(/\s+/).filter(w => w.length > 0).length;
+      mockStats.totalTranscriptions += 1;
+      mockStats.totalWords += words;
+      mockStats.totalCharacters += transcript.length;
+      mockStats.totalRecordingTimeMs += recordingDurationMs;
+      console.log('[Mock] Recorded stats:', { words, chars: transcript.length, durationMs: recordingDurationMs });
+      return true;
     },
   };
 

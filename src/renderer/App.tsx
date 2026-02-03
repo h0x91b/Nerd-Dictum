@@ -7,6 +7,7 @@ import { playSuccessSound, playErrorSound } from '../lib/sounds';
 import { SettingsButton } from './components/Settings';
 import { InfoButton } from './components/InfoButton';
 import { HideButton } from './components/HideButton';
+import { StatsButton } from './components/StatsButton';
 import { AudioLevelRing } from './components/AudioLevelRing';
 import type { AppSettings, HoldToRecordKey } from './types/electron';
 
@@ -94,6 +95,7 @@ export function App() {
   const audioLevelRef = useRef<number>(0); // For lerp smoothing
   const recorderRef = useRef<AudioRecorder | null>(null);
   const lastAudioRef = useRef<string | null>(null);
+  const lastRecordingDurationRef = useRef<number>(0); // For stats tracking
   const recordingStartTimeRef = useRef<number>(0); // For tracking recording duration
   const messageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -179,6 +181,9 @@ export function App() {
       showMessage('Copied to clipboard', 'success');
       window.electronAPI.trackEvent('transcription_success', { transcript_length: transcript.length });
 
+      // Record stats for this transcription
+      await window.electronAPI.recordTranscriptionStats(transcript, lastRecordingDurationRef.current);
+
       // Play success sound if enabled
       if (soundEnabled) {
         playSuccessSound();
@@ -239,6 +244,7 @@ export function App() {
     try {
       const audioBase64 = await recorderRef.current.stop();
       const recordingDuration = Date.now() - recordingStartTimeRef.current;
+      lastRecordingDurationRef.current = recordingDuration; // Save for stats
       console.log('[Recording] Stopped');
       window.electronAPI.trackEvent('recording_stop', { duration_ms: recordingDuration });
       // Resume media playback immediately after recording stops (before transcription)
@@ -446,6 +452,7 @@ export function App() {
   return (
     <div className="widget">
       {appVersion && <span className="version-hint">{appVersion === 'dev' ? 'dev' : `v${appVersion}`}</span>}
+      <StatsButton />
       <HideButton />
       <InfoButton />
       <SettingsButton />

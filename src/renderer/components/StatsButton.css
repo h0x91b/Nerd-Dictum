@@ -1,0 +1,39 @@
+/* Stats Button - positioned left side, same row as hide button */
+.stats-button {
+  position: absolute;
+  top: 12px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  min-height: 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  padding: 0;
+  margin: 0;
+  transition: color 0.2s ease, background 0.2s ease;
+  -webkit-app-region: no-drag;
+  box-sizing: border-box;
+  z-index: 10;
+}
+
+.stats-button svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+.stats-button:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.stats-button:active {
+  color: var(--text-primary);
+  background: var(--bg-active);
+}

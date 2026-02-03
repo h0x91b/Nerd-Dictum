@@ -11,6 +11,7 @@ import { getDisplayBounds, isPositionValid } from './window-position';
 import type { WindowPosition } from './window-position';
 import { captureCurrentClipboard, addTranscriptionToHistory, restoreClipboardEntry, getClipboardHistory, getEntryLabel } from './clipboard-history';
 import { loadTranscriptHistory, addTranscriptToHistory, getRecentTranscripts } from './transcript-history';
+import { loadStats, recordTranscription, getStatsWithDerived, resetStats } from './stats';
 import type { AppSettings, HoldToRecordKey } from '../shared/types';
 import { startKeyboardHook, stopKeyboardHook, updateTargetKey, isKeyboardHookRunning } from './keyboard-hook';
 
@@ -216,6 +217,7 @@ let mainWindow: BrowserWindow | null = null;
 let settingsWindow: BrowserWindow | null = null;
 let infoWindow: BrowserWindow | null = null;
 let hideWindow: BrowserWindow | null = null;
+let statsWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let hideTimer: NodeJS.Timeout | null = null;
 
@@ -225,7 +227,8 @@ async function updateDockVisibility() {
   const hasSecondaryWindows =
     (settingsWindow && !settingsWindow.isDestroyed()) ||
     (infoWindow && !infoWindow.isDestroyed()) ||
-    (hideWindow && !hideWindow.isDestroyed());
+    (hideWindow && !hideWindow.isDestroyed()) ||
+    (statsWindow && !statsWindow.isDestroyed());
 
   if (hasSecondaryWindows) {
     // Show dock first, then set icon (setIcon requires dock to be visible)
@@ -416,6 +419,66 @@ function createHideWindow() {
 
   hideWindow.on('closed', () => {
     hideWindow = null;
+    updateDockVisibility();
+  });
+}
+
+function createStatsWindow() {
+  if (statsWindow && !statsWindow.isDestroyed()) {
+    statsWindow.focus();
+    return;
+  }
+
+  // Get the display where the main window is located
+  let windowBounds: { x: number; y: number; width: number; height: number } | undefined;
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    const mainBounds = mainWindow.getBounds();
+    const display = screen.getDisplayNearestPoint({ x: mainBounds.x, y: mainBounds.y });
+    const { workArea } = display;
+    // Center the stats window on the same display
+    const width = 420;
+    const height = 720;
+    windowBounds = {
+      x: Math.round(workArea.x + (workArea.width - width) / 2),
+      y: Math.round(workArea.y + (workArea.height - height) / 2),
+      width,
+      height,
+    };
+  }
+
+  statsWindow = new BrowserWindow({
+    width: 420,
+    height: 720,
+    ...(windowBounds && { x: windowBounds.x, y: windowBounds.y }),
+    frame: true,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    title: 'Nerd Dictum — Statistics',
+    modal: false,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, '../preload/preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  const isDev = process.env.ELECTRON_DEV === 'true' || (!app.isPackaged && !process.env.ELECTRON_FORCE_PROD);
+
+  if (isDev) {
+    statsWindow.loadURL(`http://localhost:${DEV_PORT}/stats.html`);
+  } else {
+    statsWindow.loadFile(path.join(__dirname, '../renderer/stats.html'));
+  }
+
+  statsWindow.once('ready-to-show', () => {
+    statsWindow?.show();
+    updateDockVisibility();
+  });
+
+  statsWindow.on('closed', () => {
+    statsWindow = null;
     updateDockVisibility();
   });
 }
@@ -1028,6 +1091,9 @@ app.whenReady().then(() => {
   // Load transcript history for context feature
   loadTranscriptHistory();
 
+  // Load usage statistics
+  loadStats();
+
   // Set dock icon on macOS (especially useful in dev mode)
   if (process.platform === 'darwin' && app.dock) {
     const appIconPath = getAppIconPath();
@@ -1309,4 +1375,31 @@ ipcMain.handle('pause-media', () => {
 
 ipcMain.handle('resume-media', () => {
   resumeMediaPlayback();
+});
+
+// Stats window handlers
+ipcMain.handle('open-stats-window', () => {
+  createStatsWindow();
+  return true;
+});
+
+ipcMain.handle('close-stats-window', () => {
+  if (statsWindow && !statsWindow.isDestroyed()) {
+    statsWindow.close();
+  }
+  return true;
+});
+
+ipcMain.handle('get-stats', () => {
+  return getStatsWithDerived();
+});
+
+ipcMain.handle('reset-stats', () => {
+  resetStats();
+  return true;
+});
+
+ipcMain.handle('record-transcription-stats', (_event, transcript: string, recordingDurationMs: number) => {
+  recordTranscription(transcript, recordingDurationMs);
+  return true;
 });

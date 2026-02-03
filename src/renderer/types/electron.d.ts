@@ -1,5 +1,5 @@
-import type { AppSettings, HoldToRecordKey } from '../../shared/types';
-export type { AppSettings, HoldToRecordKey };
+import type { AppSettings, HoldToRecordKey, StatsWithDerived, DailyStats } from '../../shared/types';
+export type { AppSettings, HoldToRecordKey, StatsWithDerived, DailyStats };
 
 export type MicrophonePermissionStatus = 'not-determined' | 'granted' | 'denied' | 'restricted' | 'unknown';
 
@@ -26,6 +26,12 @@ export interface ElectronAPI {
   trackEvent: (name: string, params?: Record<string, string | number>) => Promise<void>;
   pauseMedia: () => Promise<void>;
   resumeMedia: () => Promise<void>;
+  // Stats
+  openStatsWindow: () => Promise<boolean>;
+  closeStatsWindow: () => Promise<boolean>;
+  getStats: () => Promise<StatsWithDerived>;
+  resetStats: () => Promise<boolean>;
+  recordTranscriptionStats: (transcript: string, recordingDurationMs: number) => Promise<boolean>;
 }
 
 declare global {

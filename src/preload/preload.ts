@@ -43,4 +43,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('track-event', name, params ?? {}),
   pauseMedia: () => ipcRenderer.invoke('pause-media'),
   resumeMedia: () => ipcRenderer.invoke('resume-media'),
+  // Stats
+  openStatsWindow: () => ipcRenderer.invoke('open-stats-window'),
+  closeStatsWindow: () => ipcRenderer.invoke('close-stats-window'),
+  getStats: () => ipcRenderer.invoke('get-stats'),
+  resetStats: () => ipcRenderer.invoke('reset-stats'),
+  recordTranscriptionStats: (transcript: string, recordingDurationMs: number) =>
+    ipcRenderer.invoke('record-transcription-stats', transcript, recordingDurationMs),
 });
