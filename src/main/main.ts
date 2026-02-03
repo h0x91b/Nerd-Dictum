@@ -1,3 +1,7 @@
+// Force node-gyp-build to use prebuilds only (skip build/Release lookup)
+// This is needed for universal macOS builds where build/Release may not exist
+process.env.PREBUILDS_ONLY = 'true';
+
 import { app, BrowserWindow, ipcMain, clipboard, globalShortcut, Tray, Menu, nativeImage, screen, systemPreferences, shell, dialog } from 'electron';
 import path from 'path';
 import fs from 'fs';
