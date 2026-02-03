@@ -1,5 +1,6 @@
 # Changelog
 
+[2026-02-03] Bug — Fix macOS microphone indicator staying active when opening Settings; properly release MediaStream after enumerating audio devices
 [2026-02-03] Feature — Auto-lower volume during recording: lowers system volume to 10% when recording starts, restores original level after transcription completes (macOS only); works universally with any app playing audio
 [2026-02-03] Feature — Add usage statistics: track total transcriptions, words, characters, recording time with 30-day activity graph; view stats via bar chart button (left of widget); includes streak counter, most active day, time saved estimate, and reset option
 [2026-02-01] Feature — Add hold-to-record mode: hold a modifier key (Right Command by default) to record, release to transcribe; works alongside the toggle hotkey (⌘⇧R); configurable in Settings > General with support for left/right variants of Command, Option, Control, and Shift keys

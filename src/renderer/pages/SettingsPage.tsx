@@ -212,7 +212,9 @@ export function SettingsPage() {
     async function loadAudioDevices() {
       try {
         // Request permission first to get device labels
-        await navigator.mediaDevices.getUserMedia({ audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Stop all tracks immediately to release the microphone
+        stream.getTracks().forEach(track => track.stop());
         const devices = await navigator.mediaDevices.enumerateDevices();
         const microphones = devices
           .filter((device) => device.kind === 'audioinput')
