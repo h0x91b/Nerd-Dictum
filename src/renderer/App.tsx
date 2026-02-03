@@ -8,14 +8,39 @@ import { SettingsButton } from './components/Settings';
 import { InfoButton } from './components/InfoButton';
 import { HideButton } from './components/HideButton';
 import { AudioLevelRing } from './components/AudioLevelRing';
-import type { AppSettings } from './types/electron';
+import type { AppSettings, HoldToRecordKey } from './types/electron';
 
 const MESSAGE_TIMEOUT_MS = 2000;
 const RETRY_MESSAGE_TIMEOUT_MS = 4000;
 const SUCCESS_STATE_TIMEOUT_MS = 5000;
+const HINT_DISPLAY_MS = 10000; // How long to show each hint before sliding
+const HINT_SLIDE_MS = 400; // Slide transition duration
 
 // Audio level smoothing
 const AUDIO_LEVEL_LERP_UP = 0.8;   // Very fast rise
+
+// Hold-to-record key display symbols (R/L prefix = right/left)
+const HOLD_KEY_SYMBOLS: Record<HoldToRecordKey, string> = {
+  RightMeta: 'R⌘',
+  LeftMeta: 'L⌘',
+  RightAlt: 'R⌥',
+  LeftAlt: 'L⌥',
+  RightControl: 'R⌃',
+  LeftControl: 'L⌃',
+  RightShift: 'R⇧',
+  LeftShift: 'L⇧',
+};
+
+// Format Electron accelerator to compact symbol form for hint display
+function formatHotkeyCompact(accelerator: string): string {
+  return accelerator
+    .replace(/CommandOrControl\+/g, '⌘')
+    .replace(/Command\+/g, '⌘')
+    .replace(/Control\+/g, '⌃')
+    .replace(/Alt\+/g, '⌥')
+    .replace(/Shift\+/g, '⇧')
+    .replace(/\+/g, '');
+}
 
 function buildTranscribeOptions(settings: AppSettings, previousTranscripts?: string[]): TranscribeOptions {
   const options: TranscribeOptions = {};
@@ -61,6 +86,11 @@ export function App() {
   const [message, setMessage] = useState<FlashMessage | null>(null);
   const [audioLevel, setAudioLevel] = useState<number>(0);
   const [appVersion, setAppVersion] = useState<string>('');
+  const [hotkey, setHotkey] = useState<string>('CommandOrControl+Shift+R');
+  const [holdToRecordEnabled, setHoldToRecordEnabled] = useState<boolean>(true);
+  const [holdToRecordKey, setHoldToRecordKey] = useState<HoldToRecordKey>('RightMeta');
+  const [hintIndex, setHintIndex] = useState<number>(0);
+  const [hintSliding, setHintSliding] = useState<boolean>(false);
   const audioLevelRef = useRef<number>(0); // For lerp smoothing
   const recorderRef = useRef<AudioRecorder | null>(null);
   const lastAudioRef = useRef<string | null>(null);
@@ -358,6 +388,45 @@ export function App() {
     window.electronAPI.getAppVersion().then(setAppVersion);
   }, []);
 
+  // Load hotkey settings for hint display
+  useEffect(() => {
+    window.electronAPI.getSettings().then((settings) => {
+      setHotkey(settings.hotkey || 'CommandOrControl+Shift+R');
+      setHoldToRecordEnabled(settings.holdToRecordEnabled ?? true);
+      setHoldToRecordKey(settings.holdToRecordKey || 'RightMeta');
+    });
+  }, []);
+
+  // Build hints array based on settings
+  const hints = holdToRecordEnabled
+    ? [formatHotkeyCompact(hotkey), `Hold ${HOLD_KEY_SYMBOLS[holdToRecordKey]}`]
+    : [formatHotkeyCompact(hotkey)];
+
+  // Slide between hints with pause
+  useEffect(() => {
+    if (hints.length <= 1) return;
+
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const scheduleNextSlide = () => {
+      // Wait for display duration, then slide out
+      timeoutId = setTimeout(() => {
+        setHintSliding(true);
+        // After slide completes, change hint and reset position
+        timeoutId = setTimeout(() => {
+          setHintIndex((prev) => (prev + 1) % hints.length);
+          setHintSliding(false);
+          // Schedule next slide
+          scheduleNextSlide();
+        }, HINT_SLIDE_MS);
+      }, HINT_DISPLAY_MS);
+    };
+
+    scheduleNextSlide();
+
+    return () => clearTimeout(timeoutId);
+  }, [hints.length]);
+
   // Cleanup recorder on unmount or window close to release microphone
   useEffect(() => {
     const cleanup = () => {
@@ -380,7 +449,11 @@ export function App() {
       <HideButton />
       <InfoButton />
       <SettingsButton />
-      <span className="shortcut-hint">⌘⇧R</span>
+      <div className="shortcut-hint-container">
+        <span className={`shortcut-hint${hintSliding ? ' sliding' : ''}`}>
+          {hints[hintIndex]}
+        </span>
+      </div>
       <div className="drag-handle">
         <span className="grip-dots"></span>
       </div>

@@ -1,5 +1,5 @@
-import type { AppSettings } from '../../shared/types';
-export type { AppSettings };
+import type { AppSettings, HoldToRecordKey } from '../../shared/types';
+export type { AppSettings, HoldToRecordKey };
 
 export type MicrophonePermissionStatus = 'not-determined' | 'granted' | 'denied' | 'restricted' | 'unknown';
 
