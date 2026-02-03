@@ -41,8 +41,7 @@
       "node_modules/**/*",
       "!node_modules/**/README*",
       "!node_modules/**/CHANGELOG*",
-      "!node_modules/**/*.md",
-      "!node_modules/**/build/Release"
+      "!node_modules/**/*.md"
     ],
     "extraResources": [
       {
@@ -55,11 +54,11 @@
       "target": [
         {
           "target": "dmg",
-          "arch": "universal"
+          "arch": ["x64", "arm64"]
         },
         {
           "target": "zip",
-          "arch": "universal"
+          "arch": ["x64", "arm64"]
         }
       ],
       "identity": "Arseny Pavlenko (7972FR33R4)",
