@@ -63,6 +63,16 @@ export function setupElectronAPIMock() {
       };
     },
 
+    onStartRecording: (_callback: () => void): (() => void) => {
+      // No-op for browser mock - hold-to-record is Electron-only
+      return () => {};
+    },
+
+    onStopRecording: (_callback: () => void): (() => void) => {
+      // No-op for browser mock - hold-to-record is Electron-only
+      return () => {};
+    },
+
     getSettings: async (): Promise<AppSettings> => {
       return { ...mockSettings };
     },
@@ -138,6 +148,18 @@ export function setupElectronAPIMock() {
     hideForDuration: async (durationMs: number): Promise<boolean> => {
       console.log('[Mock] Would hide for duration:', durationMs, 'ms');
       return true;
+    },
+
+    trackEvent: async (name: string, params?: Record<string, string | number>): Promise<void> => {
+      console.log('[Mock] Track event:', name, params);
+    },
+
+    pauseMedia: async (): Promise<void> => {
+      console.log('[Mock] Would pause media playback');
+    },
+
+    resumeMedia: async (): Promise<void> => {
+      console.log('[Mock] Would resume media playback');
     },
   };
 

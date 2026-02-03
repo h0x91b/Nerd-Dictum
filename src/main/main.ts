@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, clipboard, globalShortcut, Tray, Menu, nativeImage, screen, systemPreferences, shell, dialog } from 'electron';
 import path from 'path';
 import fs from 'fs';
+import { exec } from 'child_process';
 import { fileURLToPath } from 'url';
 import { autoUpdater } from 'electron-updater';
 import electronLog from 'electron-log';
@@ -47,6 +48,61 @@ electronLog.transports.console.level = 'info';
 // Wrapper function for consistent logging interface
 function log(...args: unknown[]): void {
   electronLog.info(...args);
+}
+
+// Track original volume level before recording
+let savedVolume: number | null = null;
+const RECORDING_VOLUME = 10; // Lower volume to 10% during recording
+
+// Lower system volume during recording (macOS)
+function pauseMediaPlayback(): void {
+  if (process.platform !== 'darwin') return;
+
+  // Get current volume and lower it
+  exec(`osascript -e 'output volume of (get volume settings)'`, (error, stdout) => {
+    if (error) {
+      log('[Media] Error getting volume:', error.message);
+      return;
+    }
+
+    const currentVolume = parseInt(stdout.trim(), 10);
+    if (isNaN(currentVolume)) {
+      log('[Media] Could not parse volume:', stdout);
+      return;
+    }
+
+    // Only save and lower if volume is above our recording threshold
+    if (currentVolume > RECORDING_VOLUME) {
+      savedVolume = currentVolume;
+      exec(`osascript -e 'set volume output volume ${RECORDING_VOLUME}'`, (err) => {
+        if (err) {
+          log('[Media] Error setting volume:', err.message);
+          savedVolume = null;
+          return;
+        }
+        log('[Media] Volume lowered from', currentVolume, 'to', RECORDING_VOLUME);
+      });
+    } else {
+      log('[Media] Volume already low:', currentVolume);
+    }
+  });
+}
+
+// Restore system volume after recording (macOS)
+function resumeMediaPlayback(): void {
+  if (process.platform !== 'darwin') return;
+  if (savedVolume === null) return;
+
+  const volumeToRestore = savedVolume;
+  savedVolume = null;
+
+  exec(`osascript -e 'set volume output volume ${volumeToRestore}'`, (error) => {
+    if (error) {
+      log('[Media] Error restoring volume:', error.message);
+      return;
+    }
+    log('[Media] Volume restored to', volumeToRestore);
+  });
 }
 
 const DEFAULT_HOTKEY = 'CommandOrControl+Shift+R';
@@ -1244,4 +1300,13 @@ ipcMain.handle('hide-for-duration', (_event, durationMs: number) => {
 // Analytics event tracking from renderer
 ipcMain.handle('track-event', (_event, name: string, params: Record<string, string | number> = {}) => {
   trackEvent(name, params);
+});
+
+// Media control for pausing/resuming during recording
+ipcMain.handle('pause-media', () => {
+  pauseMediaPlayback();
+});
+
+ipcMain.handle('resume-media', () => {
+  resumeMediaPlayback();
 });

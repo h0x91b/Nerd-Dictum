@@ -41,4 +41,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   hideForDuration: (durationMs: number) => ipcRenderer.invoke('hide-for-duration', durationMs),
   trackEvent: (name: string, params?: Record<string, string | number>) =>
     ipcRenderer.invoke('track-event', name, params ?? {}),
+  pauseMedia: () => ipcRenderer.invoke('pause-media'),
+  resumeMedia: () => ipcRenderer.invoke('resume-media'),
 });

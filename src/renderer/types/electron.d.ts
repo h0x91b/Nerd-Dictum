@@ -24,6 +24,8 @@ export interface ElectronAPI {
   getRecentTranscripts: () => Promise<string[]>;
   hideForDuration: (durationMs: number) => Promise<boolean>;
   trackEvent: (name: string, params?: Record<string, string | number>) => Promise<void>;
+  pauseMedia: () => Promise<void>;
+  resumeMedia: () => Promise<void>;
 }
 
 declare global {

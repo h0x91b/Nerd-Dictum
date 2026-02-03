@@ -211,10 +211,14 @@ export function App() {
       const recordingDuration = Date.now() - recordingStartTimeRef.current;
       console.log('[Recording] Stopped');
       window.electronAPI.trackEvent('recording_stop', { duration_ms: recordingDuration });
+      // Resume media playback immediately after recording stops (before transcription)
+      window.electronAPI.resumeMedia();
       await transcribeWithRetry(audioBase64);
     } catch (error) {
       // Recording stop error (too short, etc.)
       showError(error);
+      // Resume media playback on recording error
+      window.electronAPI.resumeMedia();
       setState('idle');
     }
   }, [transcribeWithRetry, showError]);
@@ -247,6 +251,9 @@ export function App() {
       successTimeoutRef.current = null;
     }
 
+    // Pause any playing media
+    window.electronAPI.pauseMedia();
+
     try {
       // Check and request microphone permission on macOS
       const permissionStatus = await window.electronAPI.getMicrophonePermissionStatus();
@@ -254,6 +261,7 @@ export function App() {
 
       if (permissionStatus === 'denied' || permissionStatus === 'restricted') {
         showMessage('Microphone access denied. Enable in System Preferences.', 'error', false);
+        window.electronAPI.resumeMedia();
         return;
       }
 
@@ -261,6 +269,7 @@ export function App() {
         const granted = await window.electronAPI.requestMicrophonePermission();
         if (!granted) {
           showMessage('Microphone permission required', 'error', false);
+          window.electronAPI.resumeMedia();
           return;
         }
       }
@@ -298,6 +307,7 @@ export function App() {
       setState('recording');
     } catch (error) {
       showError(error);
+      window.electronAPI.resumeMedia();
     }
   }, [state, showError, showMessage, stopRecordingAndTranscribe]);
 

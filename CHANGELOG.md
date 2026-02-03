@@ -1,5 +1,6 @@
 # Changelog
 
+[2026-02-03] Feature — Auto-lower volume during recording: lowers system volume to 10% when recording starts, restores original level after transcription completes (macOS only); works universally with any app playing audio
 [2026-02-01] Feature — Add hold-to-record mode: hold a modifier key (Right Command by default) to record, release to transcribe; works alongside the toggle hotkey (⌘⇧R); configurable in Settings > General with support for left/right variants of Command, Option, Control, and Shift keys
 [2026-02-01] Feature — Add Google Analytics 4 integration for real-time usage tracking: app_start, recording_start, recording_stop, transcription_success, transcription_error events
 [2026-02-01] Feature — Add "Forever" option to hide popup: hide widget permanently until manually shown via tray menu
