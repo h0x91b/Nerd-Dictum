@@ -1,7 +1,3 @@
-// Force node-gyp-build to use prebuilds only (skip build/Release lookup)
-// This is needed for universal macOS builds where build/Release may not exist
-process.env.PREBUILDS_ONLY = 'true';
-
 import { app, BrowserWindow, ipcMain, clipboard, globalShortcut, Tray, Menu, nativeImage, screen, systemPreferences, shell, dialog } from 'electron';
 import path from 'path';
 import fs from 'fs';
@@ -16,8 +12,7 @@ import type { WindowPosition } from './window-position';
 import { captureCurrentClipboard, addTranscriptionToHistory, restoreClipboardEntry, getClipboardHistory, getEntryLabel } from './clipboard-history';
 import { loadTranscriptHistory, addTranscriptToHistory, getRecentTranscripts } from './transcript-history';
 import { loadStats, recordTranscription, getStatsWithDerived, resetStats } from './stats';
-import type { AppSettings, HoldToRecordKey } from '../shared/types';
-import { startKeyboardHook, stopKeyboardHook, updateTargetKey, isKeyboardHookRunning } from './keyboard-hook';
+import type { AppSettings } from '../shared/types';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -795,35 +790,8 @@ function registerGlobalShortcuts() {
     }
   }
 
-  // Setup hold-to-record if enabled
-  setupHoldToRecord();
-}
-
-function setupHoldToRecord() {
-  if (appSettings.holdToRecordEnabled) {
-    const started = startKeyboardHook(appSettings.holdToRecordKey, {
-      onKeyDown: () => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          log('[HoldToRecord] Key down, starting recording');
-          mainWindow.webContents.send('start-recording');
-        }
-      },
-      onKeyUp: () => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          log('[HoldToRecord] Key up, stopping recording');
-          mainWindow.webContents.send('stop-recording');
-        }
-      },
-    });
-    if (started) {
-      log('[HoldToRecord] Started with key:', appSettings.holdToRecordKey);
-    } else {
-      log('[HoldToRecord] Failed to start keyboard hook');
-    }
-  } else {
-    stopKeyboardHook();
-    log('[HoldToRecord] Disabled');
-  }
+  // Hold-to-record feature temporarily disabled due to uiohook-napi
+  // causing issues with universal macOS builds. See CLAUDE.md for details.
 }
 
 function createApplicationMenu() {
@@ -1215,8 +1183,6 @@ ipcMain.handle('get-settings', () => {
 ipcMain.handle('save-settings', (_event, settings: Partial<AppSettings>) => {
   const oldHotkey = appSettings.hotkey;
   const oldWidgetHidden = appSettings.widgetHidden;
-  const oldHoldToRecordEnabled = appSettings.holdToRecordEnabled;
-  const oldHoldToRecordKey = appSettings.holdToRecordKey;
   appSettings = { ...appSettings, ...settings };
   const result = saveSettings(appSettings);
 
@@ -1224,14 +1190,6 @@ ipcMain.handle('save-settings', (_event, settings: Partial<AppSettings>) => {
   if (settings.hotkey !== undefined && settings.hotkey !== oldHotkey) {
     registerGlobalShortcuts();
     updateTrayTooltip();
-  }
-
-  // Update hold-to-record if settings changed
-  const holdToRecordChanged =
-    (settings.holdToRecordEnabled !== undefined && settings.holdToRecordEnabled !== oldHoldToRecordEnabled) ||
-    (settings.holdToRecordKey !== undefined && settings.holdToRecordKey !== oldHoldToRecordKey);
-  if (holdToRecordChanged) {
-    setupHoldToRecord();
   }
 
   // Show/hide widget if widgetHidden setting changed

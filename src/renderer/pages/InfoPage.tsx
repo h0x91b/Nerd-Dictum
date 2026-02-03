@@ -1,18 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { HoldToRecordKey } from '../types/electron';
 import './InfoPage.css';
-
-// Hold-to-record key display labels
-const HOLD_KEY_LABELS: Record<HoldToRecordKey, string> = {
-  RightMeta: 'Right ⌘',
-  LeftMeta: 'Left ⌘',
-  RightAlt: 'Right ⌥',
-  LeftAlt: 'Left ⌥',
-  RightControl: 'Right ⌃',
-  LeftControl: 'Left ⌃',
-  RightShift: 'Right ⇧',
-  LeftShift: 'Left ⇧',
-};
 
 // Parse Electron accelerator into individual key parts for kbd display
 function parseHotkeyParts(accelerator: string): string[] {
@@ -34,14 +21,10 @@ function parseHotkeyParts(accelerator: string): string[] {
 
 export function InfoPage() {
   const [hotkey, setHotkey] = useState<string>('CommandOrControl+Shift+R');
-  const [holdToRecordEnabled, setHoldToRecordEnabled] = useState<boolean>(true);
-  const [holdToRecordKey, setHoldToRecordKey] = useState<HoldToRecordKey>('RightMeta');
 
   useEffect(() => {
     window.electronAPI.getSettings().then((settings) => {
       setHotkey(settings.hotkey || 'CommandOrControl+Shift+R');
-      setHoldToRecordEnabled(settings.holdToRecordEnabled ?? true);
-      setHoldToRecordKey(settings.holdToRecordKey || 'RightMeta');
     });
   }, []);
 
@@ -94,14 +77,6 @@ export function InfoPage() {
             ))}
           </div>
         </div>
-        {holdToRecordEnabled && (
-          <div className="info-shortcut-row">
-            <span className="shortcut-label">Hold to record:</span>
-            <div className="shortcut-keys">
-              <kbd>{HOLD_KEY_LABELS[holdToRecordKey]}</kbd>
-            </div>
-          </div>
-        )}
       </div>
 
       <p className="info-tip">
