@@ -41,7 +41,8 @@
       "node_modules/**/*",
       "!node_modules/**/README*",
       "!node_modules/**/CHANGELOG*",
-      "!node_modules/**/*.md"
+      "!node_modules/**/*.md",
+      "!node_modules/**/build/Release"
     ],
     "extraResources": [
       {
@@ -69,8 +70,7 @@
       "extendInfo": {
         "NSMicrophoneUsageDescription": "This app needs microphone access to record and transcribe your voice."
       },
-      "notarize": true,
-      "singleArchFiles": "**/uiohook-napi/**"
+      "notarize": true
     },
     "win": {
       "target": [
