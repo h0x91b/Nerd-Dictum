@@ -25,3 +25,46 @@ jobs:
 
       - name: Build
         run: bun run build
+
+      - name: Run Trivy vulnerability scanner
+        if: github.event_name != 'pull_request'
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '0'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+        continue-on-error: true
+
+      - name: Run Trivy vulnerability scanner (JSON output)
+        if: github.event_name != 'pull_request'
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'json'
+          output: 'trivy-results.json'
+          exit-code: '0'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+        continue-on-error: true
+
+      - name: Print Trivy results summary
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "=============="
+          echo "Trivy Security Scan Results"
+          echo "=============="
+          if [ -f trivy-results.json ]; then
+            echo "Full results saved to trivy-results.json"
+            echo ""
+            echo "Summary:"
+            jq -r '.Results[] | select(.Vulnerabilities != null) | "Target: \(.Target)\nVulnerabilities found: \(.Vulnerabilities | length)\n"' trivy-results.json || echo "No vulnerabilities data found"
+            echo ""
+            echo "Critical and High severity vulnerabilities:"
+            jq -r '.Results[].Vulnerabilities[]? | select(.Severity == "CRITICAL" or .Severity == "HIGH") | "- [\(.Severity)] \(.VulnerabilityID): \(.Title // .PkgName)"' trivy-results.json | head -20 || echo "No critical/high vulnerabilities found"
+          else
+            echo "Trivy results file not found"
+          fi
+          echo "=============="
+        continue-on-error: true
