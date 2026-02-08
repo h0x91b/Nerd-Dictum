@@ -2,6 +2,7 @@
 
 ## 2026-02-03
 
+[2026-02-08] Security — Upgrade Electron from 33.4.11 to 35.7.5 to fix CVE-2025-55305 (ASAR Integrity Bypass via resource modification)
 [2026-02-08] Feature — API error detail popup: when API returns an error (including HTML responses), clicking the error flash message opens a dedicated window showing the HTTP status code, error message, and full response body; HTML responses are rendered in a sandboxed iframe for readability
 [2026-02-03] Bug — Fix crash on quit: remove call to undefined stopKeyboardHook() left over from uiohook-napi removal
 [2026-02-03] Bug — Fix macOS microphone indicator staying active when opening Settings; properly release MediaStream after enumerating audio devices
