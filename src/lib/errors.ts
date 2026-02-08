@@ -2,6 +2,8 @@
  * Error classification and user-friendly message generation
  */
 
+import { ApiResponseError } from './gemini';
+
 export type ErrorType =
   | 'microphone_permission'
   | 'microphone_not_found'
@@ -18,12 +20,21 @@ export interface ClassifiedError {
   type: ErrorType;
   message: string;
   isRetryable: boolean;
+  /** Raw API response body (may be HTML) when available */
+  responseBody?: string;
+  /** HTTP status code when available */
+  statusCode?: number;
 }
 
 /**
  * Classify an error and return user-friendly information
  */
 export function classifyError(error: unknown): ClassifiedError {
+  // Extract API response details if available
+  const apiDetails = error instanceof ApiResponseError
+    ? { responseBody: error.responseBody, statusCode: error.statusCode }
+    : undefined;
+
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
 
@@ -70,12 +81,16 @@ export function classifyError(error: unknown): ClassifiedError {
       };
     }
 
-    // API key errors - check invalid first since "Invalid or missing API key" contains both
-    if (message.includes('invalid') && message.includes('api key')) {
+    // API key errors - check invalid/not valid first since "Invalid or missing API key" contains both
+    if (
+      (message.includes('invalid') || message.includes('not valid')) &&
+      message.includes('api key')
+    ) {
       return {
         type: 'api_key_invalid',
         message: 'Invalid API key',
         isRetryable: false,
+        ...apiDetails,
       };
     }
 
@@ -84,6 +99,7 @@ export function classifyError(error: unknown): ClassifiedError {
         type: 'api_key_missing',
         message: 'API key not configured',
         isRetryable: false,
+        ...apiDetails,
       };
     }
 
@@ -116,6 +132,7 @@ export function classifyError(error: unknown): ClassifiedError {
         type: 'api_error',
         message: 'API error - try again',
         isRetryable: true,
+        ...apiDetails,
       };
     }
 
@@ -134,14 +151,16 @@ export function classifyError(error: unknown): ClassifiedError {
         type: 'api_error',
         message: 'Transcription failed',
         isRetryable: true,
+        ...apiDetails,
       };
     }
   }
 
-  // Unknown error
+  // Unknown error — still include API response details if available
   return {
     type: 'unknown',
     message: 'Something went wrong',
     isRetryable: true,
+    ...apiDetails,
   };
 }

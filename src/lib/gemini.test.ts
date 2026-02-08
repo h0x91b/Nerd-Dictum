@@ -38,7 +38,7 @@ describe('transcribeAudio', () => {
       Promise.resolve({
         ok: false,
         status: 401,
-        json: () => Promise.resolve({ error: { message: 'Invalid API key' } }),
+        text: () => Promise.resolve(JSON.stringify({ error: { message: 'Invalid API key' } })),
       } as Response)
     ) as unknown as typeof fetch;
 
@@ -144,7 +144,7 @@ describe('transcribeAudio', () => {
       Promise.resolve({
         ok: false,
         status: 403,
-        json: () => Promise.resolve({ error: { message: 'Forbidden' } }),
+        text: () => Promise.resolve(JSON.stringify({ error: { message: 'Forbidden' } })),
       } as Response)
     ) as unknown as typeof fetch;
 
@@ -158,7 +158,7 @@ describe('transcribeAudio', () => {
       Promise.resolve({
         ok: false,
         status: 400,
-        json: () => Promise.resolve({ error: { message: 'Bad request' } }),
+        text: () => Promise.resolve(JSON.stringify({ error: { message: 'Bad request' } })),
       } as Response)
     ) as unknown as typeof fetch;
 
@@ -172,7 +172,7 @@ describe('transcribeAudio', () => {
       Promise.resolve({
         ok: false,
         status: 422,
-        json: () => Promise.resolve({}),
+        text: () => Promise.resolve(JSON.stringify({})),
       } as Response)
     ) as unknown as typeof fetch;
 
@@ -186,7 +186,7 @@ describe('transcribeAudio', () => {
       Promise.resolve({
         ok: false,
         status: 500,
-        json: () => Promise.resolve({}),
+        text: () => Promise.resolve('Internal Server Error'),
       } as Response)
     ) as unknown as typeof fetch;
 
@@ -390,7 +390,7 @@ describe('transcribeAudio', () => {
       return Promise.resolve({
         ok: false,
         status: 401,
-        json: () => Promise.resolve({ error: { message: 'Invalid API key' } }),
+        text: () => Promise.resolve(JSON.stringify({ error: { message: 'Invalid API key' } })),
       } as Response);
     }) as unknown as typeof fetch;
 

@@ -86,6 +86,18 @@ export class TranscriptionCancelledError extends Error {
   }
 }
 
+export class ApiResponseError extends Error {
+  responseBody: string;
+  statusCode: number;
+
+  constructor(message: string, statusCode: number, responseBody: string) {
+    super(message);
+    this.name = 'ApiResponseError';
+    this.statusCode = statusCode;
+    this.responseBody = responseBody;
+  }
+}
+
 interface GeminiResponse {
   candidates?: Array<{
     content?: {
@@ -330,19 +342,28 @@ export async function transcribeAudio(
         });
 
         if (AUTH_ERROR_STATUSES.has(response.status)) {
-          throw new Error('Invalid or missing API key');
+          const body = await response.text();
+          throw new ApiResponseError('Invalid or missing API key', response.status, body);
         }
 
         if (
           response.status >= CLIENT_ERROR_STATUS_MIN &&
           response.status < CLIENT_ERROR_STATUS_MAX
         ) {
-          const errorData = await response.json();
-          throw new Error(errorData.error?.message || 'Bad request');
+          const body = await response.text();
+          let message = 'Bad request';
+          try {
+            const errorData = JSON.parse(body);
+            message = errorData.error?.message || message;
+          } catch {
+            // Response is not JSON (e.g. HTML error page) — keep raw body
+          }
+          throw new ApiResponseError(message, response.status, body);
         }
 
         if (!response.ok) {
-          throw new Error(`HTTP error: ${response.status}`);
+          const body = await response.text();
+          throw new ApiResponseError(`HTTP error: ${response.status}`, response.status, body);
         }
 
         const data: GeminiResponse = await response.json();

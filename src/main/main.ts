@@ -217,6 +217,8 @@ let settingsWindow: BrowserWindow | null = null;
 let infoWindow: BrowserWindow | null = null;
 let hideWindow: BrowserWindow | null = null;
 let statsWindow: BrowserWindow | null = null;
+let errorDetailWindow: BrowserWindow | null = null;
+let pendingErrorDetail: { message: string; statusCode?: number; responseBody?: string } | null = null;
 let tray: Tray | null = null;
 let hideTimer: NodeJS.Timeout | null = null;
 
@@ -227,7 +229,8 @@ async function updateDockVisibility() {
     (settingsWindow && !settingsWindow.isDestroyed()) ||
     (infoWindow && !infoWindow.isDestroyed()) ||
     (hideWindow && !hideWindow.isDestroyed()) ||
-    (statsWindow && !statsWindow.isDestroyed());
+    (statsWindow && !statsWindow.isDestroyed()) ||
+    (errorDetailWindow && !errorDetailWindow.isDestroyed());
 
   if (hasSecondaryWindows) {
     // Show dock first, then set icon (setIcon requires dock to be visible)
@@ -478,6 +481,66 @@ function createStatsWindow() {
 
   statsWindow.on('closed', () => {
     statsWindow = null;
+    updateDockVisibility();
+  });
+}
+
+function createErrorDetailWindow() {
+  if (errorDetailWindow && !errorDetailWindow.isDestroyed()) {
+    errorDetailWindow.focus();
+    return;
+  }
+
+  // Get the display where the main window is located
+  let windowBounds: { x: number; y: number; width: number; height: number } | undefined;
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    const mainBounds = mainWindow.getBounds();
+    const display = screen.getDisplayNearestPoint({ x: mainBounds.x, y: mainBounds.y });
+    const { workArea } = display;
+    const width = 560;
+    const height = 440;
+    windowBounds = {
+      x: Math.round(workArea.x + (workArea.width - width) / 2),
+      y: Math.round(workArea.y + (workArea.height - height) / 2),
+      width,
+      height,
+    };
+  }
+
+  errorDetailWindow = new BrowserWindow({
+    width: 560,
+    height: 440,
+    ...(windowBounds && { x: windowBounds.x, y: windowBounds.y }),
+    frame: true,
+    resizable: true,
+    minimizable: false,
+    maximizable: false,
+    title: 'Nerd Dictum — API Error',
+    modal: false,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, '../preload/preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  const isDev = process.env.ELECTRON_DEV === 'true' || (!app.isPackaged && !process.env.ELECTRON_FORCE_PROD);
+
+  if (isDev) {
+    errorDetailWindow.loadURL(`http://localhost:${DEV_PORT}/error-detail.html`);
+  } else {
+    errorDetailWindow.loadFile(path.join(__dirname, '../renderer/error-detail.html'));
+  }
+
+  errorDetailWindow.once('ready-to-show', () => {
+    errorDetailWindow?.show();
+    updateDockVisibility();
+  });
+
+  errorDetailWindow.on('closed', () => {
+    errorDetailWindow = null;
+    pendingErrorDetail = null;
     updateDockVisibility();
   });
 }
@@ -1363,4 +1426,15 @@ ipcMain.handle('reset-stats', () => {
 ipcMain.handle('record-transcription-stats', (_event, transcript: string, recordingDurationMs: number) => {
   recordTranscription(transcript, recordingDurationMs);
   return true;
+});
+
+// Error detail window handlers
+ipcMain.handle('open-error-detail-window', (_event, detail: { message: string; statusCode?: number; responseBody?: string }) => {
+  pendingErrorDetail = detail;
+  createErrorDetailWindow();
+  return true;
+});
+
+ipcMain.handle('get-error-detail', () => {
+  return pendingErrorDetail || { message: 'Unknown error' };
 });

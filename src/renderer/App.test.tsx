@@ -72,6 +72,8 @@ const defaultSettings = {
   soundEnabled: true,
   hotkey: 'CommandOrControl+Shift+R',
   widgetHidden: false,
+  holdToRecordEnabled: false,
+  holdToRecordKey: 'RightMeta' as const,
 };
 
 /**
@@ -104,12 +106,27 @@ const createMockElectronAPI = (overrides: Partial<typeof window.electronAPI> = {
   openExternalUrl: mock(() => Promise.resolve(true)),
   getAppVersion: mock(() => Promise.resolve('0.3.1')),
   getRecentTranscripts: mock(() => Promise.resolve([])),
-  openHideWindow: mock(() => Promise.resolve(true)),
-  closeHideWindow: mock(() => Promise.resolve(true)),
-  hideForDuration: mock(() => Promise.resolve(true)),
   trackEvent: mock(() => Promise.resolve()),
   pauseMedia: mock(() => Promise.resolve()),
   resumeMedia: mock(() => Promise.resolve()),
+  openStatsWindow: mock(() => Promise.resolve(true)),
+  closeStatsWindow: mock(() => Promise.resolve(true)),
+  getStats: mock(() => Promise.resolve({
+    totalTranscriptions: 0,
+    totalWords: 0,
+    totalCharacters: 0,
+    totalRecordingTimeMs: 0,
+    firstUseDate: '',
+    lastUseDate: '',
+    dailyStats: [],
+    averageWordsPerTranscription: 0,
+    mostActiveDay: 'N/A',
+    timeSavedSeconds: 0,
+  })),
+  resetStats: mock(() => Promise.resolve(true)),
+  recordTranscriptionStats: mock(() => Promise.resolve(true)),
+  openErrorDetailWindow: mock(() => Promise.resolve(true)),
+  getErrorDetail: mock(() => Promise.resolve({ message: 'Unknown error' })),
   ...overrides,
 });
 
@@ -427,11 +444,11 @@ describe('App', () => {
         const flashMessage = document.querySelector('.flash-message');
         expect(flashMessage).toBeDefined();
         expect(flashMessage?.className).toContain('error');
-        expect(flashMessage?.className).toContain('retryable');
+        expect(flashMessage?.className).toContain('clickable');
       });
     });
 
-    it('should not show retryable class for non-retryable errors', async () => {
+    it('should not show clickable class for non-retryable errors', async () => {
       const notFoundError = new Error('NotFoundError');
       notFoundError.name = 'NotFoundError';
 
@@ -455,7 +472,7 @@ describe('App', () => {
         const flashMessage = document.querySelector('.flash-message');
         expect(flashMessage).toBeDefined();
         expect(flashMessage?.className).toContain('error');
-        expect(flashMessage?.className).not.toContain('retryable');
+        expect(flashMessage?.className).not.toContain('clickable');
       });
     });
 

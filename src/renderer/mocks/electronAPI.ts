@@ -2,7 +2,7 @@
  * Mock implementation of electronAPI for browser development.
  * This allows the UI to be developed and tested without Electron.
  */
-import type { AppSettings, MicrophonePermissionStatus, StatsWithDerived } from '../types/electron';
+import type { AppSettings, MicrophonePermissionStatus, StatsWithDerived, ErrorDetail } from '../types/electron';
 
 const defaultSettings: AppSettings = {
   apiKey: '',
@@ -207,6 +207,15 @@ export function setupElectronAPIMock() {
       mockStats.totalRecordingTimeMs += recordingDurationMs;
       console.log('[Mock] Recorded stats:', { words, chars: transcript.length, durationMs: recordingDurationMs });
       return true;
+    },
+
+    openErrorDetailWindow: async (detail: ErrorDetail): Promise<boolean> => {
+      console.log('[Mock] Would open error detail window:', detail);
+      return true;
+    },
+
+    getErrorDetail: async (): Promise<ErrorDetail> => {
+      return { message: 'Mock error' };
     },
   };
 
