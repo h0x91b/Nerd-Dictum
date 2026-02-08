@@ -34,6 +34,9 @@ jobs:
           format: 'table'
           exit-code: '0'
           severity: 'CRITICAL,HIGH,MEDIUM'
+          trivy-config: ''
+        env:
+          TRIVY_INCLUDE_DEV_DEPS: 'true'
         continue-on-error: true
 
       - name: Run Trivy vulnerability scanner (JSON output)
@@ -45,6 +48,9 @@ jobs:
           output: 'trivy-results.json'
           exit-code: '0'
           severity: 'CRITICAL,HIGH,MEDIUM'
+          trivy-config: ''
+        env:
+          TRIVY_INCLUDE_DEV_DEPS: 'true'
         continue-on-error: true
 
       - name: Print Trivy results summary
