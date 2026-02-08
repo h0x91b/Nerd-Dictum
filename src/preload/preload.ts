@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { AppSettings } from '../shared/types';
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -54,4 +54,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openErrorDetailWindow: (detail: { message: string; statusCode?: number; responseBody?: string }) =>
     ipcRenderer.invoke('open-error-detail-window', detail),
   getErrorDetail: () => ipcRenderer.invoke('get-error-detail'),
+  // File operations
+  getPathForFile: (file: File) => webUtils.getPathForFile(file),
+  readFileAsBase64: (filePath: string) => ipcRenderer.invoke('read-file-as-base64', filePath),
 });

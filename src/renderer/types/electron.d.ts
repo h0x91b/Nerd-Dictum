@@ -41,6 +41,9 @@ export interface ElectronAPI {
   // Error detail
   openErrorDetailWindow: (detail: ErrorDetail) => Promise<boolean>;
   getErrorDetail: () => Promise<ErrorDetail>;
+  // File operations
+  getPathForFile: (file: File) => string;
+  readFileAsBase64: (filePath: string) => Promise<string>;
 }
 
 declare global {

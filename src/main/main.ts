@@ -1438,3 +1438,14 @@ ipcMain.handle('open-error-detail-window', (_event, detail: { message: string; s
 ipcMain.handle('get-error-detail', () => {
   return pendingErrorDetail || { message: 'Unknown error' };
 });
+
+// Read a file and return its contents as base64
+ipcMain.handle('read-file-as-base64', (_event, filePath: string) => {
+  try {
+    const data = fs.readFileSync(filePath);
+    return data.toString('base64');
+  } catch (error) {
+    log('[File] Failed to read file:', filePath, error);
+    throw error;
+  }
+});

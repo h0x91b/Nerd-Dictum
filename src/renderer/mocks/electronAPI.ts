@@ -217,6 +217,16 @@ export function setupElectronAPIMock() {
     getErrorDetail: async (): Promise<ErrorDetail> => {
       return { message: 'Mock error' };
     },
+
+    getPathForFile: (file: File): string => {
+      console.log('[Mock] getPathForFile:', file.name);
+      return `/mock/path/${file.name}`;
+    },
+
+    readFileAsBase64: async (filePath: string): Promise<string> => {
+      console.log('[Mock] Would read file as base64:', filePath);
+      return '';
+    },
   };
 
   // Set up keyboard shortcut for toggle recording (Cmd/Ctrl+Shift+R)

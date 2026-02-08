@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-02-08
+
+[2026-02-08] Feature — Drag-and-drop file support: drop MP3, WAV, or OGG files onto the widget to transcribe them via Gemini; drop any other file to copy its full path to clipboard with success feedback
+
 ## 2026-02-03
 
 [2026-02-08] Security — Upgrade Electron from 33.4.11 to 35.7.5 to fix CVE-2025-55305 (ASAR Integrity Bypass via resource modification)

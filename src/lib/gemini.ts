@@ -77,6 +77,7 @@ export interface TranscribeOptions {
 
 export interface TranscribeRequestOptions extends TranscribeOptions {
   signal?: AbortSignal;
+  mimeType?: string;
 }
 
 export class TranscriptionCancelledError extends Error {
@@ -226,7 +227,7 @@ ${transcriptsBlock}
   return prompt;
 }
 
-function buildRequestBody(prompt: string, audioBase64: string) {
+function buildRequestBody(prompt: string, audioBase64: string, mimeType: string = 'audio/wav') {
   return {
     contents: [
       {
@@ -234,7 +235,7 @@ function buildRequestBody(prompt: string, audioBase64: string) {
           { text: prompt },
           {
             inline_data: {
-              mime_type: 'audio/wav',
+              mime_type: mimeType,
               data: audioBase64,
             },
           },
@@ -302,7 +303,7 @@ export async function transcribeAudio(
   const prompt = buildPrompt(options);
   const requestSignal = options?.signal;
 
-  const requestBody = buildRequestBody(prompt, audioBase64);
+  const requestBody = buildRequestBody(prompt, audioBase64, options?.mimeType);
   console.log('[TEST] Gemini transcription request:', {
     model,
     promptLength: prompt.length,

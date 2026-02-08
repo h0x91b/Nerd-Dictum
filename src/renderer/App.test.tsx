@@ -127,6 +127,8 @@ const createMockElectronAPI = (overrides: Partial<typeof window.electronAPI> = {
   recordTranscriptionStats: mock(() => Promise.resolve(true)),
   openErrorDetailWindow: mock(() => Promise.resolve(true)),
   getErrorDetail: mock(() => Promise.resolve({ message: 'Unknown error' })),
+  getPathForFile: mock((file: File) => `/mock/path/${file.name}`),
+  readFileAsBase64: mock(() => Promise.resolve('')),
   ...overrides,
 });
 

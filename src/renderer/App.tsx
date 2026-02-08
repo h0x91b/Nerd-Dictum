@@ -59,6 +59,13 @@ function buildRecorderOptions(settings: AppSettings): AudioRecorderOptions {
   };
 }
 
+const AUDIO_EXTENSIONS: Record<string, string> = {
+  '.mp3': 'audio/mp3',
+  '.wav': 'audio/wav',
+  '.ogg': 'audio/ogg',
+  '.mp4': 'video/mp4',
+};
+
 type AppState = 'idle' | 'recording' | 'transcribing' | 'success';
 type MessageType = 'success' | 'error';
 
@@ -75,6 +82,7 @@ export function App() {
   const [audioLevel, setAudioLevel] = useState<number>(0);
   const [appVersion, setAppVersion] = useState<string>('');
   const [hotkey, setHotkey] = useState<string>('CommandOrControl+Shift+R');
+  const [isDragOver, setIsDragOver] = useState(false);
   const audioLevelRef = useRef<number>(0); // For lerp smoothing
   const recorderRef = useRef<AudioRecorder | null>(null);
   const lastAudioRef = useRef<string | null>(null);
@@ -114,7 +122,7 @@ export function App() {
     return classified;
   }, [showMessage]);
 
-  const transcribeWithRetry = useCallback(async (audioBase64: string) => {
+  const transcribeWithRetry = useCallback(async (audioBase64: string, mimeType?: string) => {
     // Increment first, atomically determine our ID
     transcribeRequestIdRef.current += 1;
     const requestId = transcribeRequestIdRef.current;
@@ -160,6 +168,7 @@ export function App() {
       const transcript = await transcribeAudio(audioBase64, settings.apiKey, settings.model, {
         ...options,
         signal: controller.signal,
+        ...(mimeType && { mimeType }),
       });
 
       if (requestId !== transcribeRequestIdRef.current) {
@@ -357,6 +366,53 @@ export function App() {
     }
   }, [state, showError, showMessage, stopRecordingAndTranscribe]);
 
+  const handleFileDrop = useCallback(async (filePath: string) => {
+    console.log('[Drop] handleFileDrop called, state:', state, 'filePath:', filePath);
+    if (state !== 'idle' && state !== 'success') {
+      console.log('[Drop] Ignoring drop, state is:', state);
+      return;
+    }
+
+    const ext = filePath.slice(filePath.lastIndexOf('.')).toLowerCase();
+    console.log('[Drop] Extension:', ext, 'isAudio:', !!AUDIO_EXTENSIONS[ext]);
+    const audioMimeType = AUDIO_EXTENSIONS[ext];
+
+    if (audioMimeType) {
+      // Audio file: read and transcribe
+      try {
+        const audioBase64 = await window.electronAPI.readFileAsBase64(filePath);
+        console.log('[Drop] Audio file:', filePath, 'MIME:', audioMimeType);
+        window.electronAPI.trackEvent('file_drop_audio', { extension: ext });
+        await transcribeWithRetry(audioBase64, audioMimeType);
+      } catch (error) {
+        showError(error);
+      }
+    } else {
+      // Non-audio file: copy full path to clipboard
+      console.log('[Drop] Non-audio file, copying path:', filePath);
+      await window.electronAPI.copyToClipboard(filePath);
+      showMessage('Path copied to clipboard', 'success');
+      window.electronAPI.trackEvent('file_drop_path', { extension: ext });
+
+      const settings = await window.electronAPI.getSettings();
+      if (settings.soundEnabled ?? true) {
+        playSuccessSound();
+      }
+
+      // Clear success timeout if transitioning from success state
+      if (successTimeoutRef.current) {
+        clearTimeout(successTimeoutRef.current);
+        successTimeoutRef.current = null;
+      }
+      setState('success');
+      successTimeoutRef.current = setTimeout(() => {
+        setState('idle');
+      }, SUCCESS_STATE_TIMEOUT_MS);
+    }
+  }, [state, transcribeWithRetry, showError, showMessage]);
+
+  const widgetRef = useRef<HTMLDivElement>(null);
+
   const handleToggleRecording = useCallback(async () => {
     if (state === 'idle' || state === 'success') {
       await startRecording();
@@ -389,6 +445,79 @@ export function App() {
     });
   }, []);
 
+  // Native DOM drag-and-drop handlers on the widget element.
+  // Using native listeners (not React) because Electron's default drag-and-drop
+  // behavior (file navigation) must be prevented at the DOM level before
+  // React's delegated event system processes the event.
+  useEffect(() => {
+    const el = widgetRef.current;
+    if (!el) {
+      console.log('[Drop] widgetRef.current is null, skipping drag-and-drop setup');
+      return;
+    }
+    console.log('[Drop] Setting up drag-and-drop listeners on widget element');
+
+    const onDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(true);
+    };
+
+    const onDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
+    };
+
+    const onDrop = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
+      console.log('[Drop] Drop event fired');
+      console.log('[Drop] dataTransfer:', e.dataTransfer);
+      console.log('[Drop] dataTransfer.files.length:', e.dataTransfer?.files?.length);
+      console.log('[Drop] dataTransfer.types:', e.dataTransfer?.types);
+
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+        const file = files[0];
+        console.log('[Drop] file.name:', file.name, 'file.type:', file.type, 'file.size:', file.size);
+        try {
+          const filePath = window.electronAPI.getPathForFile(file);
+          console.log('[Drop] filePath from webUtils:', filePath);
+          if (filePath) {
+            handleFileDrop(filePath);
+          } else {
+            console.log('[Drop] getPathForFile returned empty string');
+          }
+        } catch (err) {
+          console.log('[Drop] getPathForFile error:', err);
+        }
+      } else {
+        console.log('[Drop] No files in dataTransfer');
+      }
+    };
+
+    // Prevent default on document level to stop Electron from navigating to dropped files
+    const preventNavigation = (e: DragEvent) => {
+      e.preventDefault();
+    };
+
+    el.addEventListener('dragover', onDragOver);
+    el.addEventListener('dragleave', onDragLeave);
+    el.addEventListener('drop', onDrop);
+    document.addEventListener('dragover', preventNavigation);
+    document.addEventListener('drop', preventNavigation);
+
+    return () => {
+      el.removeEventListener('dragover', onDragOver);
+      el.removeEventListener('dragleave', onDragLeave);
+      el.removeEventListener('drop', onDrop);
+      document.removeEventListener('dragover', preventNavigation);
+      document.removeEventListener('drop', preventNavigation);
+    };
+  }, [handleFileDrop]);
+
   // Cleanup recorder on unmount or window close to release microphone
   useEffect(() => {
     const cleanup = () => {
@@ -406,7 +535,10 @@ export function App() {
   }, []);
 
   return (
-    <div className="widget">
+    <div
+      ref={widgetRef}
+      className={`widget${isDragOver ? ' drag-over' : ''}`}
+    >
       {appVersion && <span className="version-hint">{appVersion === 'dev' ? 'dev' : `v${appVersion}`}</span>}
       <StatsButton />
       <HideButton />
