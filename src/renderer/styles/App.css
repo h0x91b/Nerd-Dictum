@@ -231,15 +231,16 @@
   color: #fff;
 }
 
-.flash-message.error.retryable {
+.flash-message.error.clickable {
   cursor: pointer;
 }
 
-.flash-message.error.retryable:hover {
+.flash-message.error.clickable:hover {
   background: #d32f2f;
 }
 
-.retry-hint {
+.retry-hint,
+.detail-hint {
   font-size: 10px;
   opacity: 0.8;
   margin-left: 4px;

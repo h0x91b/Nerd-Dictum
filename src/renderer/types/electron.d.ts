@@ -3,6 +3,12 @@ export type { AppSettings, HoldToRecordKey, StatsWithDerived, DailyStats };
 
 export type MicrophonePermissionStatus = 'not-determined' | 'granted' | 'denied' | 'restricted' | 'unknown';
 
+export interface ErrorDetail {
+  message: string;
+  statusCode?: number;
+  responseBody?: string;
+}
+
 export interface ElectronAPI {
   copyToClipboard: (text: string) => Promise<boolean>;
   getApiKey: () => Promise<string>;
@@ -32,6 +38,9 @@ export interface ElectronAPI {
   getStats: () => Promise<StatsWithDerived>;
   resetStats: () => Promise<boolean>;
   recordTranscriptionStats: (transcript: string, recordingDurationMs: number) => Promise<boolean>;
+  // Error detail
+  openErrorDetailWindow: (detail: ErrorDetail) => Promise<boolean>;
+  getErrorDetail: () => Promise<ErrorDetail>;
 }
 
 declare global {

@@ -1,0 +1,82 @@
+.error-detail-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 20px;
+  overflow: hidden;
+}
+
+.error-detail-header {
+  flex-shrink: 0;
+  margin-bottom: 16px;
+}
+
+.error-detail-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-error, #f44336);
+  margin: 0 0 8px 0;
+}
+
+.error-detail-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.error-detail-status {
+  display: inline-block;
+  background: var(--color-error, #f44336);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.error-detail-message {
+  font-size: 14px;
+  color: var(--text-secondary, #a0a0a0);
+}
+
+.error-detail-body-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.error-detail-body-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-tertiary, #707070);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 8px 0;
+  flex-shrink: 0;
+}
+
+.error-detail-iframe {
+  flex: 1;
+  width: 100%;
+  border: 1px solid var(--border-default, #404040);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.error-detail-pre {
+  flex: 1;
+  overflow: auto;
+  padding: 12px;
+  background: var(--bg-secondary, #2a2a2a);
+  border: 1px solid var(--border-default, #404040);
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  color: var(--text-primary, #e0e0e0);
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+}

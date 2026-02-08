@@ -20,6 +20,7 @@ export default defineConfig({
         info: resolve(__dirname, 'src/renderer/info.html'),
         hide: resolve(__dirname, 'src/renderer/hide.html'),
         stats: resolve(__dirname, 'src/renderer/stats.html'),
+        'error-detail': resolve(__dirname, 'src/renderer/error-detail.html'),
       },
     },
   },

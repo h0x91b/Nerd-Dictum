@@ -66,6 +66,7 @@ interface FlashMessage {
   text: string;
   type: MessageType;
   isRetryable: boolean;
+  hasErrorDetail: boolean;
 }
 
 export function App() {
@@ -84,20 +85,32 @@ export function App() {
   const transcribeAbortRef = useRef<AbortController | null>(null);
   const transcribeRequestIdRef = useRef(0);
 
-  const showMessage = useCallback((text: string, type: MessageType = 'success', isRetryable = false) => {
+  const showMessage = useCallback((text: string, type: MessageType = 'success', isRetryable = false, hasErrorDetail = false) => {
     // Clear any existing timeout
     if (messageTimeoutRef.current) {
       clearTimeout(messageTimeoutRef.current);
     }
-    setMessage({ text, type, isRetryable });
-    // Error messages with retry stay longer
-    const duration = type === 'error' && isRetryable ? RETRY_MESSAGE_TIMEOUT_MS : MESSAGE_TIMEOUT_MS;
+    setMessage({ text, type, isRetryable, hasErrorDetail });
+    // Error messages with retry or detail stay longer
+    const duration = type === 'error' && (isRetryable || hasErrorDetail) ? RETRY_MESSAGE_TIMEOUT_MS : MESSAGE_TIMEOUT_MS;
     messageTimeoutRef.current = setTimeout(() => setMessage(null), duration);
   }, []);
 
+  const lastErrorDetailRef = useRef<{ message: string; statusCode?: number; responseBody?: string } | null>(null);
+
   const showError = useCallback((error: unknown) => {
     const classified: ClassifiedError = classifyError(error);
-    showMessage(classified.message, 'error', classified.isRetryable);
+    const hasDetail = Boolean(classified.responseBody);
+    if (hasDetail) {
+      lastErrorDetailRef.current = {
+        message: classified.message,
+        statusCode: classified.statusCode,
+        responseBody: classified.responseBody,
+      };
+    } else {
+      lastErrorDetailRef.current = null;
+    }
+    showMessage(classified.message, 'error', classified.isRetryable, hasDetail);
     return classified;
   }, [showMessage]);
 
@@ -190,6 +203,15 @@ export function App() {
       const classified = showError(error);
       window.electronAPI.trackEvent('transcription_error', { error_type: classified.type });
 
+      // Auto-open error detail popup when API returns a response body
+      if (classified.responseBody) {
+        window.electronAPI.openErrorDetailWindow({
+          message: classified.message,
+          statusCode: classified.statusCode,
+          responseBody: classified.responseBody,
+        });
+      }
+
       // Play error sound if enabled
       if (soundEnabled) {
         playErrorSound();
@@ -214,6 +236,12 @@ export function App() {
       await transcribeWithRetry(lastAudioRef.current);
     }
   }, [state, transcribeWithRetry]);
+
+  const handleShowErrorDetail = useCallback(() => {
+    if (lastErrorDetailRef.current) {
+      window.electronAPI.openErrorDetailWindow(lastErrorDetailRef.current);
+    }
+  }, []);
 
   const stopRecordingAndTranscribe = useCallback(async () => {
     // Use recorder's internal state to avoid stale closure issues
@@ -435,14 +463,21 @@ export function App() {
       </div>
       {message && (
         <div
-          className={`flash-message ${message.type}${message.isRetryable ? ' retryable' : ''}`}
-          onClick={message.isRetryable ? handleRetry : undefined}
-          role={message.isRetryable ? 'button' : undefined}
-          tabIndex={message.isRetryable ? 0 : undefined}
-          onKeyDown={message.isRetryable ? (e) => e.key === 'Enter' && handleRetry() : undefined}
+          className={`flash-message ${message.type}${message.isRetryable || message.hasErrorDetail ? ' clickable' : ''}`}
+          onClick={message.hasErrorDetail ? handleShowErrorDetail : message.isRetryable ? handleRetry : undefined}
+          role={message.isRetryable || message.hasErrorDetail ? 'button' : undefined}
+          tabIndex={message.isRetryable || message.hasErrorDetail ? 0 : undefined}
+          onKeyDown={
+            message.hasErrorDetail
+              ? (e) => e.key === 'Enter' && handleShowErrorDetail()
+              : message.isRetryable
+                ? (e) => e.key === 'Enter' && handleRetry()
+                : undefined
+          }
         >
           {message.text}
-          {message.isRetryable && <span className="retry-hint">(tap to retry)</span>}
+          {message.hasErrorDetail && <span className="detail-hint">(details)</span>}
+          {!message.hasErrorDetail && message.isRetryable && <span className="retry-hint">(tap to retry)</span>}
         </div>
       )}
     </div>

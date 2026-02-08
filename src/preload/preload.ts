@@ -50,4 +50,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   resetStats: () => ipcRenderer.invoke('reset-stats'),
   recordTranscriptionStats: (transcript: string, recordingDurationMs: number) =>
     ipcRenderer.invoke('record-transcription-stats', transcript, recordingDurationMs),
+  // Error detail
+  openErrorDetailWindow: (detail: { message: string; statusCode?: number; responseBody?: string }) =>
+    ipcRenderer.invoke('open-error-detail-window', detail),
+  getErrorDetail: () => ipcRenderer.invoke('get-error-detail'),
 });
