@@ -35,3 +35,6 @@ test-results/
 
 # Auto-updater dev config
 dev-app-update.yml
+
+# Self-hosted GitHub Actions runner
+actions-runner/
