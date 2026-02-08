@@ -330,10 +330,10 @@
 [2026-01-23 23:45] Feature — Add GitHub Actions release workflow for cross-platform builds (macOS, Windows, Linux) without code signing
 ## 2026-02-03
 
-- Bug — Fix crash on quit: remove call to undefined stopKeyboardHook() left over from uiohook-napi removal
-- Bug — Fix macOS microphone indicator staying active when opening Settings; properly release MediaStream after enumerating audio devices
-- Feature — Auto-lower volume during recording: lowers system volume to 10% when recording starts, restores original level after transcription completes (macOS only)
-- Feature — Add usage statistics: track total transcriptions, words, characters, recording time with 30-day activity graph; includes streak counter, most active day, time saved estimate, and reset option
+[2026-02-03] Bug — Fix crash on quit: remove call to undefined stopKeyboardHook() left over from uiohook-napi removal
+[2026-02-03] Bug — Fix macOS microphone indicator staying active when opening Settings; properly release MediaStream after enumerating audio devices
+[2026-02-03] Feature — Auto-lower volume during recording: lowers system volume to 10% when recording starts, restores original level after transcription completes (macOS only); works universally with any app playing audio
+[2026-02-03] Feature — Add usage statistics: track total transcriptions, words, characters, recording time with 30-day activity graph; view stats via bar chart button (left of widget); includes streak counter, most active day, time saved estimate, and reset option
 
 ## 2026-02-01
 
@@ -441,84 +441,93 @@
 
 ## 2026-01-28
 
-- Feature — Expand conversation context: include last 3 transcripts for better accuracy in ongoing conversations
-- Feature — Add customizable global hotkey: change the recording shortcut from default ⌘⇧R to any key combination; configure in Settings > General
-- Feature — Add hide button (eye icon) with popup menu to temporarily hide widget for 10 minutes, 1 hour, 3 hours, or until end of day
+[2026-01-28] Feature — Expand conversation context: include last 3 transcripts (instead of 1) for better accuracy in ongoing conversations
+[2026-01-28] Feature — Add customizable global hotkey: change the recording shortcut from default ⌘⇧R to any key combination; configure in Settings > General
+[2026-01-28] Feature — Add hide button (eye icon) with popup menu to temporarily hide widget for 10 minutes, 1 hour, 3 hours, or until end of day; widget automatically reappears after selected duration
 
 ## 2026-01-27
 
-- Feature — Add sound feedback on transcription completion: success chime when text is copied to clipboard, error tone on failure; toggle in Settings > General
+[2026-01-27] Feature — Add sound feedback on transcription completion: success chime when text is copied to clipboard, error tone on failure; toggle in Settings > General
 
 ## 2026-01-25
 
-- Feature — Enforce single instance: prevent multiple app instances from running simultaneously
-- Feature — Add "Use previous transcript as context" setting to improve accuracy for related speech
-- Feature — Add Clarification setting to clean up speech disfluencies (uh, um, stutters, filler words)
-- Feature — Add custom language input and reorderable selected languages list
-- Feature — Rename onboarding screen to "Welcome"; add "Reset Welcome Screen" button in Settings
-- Feature — Add clipboard history (20 entries): saves previous clipboard content and transcriptions; access via tray menu or Cmd+Shift+V
-- UX — Add explicit cancel indication during transcription: hover shows ✕ icon over spinner
-- UX — Split settings page into 4 tabs: General, Languages, Appearance, Advanced
-- UX — Add confirmation dialog when canceling settings with unsaved changes
-- UX — Improve language selection: add search field, group by popularity
-- Bug — Fix race condition in transcribeWithRetry: abort existing transcription before starting new one
-- Performance — Move update check and microphone permission request to background; UI now appears instantly on startup
+[2026-01-25] Feature — Enforce single instance: prevent multiple app instances from running simultaneously; second launch focuses existing window instead
+[2026-01-25] UX — Add explicit cancel indication during transcription: hover shows ✕ icon over spinner, tooltip "Click to cancel", improved accessibility with aria-label
+[2026-01-25] UX — Split settings page into 4 tabs: General (API key, model, launch at startup), Languages, Appearance (theme), Advanced (speech domain, clarification, keywords, microphone, silence detection); improves navigation in large settings page
+[2026-01-25] UX — Add confirmation dialog when canceling settings with unsaved changes; prevents accidental data loss via Cancel button or window close
+[2026-01-25] UX — Improve language selection: add search field to filter languages, group by popularity (Popular first, then alphabetical), unified search+add UX for custom languages
+[2026-01-25] Bug — Fix race condition in transcribeWithRetry: abort existing transcription before starting new one, ensure atomic request ID assignment to prevent duplicate API calls under rapid user interaction
+[2026-01-25] Feature — Add "Use previous transcript as context" setting (enabled by default) to include the last transcription as context for Gemini API, improving accuracy for related speech
+[2026-01-25] Performance — Move update check and microphone permission request to background; UI now appears instantly on startup instead of waiting for these operations
+[2026-01-25] Feature — Add Clarification setting (enabled by default) to clean up speech disfluencies (uh, um, stutters, filler words) for clearer transcription output
+[2026-01-25] Feature — Add custom language input and reorderable selected languages list; users can now add any language and arrange priority order
+[2026-01-25] Feature — Rename onboarding screen to "Welcome"; add "Reset Welcome Screen" button in Settings to re-show it
+[2026-01-25] Feature — Add clipboard history (20 entries): saves previous clipboard content (text/images) and transcriptions; access via tray menu "Previous Clipboard" (newest at bottom) or Cmd+Shift+V shortcut
 
 ## 2026-01-24
 
-- Bug — Fix macOS microphone indicator staying active after recording stops; add cleanup on component unmount and window close
-- Bug — Fix auto-updater not quitting app after user clicks "Restart Now"
+[2026-01-24] Bug — Fix macOS microphone indicator staying active after recording stops; add cleanup on component unmount and window close
+[2026-01-24] Bug — Fix auto-updater not quitting app after user clicks "Restart Now"; add tray/window cleanup, proper quitAndInstall args, and 5-second force quit timeout
 
 ## 2026-01-23
 
-- Feature — Add GitHub Actions release workflow for cross-platform builds (macOS, Windows, Linux)
-- Feature — Add auto-update support via electron-updater with GitHub Releases; checks hourly and on startup
-- Bug — Fix quitAndInstall not working on macOS: properly close tray and windows before installing update
+[2026-01-23] Feature — Add GitHub Actions release workflow for cross-platform builds (macOS, Windows, Linux) without code signing
+[2026-01-23] Bug — Fix quitAndInstall not working on macOS: properly close tray and windows before installing update
 
 ## 2026-01-22
 
-- Feature — Add custom keyword glossary to bias transcription with user-defined terms and aliases
-- Feature — Add onboarding screen with step-by-step instructions for getting Google Gemini API key
-- Feature — Add info button opening separate window with usage instructions
-- Feature — Add "Developer Tools" toggle in system tray menu
-- Feature — Settings and Info windows now appear in Cmd+Tab (dynamic dock visibility)
-- Feature — Settings and Info windows now open on the same screen as the widget (multi-monitor support)
-- UI — Replace mic button tooltip with permanent "⌘⇧R" shortcut hint
-- Bug — Fix Settings and Info windows moving together with main widget when dragging
-- Bug — Fix window titles to show "Nerd Dictum — Settings" and "Nerd Dictum — How to Use"
-- Bug — Fix dock icon not appearing correctly for Info window
-- Bug — Debounce silence/sound state logs to reduce console spam
-- Feature — Update retry logic: 30s timeout for first attempt, 2min timeout for retry
+[2026-01-22] Bug — Debounce silence/sound state logs to reduce console spam
+[2026-01-22] Feature — Add custom keyword glossary to bias transcription with user-defined terms and aliases
+[2026-01-22] Feature — Add onboarding screen with step-by-step instructions for getting Google Gemini API key; opens AI Studio link in user's browser via shell.openExternal
+[2026-01-22] Feature — Add info button (i) in bottom-right corner opening separate window with usage instructions
+[2026-01-22] Feature — Update retry logic: 30s timeout for first attempt, 2min timeout for retry (1 retry max)
+[2026-01-22] Bug — Fix Settings and Info windows moving together with main widget when dragging (removed parent window dependency)
+[2026-01-22] Feature — Add "Developer Tools" toggle in system tray menu; removed auto-open DevTools in dev mode
+[2026-01-22] Feature — Settings and Info windows now appear in Cmd+Tab (dynamic dock visibility); dock hides when only widget is open
+[2026-01-22] UI — Replace mic button tooltip with permanent "⌘⇧R" shortcut hint between settings/info buttons
+[2026-01-22] Bug — Fix window titles to show "Nerd Dictum — Settings" and "Nerd Dictum — How to Use"
+[2026-01-22] Bug — Fix dock icon not appearing correctly for Info window (await dock.show before setIcon)
+[2026-01-22] Feature — Settings and Info windows now open on the same screen as the widget (multi-monitor support)
+[2026-01-22] Feature — Add auto-update support via electron-updater with GitHub Releases; checks hourly and on startup; tray menu shows "Check for Updates" or "Install Update" when ready
 
 ## 2026-01-21
 
-- Feature — Add success state with green checkmark icon that fades to idle after transcription
-- Feature — Expand settings: speech domain selector, microphone device picker, silence detection toggle with adjustable duration
-- Feature — Add "Launch at startup" option in Settings
-- Feature — Add theme selector (light/dark/system) with preview swatches and cross-window sync
-- Feature — Add real-time audio level visualization as tachometer arc around mic button
-- Feature — Allow canceling in-progress transcription from the widget button
-- Refactor — Replace deprecated ScriptProcessorNode with AudioWorkletNode for audio capture
-- Refactor — Replace system prompt field with custom domain hint; add "Custom" option to speech domain selector
-- Refactor — Centralize window-position validation, reuse WAV encoding helpers
+[2026-01-21] Feature — Add success state with green checkmark icon (pop animation) that fades to idle over 5 seconds after transcription
+[2026-01-21] Feature — Expand settings: speech domain selector (programming, cooking, medical, etc.), microphone device picker, silence detection toggle with adjustable duration slider (1-10s)
+[2026-01-21] Refactor — Replace system prompt field with custom domain hint (max 500 chars); add "Custom" option to speech domain selector for free-text domain hints
+[2026-01-21] Feature — Add "Launch at startup" option in Settings; uses Electron's setLoginItemSettings API for macOS/Windows auto-launch
+[2026-01-21] Refactor — Centralize window-position validation, reuse WAV encoding helpers, and simplify transcription/options helpers
+[2026-01-21] Feature — Add theme selector (light/dark/system) with preview swatches, cross-window sync, and a softer light palette
+[2026-01-21] Feature — Add real-time audio level visualization as tachometer arc around mic button (7-to-5 o'clock), with theme support and easeOut smoothing
+[2026-01-21] Feature — Allow canceling in-progress transcription from the widget button
+[2026-01-21] Refactor — Replace deprecated ScriptProcessorNode with AudioWorkletNode for audio capture
 
 ## 2026-01-20
 
-- Feature — Initial project skeleton with Electron + React + Vite setup
-- Feature — Implement audio recording with Web Audio API (WAV, PCM 16-bit mono 16kHz)
-- Feature — Add WAV encoding utility with base64 support for Gemini API
-- Feature — Integrate audio recording with transcription API, copy result to clipboard
-- Feature — Add audio validation (min 250ms, max 15 minutes) with user-facing error messages
-- Feature — Add error handling with user-friendly messages, error/success flash styling, and retry capability
-- Feature — Add global keyboard shortcut (Cmd/Ctrl+Shift+R) to toggle recording
-- Feature — Add settings UI with gear icon to configure Gemini API key and model
-- Feature — Add custom system prompt and multi-language selection in settings
-- Feature — Add system tray integration with Show/Hide, Settings, Quit menu
-- Feature — Remember window position across restarts
-- Feature — Add silence auto-stop recording (2.5s threshold)
-- Feature — Add draggable title bar with grip dots drag handle
-- Bug — Fix invisible window by adding background color to widget container
-- Bug — Fix window dragging
-- Bug — Fix silence auto-stop not working (stale closure issue)
-- Bug — Fix settings to open in separate window instead of inside tiny widget
-- Test — Add comprehensive unit tests and E2E tests for error handling
+[2026-01-20] Feature — Initial project skeleton with Electron + React + Vite setup
+[2026-01-20] Bug — Fix invisible window by adding background color to widget container
+[2026-01-20] Feature — Implement audio recording with Web Audio API (WAV, PCM 16-bit mono 16kHz)
+[2026-01-20] Feature — Add WAV encoding utility with base64 support for Gemini API
+[2026-01-20] Bug — Fix window dragging by applying -webkit-app-region to visible widget instead of transparent body
+[2026-01-20] Bug — Increase widget padding to 20px for larger drag region around button
+[2026-01-20] Refactor — Remove widget padding/border, implement manual drag via IPC on button with click/drag detection
+[2026-01-20] Bug — Fix drag using global window events, add CSS fallbacks for button styling
+[2026-01-20] Bug — Fix dragging and styling: circular widget with CSS drag region, hardcoded dark colors, button with no-drag
+[2026-01-20] Bug — Disable transparent window, use dark background, full-size circular button for recording
+[2026-01-20] Feature — Add draggable "Voice" title bar above mic button, window resized to 100x120
+[2026-01-20] Refactor — Replace text title with grip dots drag handle for better UX
+[2026-01-20] Bug — Fix widget to fill window, remove side borders, resize window to 80x100
+[2026-01-20] Feature — Integrate audio recording with transcription API, copy result to clipboard
+[2026-01-20] Feature — Add audio validation (min 250ms, max 15 minutes) with user-facing error messages
+[2026-01-20] Feature — Add error handling with user-friendly messages, error/success flash styling, and retry capability for transient errors
+[2026-01-20] Test — Add comprehensive unit tests (errors.test.ts, App.test.tsx) and E2E tests (voice-widget.spec.ts) for error handling feature
+[2026-01-20] Feature — Add global keyboard shortcut (Cmd/Ctrl+Shift+R) to toggle recording
+[2026-01-20] Feature — Add settings UI with gear icon to configure Gemini API key and model, persisted to disk
+[2026-01-20] Bug — Fix settings to open in separate window instead of inside tiny widget, fix gear icon clickable area
+[2026-01-20] Feature — Add custom system prompt and multi-language selection in settings for better transcription
+[2026-01-20] Feature — Add system tray integration with Show/Hide, Settings, Quit menu; app runs in tray when window closed
+[2026-01-20] Feature — Remember window position across restarts (ignores saved position if monitor configuration changed)
+[2026-01-20] Feature — Auto-stop recording after 1.5 seconds of silence (silence detection)
+[2026-01-20] Bug — Fix silence callback firing multiple times
+[2026-01-20] Feature — Change silence duration from 1.5s to 2.5s for more natural pauses
+[2026-01-20] Bug — Fix silence auto-stop not working (stale closure issue with state); add unit tests for silence detection
