@@ -63,8 +63,8 @@ export async function trackEvent(
         timestamp_micros: Date.now() * 1000,
         // User properties persist across sessions and are visible in GA4 reports
         user_properties: {
-          app_version: { value: appVersion },
-          platform: { value: process.platform },
+          app_version: { value: String(appVersion) },
+          platform: { value: String(process.platform) },
         },
         events: [{
           name,
