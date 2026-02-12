@@ -8,6 +8,27 @@
   height: 100%;
 }
 
+/* Orbit buttons: smooth fade transition */
+.stats-button,
+.hide-button,
+.settings-button,
+.info-button {
+  transition: color 0.2s ease, background 0.2s ease, opacity 0.2s ease;
+}
+
+/* Hide orbit buttons during recording and transcribing */
+.widget.recording .stats-button,
+.widget.recording .hide-button,
+.widget.recording .settings-button,
+.widget.recording .info-button,
+.widget.transcribing .stats-button,
+.widget.transcribing .hide-button,
+.widget.transcribing .settings-button,
+.widget.transcribing .info-button {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .widget.drag-over {
   outline: 2px solid var(--color-success, #4caf50);
   outline-offset: -2px;
@@ -16,9 +37,11 @@
 
 .shortcut-hint-container {
   position: absolute;
-  bottom: 4px;
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: 1px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
   overflow: hidden;
   pointer-events: none;
   user-select: none;

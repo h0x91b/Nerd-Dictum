@@ -537,7 +537,7 @@ export function App() {
   return (
     <div
       ref={widgetRef}
-      className={`widget${isDragOver ? ' drag-over' : ''}`}
+      className={`widget ${state}${isDragOver ? ' drag-over' : ''}`}
     >
       {appVersion && <span className="version-hint">{appVersion === 'dev' ? 'dev' : `v${appVersion}`}</span>}
       <StatsButton />

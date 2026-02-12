@@ -1,8 +1,8 @@
 /* Stats Button - positioned left side, same row as hide button */
 .stats-button {
   position: absolute;
-  top: 12px;
-  left: 2px;
+  top: 14px;
+  left: 4px;
   width: 16px;
   height: 16px;
   min-width: 16px;
