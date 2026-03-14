@@ -1,0 +1,6 @@
+{
+  "setupScript": "bun install",
+  "devScript": "bun run dev",
+  "clonePaths": ["node_modules"],
+  "defaultBaseBranch": "main"
+}
