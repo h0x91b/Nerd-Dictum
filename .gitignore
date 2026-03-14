@@ -38,3 +38,6 @@ dev-app-update.yml
 
 # Self-hosted GitHub Actions runner
 actions-runner/
+
+# Claude Code
+.claude/settings.local.json
