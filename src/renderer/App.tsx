@@ -530,7 +530,6 @@ export function App() {
   const widgetRef = useRef<HTMLDivElement>(null);
 
   const handleToggleRecording = useCallback(async () => {
-    console.log('[Toggle] handleToggleRecording called, state:', state);
     if (state === 'idle' || state === 'success') {
       await startRecording();
     } else if (state === 'recording') {
