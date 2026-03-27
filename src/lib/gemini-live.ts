@@ -1,16 +1,16 @@
 /**
  * Google Gemini Live API client for real-time speech-to-text transcription.
  *
- * Streams audio chunks over a WebSocket session and uses inputAudioTranscription
- * (server-side ASR) for fast transcription. Falls back gracefully — callers can
- * detect failure and use the batch API instead.
+ * Streams audio chunks over a WebSocket session. The model "repeats" the user's
+ * words guided by our system prompt (with domain hints, keywords, etc.), and
+ * outputAudioTranscription gives us the LLM-enhanced transcript.
  */
 
 import { GoogleGenAI, Modality } from '@google/genai';
 import type { Session, LiveServerMessage } from '@google/genai';
 
 const LIVE_MODEL = 'models/gemini-3.1-flash-live-preview';
-const TURN_COMPLETE_TIMEOUT_MS = 10_000;
+const TURN_COMPLETE_TIMEOUT_MS = 15_000;
 
 const t0 = Date.now();
 function ts(): string {
@@ -33,7 +33,7 @@ export class LiveTranscriptionError extends Error {
 export class LiveTranscriber {
   private ai: GoogleGenAI;
   private session: Session | null = null;
-  private textParts: string[] = [];
+  private outputTextParts: string[] = [];
   private resolveWait: (() => void) | null = null;
   private rejectWait: ((err: Error) => void) | null = null;
   private connected = false;
@@ -53,7 +53,11 @@ export class LiveTranscriber {
     this.ai = new GoogleGenAI({ apiKey });
     this.callbacks = callbacks;
     this.model = model || LIVE_MODEL;
-    this.systemPrompt = systemPrompt || 'Do not respond. Stay silent.';
+    // Wrap the transcription prompt: tell the model to REPEAT the user's words
+    const basePrompt = systemPrompt || 'Transcribe the provided audio to text faithfully.';
+    this.systemPrompt = `${basePrompt}
+
+CRITICAL: You are a transcription engine. Your ONLY job is to repeat EXACTLY what the user says, word for word. Do not add commentary, questions, greetings, or responses. Simply echo back their exact words as faithfully as possible. Output nothing else.`;
   }
 
   async connect(): Promise<void> {
@@ -72,7 +76,9 @@ export class LiveTranscriber {
               },
             },
           },
-          inputAudioTranscription: {},
+          // outputAudioTranscription gives us the TEXT of what the model says back
+          // Combined with our system prompt, this = LLM-enhanced transcription
+          outputAudioTranscription: {},
         },
         callbacks: {
           onopen: () => {
@@ -92,7 +98,6 @@ export class LiveTranscriber {
           onclose: (e: CloseEvent) => {
             console.log(`[GeminiLive] ${ts()} Session closed:`, e.reason);
             this.connected = false;
-            // Resolve with whatever we have
             this.resolveWait?.();
           },
         },
@@ -133,14 +138,7 @@ export class LiveTranscriber {
       throw this.error || new LiveTranscriptionError('Session not connected');
     }
 
-    console.log(`[GeminiLive] ${ts()} finish() — chunks: ${this.chunksSent}, text parts: ${this.textParts.length}`);
-
-    // If we already have input transcription, return it immediately — don't wait for model response
-    if (this.textParts.length > 0) {
-      console.log(`[GeminiLive] ${ts()} Already have transcript, returning immediately`);
-      this.close();
-      return this.getTranscript();
-    }
+    console.log(`[GeminiLive] ${ts()} finish() — chunks: ${this.chunksSent}, output parts: ${this.outputTextParts.length}`);
 
     // Signal end of audio
     try {
@@ -150,7 +148,8 @@ export class LiveTranscriber {
       console.error(`[GeminiLive] ${ts()} Error sending audioStreamEnd:`, err);
     }
 
-    // Wait for inputTranscription or turnComplete (whichever comes first)
+    // Wait for turnComplete — outputTranscription arrives in streaming pieces
+    // so we must wait for the model to finish its full response
     try {
       await Promise.race([
         new Promise<void>((resolve, reject) => {
@@ -170,7 +169,7 @@ export class LiveTranscriber {
       this.close();
     }
 
-    console.log(`[GeminiLive] ${ts()} Done — transcript length: ${this.getTranscript().length}`);
+    console.log(`[GeminiLive] ${ts()} Done — transcript: "${this.getTranscript().substring(0, 80)}..."`);
 
     const transcript = this.getTranscript();
     if (!transcript) {
@@ -201,22 +200,23 @@ export class LiveTranscriber {
   }
 
   private handleMessage(message: LiveServerMessage): void {
-    // Extract input transcription — this is our primary result
     const sc = message.serverContent as Record<string, unknown> | undefined;
     if (sc) {
-      const inputTx = sc.inputTranscription as { text?: string } | undefined;
-      if (inputTx?.text) {
-        console.log(`[GeminiLive] ${ts()} INPUT TRANSCRIPT: "${inputTx.text}"`);
-        this.textParts.push(inputTx.text);
-        this.callbacks.onPartialText?.(inputTx.text);
-        // Got our transcript — resolve immediately, don't wait for model to finish talking
-        this.resolveWait?.();
+      // outputTranscription = text of what the model says (our LLM-enhanced transcript)
+      // Arrives in streaming pieces — accumulate until turnComplete
+      const outputTx = sc.outputTranscription as { text?: string } | undefined;
+      if (outputTx?.text) {
+        this.outputTextParts.push(outputTx.text);
+        this.callbacks.onPartialText?.(outputTx.text);
+        if (this.outputTextParts.length <= 3 || this.outputTextParts.length % 10 === 0) {
+          console.log(`[GeminiLive] ${ts()} Output chunk #${this.outputTextParts.length}: "${outputTx.text}"`);
+        }
       }
     }
 
-    // Turn complete
+    // Turn complete — model finished speaking, we have the full transcript
     if (message.serverContent?.turnComplete) {
-      console.log(`[GeminiLive] ${ts()} Turn complete`);
+      console.log(`[GeminiLive] ${ts()} Turn complete — ${this.outputTextParts.length} parts, transcript: "${this.getTranscript().substring(0, 80)}"`);
       this.resolveWait?.();
     }
 
@@ -226,7 +226,7 @@ export class LiveTranscriber {
   }
 
   private getTranscript(): string {
-    return this.textParts.join('').trim();
+    return this.outputTextParts.join('').trim();
   }
 }
 
