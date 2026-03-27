@@ -93,7 +93,7 @@
       "provider": "github",
       "owner": "h0x91b",
       "repo": "Nerd-Dictum",
-      "private": true
+      "private": false
     }
   },
   "devDependencies": {
