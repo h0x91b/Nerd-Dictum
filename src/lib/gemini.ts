@@ -174,7 +174,7 @@ function buildCustomKeywordsSection(customKeywords?: string): string {
   return `\n\nUser keywords and corrections:\n${lines.join('\n')}\nPrefer the target term when audio matches an alias or is ambiguous. Preserve exact casing.`;
 }
 
-function buildPrompt(options?: TranscribeOptions): string {
+export function buildPrompt(options?: TranscribeOptions): string {
   let basePrompt: string;
 
   // If custom domain with custom hint, build a custom prompt

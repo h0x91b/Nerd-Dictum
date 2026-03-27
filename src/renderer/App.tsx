@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import './styles/App.css';
 import { AudioRecorder, AudioRecorderOptions, DEFAULT_SILENCE_DURATION_MS } from '../lib/audio';
 import { transcribeAudio, TranscribeOptions, TranscriptionCancelledError } from '../lib/gemini';
+import { LiveTranscriber, LiveTranscriptionError, float32ChunkToBase64PCM } from '../lib/gemini-live';
 import { classifyError, ClassifiedError } from '../lib/errors';
 import { playSuccessSound, playErrorSound } from '../lib/sounds';
 import { SettingsButton } from './components/Settings';
@@ -85,6 +86,8 @@ export function App() {
   const [isDragOver, setIsDragOver] = useState(false);
   const audioLevelRef = useRef<number>(0); // For lerp smoothing
   const recorderRef = useRef<AudioRecorder | null>(null);
+  const liveTranscriberRef = useRef<LiveTranscriber | null>(null);
+  const liveFailedRef = useRef<boolean>(false); // Track if live session failed during recording
   const lastAudioRef = useRef<string | null>(null);
   const lastRecordingDurationRef = useRef<number>(0); // For stats tracking
   const recordingStartTimeRef = useRef<number>(0); // For tracking recording duration
@@ -240,6 +243,29 @@ export function App() {
     }
   }, [showError, showMessage]);
 
+  // Shared success handler for both live and batch transcription
+  const handleTranscriptSuccess = useCallback(async (transcript: string, recordingDuration: number) => {
+    console.log('[Transcript]', transcript);
+    await window.electronAPI.copyToClipboard(transcript);
+    showMessage('Copied to clipboard', 'success');
+    window.electronAPI.trackEvent('transcription_success', { transcript_length: transcript.length });
+    await window.electronAPI.recordTranscriptionStats(transcript, recordingDuration);
+
+    const settings = await window.electronAPI.getSettings();
+    if (settings.soundEnabled ?? true) {
+      playSuccessSound();
+    }
+
+    lastAudioRef.current = null;
+    setState('success');
+    if (successTimeoutRef.current) {
+      clearTimeout(successTimeoutRef.current);
+    }
+    successTimeoutRef.current = setTimeout(() => {
+      setState('idle');
+    }, SUCCESS_STATE_TIMEOUT_MS);
+  }, [showMessage]);
+
   const handleRetry = useCallback(async () => {
     if (lastAudioRef.current && state === 'idle') {
       await transcribeWithRetry(lastAudioRef.current);
@@ -260,23 +286,50 @@ export function App() {
     audioLevelRef.current = 0;
     setAudioLevel(0);
 
+    const liveTranscriber = liveTranscriberRef.current;
+    liveTranscriberRef.current = null;
+    const liveFailed = liveFailedRef.current;
+
     try {
       const audioBase64 = await recorderRef.current.stop();
       const recordingDuration = Date.now() - recordingStartTimeRef.current;
-      lastRecordingDurationRef.current = recordingDuration; // Save for stats
+      lastRecordingDurationRef.current = recordingDuration;
       console.log('[Recording] Stopped');
       window.electronAPI.trackEvent('recording_stop', { duration_ms: recordingDuration });
       // Resume media playback immediately after recording stops (before transcription)
       window.electronAPI.resumeMedia();
+
+      // Try live transcription first if session is still connected
+      if (liveTranscriber && liveTranscriber.isConnected() && !liveFailed) {
+        try {
+          console.log('[Live] Waiting for live transcript...');
+          const transcript = await liveTranscriber.finish();
+          console.log('[Live] Got transcript:', transcript.substring(0, 80) + '...');
+          window.electronAPI.trackEvent('transcription_live_success', { transcript_length: transcript.length });
+          await handleTranscriptSuccess(transcript, recordingDuration);
+          return;
+        } catch (liveError) {
+          console.warn('[Live] Live transcription failed, falling back to batch:', liveError);
+          liveTranscriber.close();
+          // Fall through to batch
+        }
+      } else if (liveTranscriber) {
+        // Session died during recording, clean up
+        liveTranscriber.close();
+      }
+
+      // Fallback to batch API
+      console.log('[Batch] Using batch transcription fallback');
       await transcribeWithRetry(audioBase64);
     } catch (error) {
       // Recording stop error (too short, etc.)
+      if (liveTranscriber) liveTranscriber.close();
       showError(error);
       // Resume media playback on recording error
       window.electronAPI.resumeMedia();
       setState('idle');
     }
-  }, [transcribeWithRetry, showError]);
+  }, [transcribeWithRetry, showError, handleTranscriptSuccess]);
 
   const cancelTranscription = useCallback(() => {
     if (state !== 'transcribing') return;
@@ -290,9 +343,48 @@ export function App() {
       controller.abort();
     }
 
+    // Close live session if active
+    if (liveTranscriberRef.current) {
+      liveTranscriberRef.current.close();
+      liveTranscriberRef.current = null;
+    }
+
     console.log('[TEST] Transcription cancelled by user');
     setState('idle');
   }, [state]);
+
+  // Start a Gemini Live session for real-time transcription.
+  // Returns null if connection fails (caller should fall back to batch).
+  const startLiveSession = useCallback(async (settings: AppSettings): Promise<LiveTranscriber | null> => {
+    if (!settings.apiKey) return null;
+
+    try {
+      // Get previous transcripts for context
+      let previousTranscripts: string[] = [];
+      if (settings.previousTranscriptContextEnabled ?? true) {
+        previousTranscripts = await window.electronAPI.getRecentTranscripts();
+      }
+
+      const options = buildTranscribeOptions(settings, previousTranscripts);
+      const live = new LiveTranscriber(settings.apiKey, options, {
+        onConnected: () => {
+          console.log('[Live] Session connected, streaming audio');
+        },
+        onError: (err) => {
+          console.warn('[Live] Session error during recording:', err.message);
+          liveFailedRef.current = true;
+        },
+      });
+
+      await live.connect();
+      window.electronAPI.trackEvent('live_session_connected');
+      return live;
+    } catch (err) {
+      console.warn('[Live] Failed to start live session, will use batch fallback:', err);
+      window.electronAPI.trackEvent('live_session_failed');
+      return null;
+    }
+  }, []);
 
   // Start recording (extracted for hold-to-record)
   const startRecording = useCallback(async () => {
@@ -333,6 +425,12 @@ export function App() {
       const settings = await window.electronAPI.getSettings();
       const recorderOptions = buildRecorderOptions(settings);
       recorderRef.current = new AudioRecorder(undefined, recorderOptions);
+
+      // Start live Gemini session in parallel (non-blocking)
+      liveFailedRef.current = false;
+      const liveTranscriber = await startLiveSession(settings);
+      liveTranscriberRef.current = liveTranscriber;
+
       // Set up silence detection callback for auto-stop
       recorderRef.current.setOnSilenceStop(() => {
         stopRecordingAndTranscribe();
@@ -355,6 +453,14 @@ export function App() {
         audioLevelRef.current = smoothed;
         setAudioLevel(smoothed);
       });
+      // Set up audio chunk callback for live streaming
+      recorderRef.current.setOnAudioChunk((chunk, sampleRate) => {
+        const live = liveTranscriberRef.current;
+        if (live && live.isConnected()) {
+          const pcmBase64 = float32ChunkToBase64PCM(chunk);
+          live.sendAudioChunk(pcmBase64, sampleRate);
+        }
+      });
       await recorderRef.current.start();
       console.log('[Recording] Started');
       recordingStartTimeRef.current = Date.now();
@@ -364,7 +470,7 @@ export function App() {
       showError(error);
       window.electronAPI.resumeMedia();
     }
-  }, [state, showError, showMessage, stopRecordingAndTranscribe]);
+  }, [state, showError, showMessage, stopRecordingAndTranscribe, startLiveSession]);
 
   const handleFileDrop = useCallback(async (filePath: string) => {
     console.log('[Drop] handleFileDrop called, state:', state, 'filePath:', filePath);
@@ -518,12 +624,16 @@ export function App() {
     };
   }, [handleFileDrop]);
 
-  // Cleanup recorder on unmount or window close to release microphone
+  // Cleanup recorder and live session on unmount or window close
   useEffect(() => {
     const cleanup = () => {
       if (recorderRef.current?.getIsRecording()) {
         recorderRef.current.cancel();
         recorderRef.current = null;
+      }
+      if (liveTranscriberRef.current) {
+        liveTranscriberRef.current.close();
+        liveTranscriberRef.current = null;
       }
     };
 

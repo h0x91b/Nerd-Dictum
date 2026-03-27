@@ -114,6 +114,7 @@
     "wait-on": "^9.0.3"
   },
   "dependencies": {
+    "@google/genai": "^1.46.0",
     "electron-log": "^5.4.3",
     "electron-updater": "^6.7.3",
     "react": "^19.2.3",
