@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import type { AppSettings } from '../../shared/types';
+import { LIVE_VOICES, LIVE_VOICE_DESCRIPTIONS } from '../../shared/types';
 import { useTheme, ThemeMode } from '../contexts/ThemeContext';
 import { Welcome } from '../components/Welcome';
 import { ApiKeyHelp } from '../components/ApiKeyHelp';
@@ -118,6 +119,8 @@ export function SettingsPage() {
   const { theme, setTheme, systemTheme } = useTheme();
   const [apiKey, setApiKey] = useState('');
   const [transcriptionMode, setTranscriptionMode] = useState<'live' | 'classic'>('live');
+  const [liveVoice, setLiveVoice] = useState('Schedar');
+  const [livePlaybackVolume, setLivePlaybackVolume] = useState(100);
   const [model, setModel] = useState('gemini-3-flash-preview');
   const [languages, setLanguages] = useState<string[]>([]);
   const [speechDomain, setSpeechDomain] = useState('programming');
@@ -176,6 +179,8 @@ export function SettingsPage() {
     return (
       apiKey !== initial.apiKey ||
       transcriptionMode !== initial.transcriptionMode ||
+      liveVoice !== initial.liveVoice ||
+      livePlaybackVolume !== initial.livePlaybackVolume ||
       model !== initial.model ||
       JSON.stringify(languages) !== JSON.stringify(initial.languages) ||
       speechDomain !== initial.speechDomain ||
@@ -239,6 +244,8 @@ export function SettingsPage() {
         const settings = await window.electronAPI.getSettings();
         const loadedApiKey = settings.apiKey;
         const loadedTranscriptionMode = settings.transcriptionMode || 'live';
+        const loadedLiveVoice = settings.liveVoice || 'Schedar';
+        const loadedLivePlaybackVolume = settings.livePlaybackVolume ?? 100;
         const loadedModel = settings.model;
         const loadedSpeechDomain = settings.speechDomain || 'programming';
         const loadedCustomDomainHint = settings.customDomainHint || '';
@@ -256,6 +263,8 @@ export function SettingsPage() {
 
         setApiKey(loadedApiKey);
         setTranscriptionMode(loadedTranscriptionMode);
+        setLiveVoice(loadedLiveVoice);
+        setLivePlaybackVolume(loadedLivePlaybackVolume);
         setModel(loadedModel);
         setSpeechDomain(loadedSpeechDomain);
         setCustomDomainHint(loadedCustomDomainHint);
@@ -275,6 +284,8 @@ export function SettingsPage() {
         initialSettingsRef.current = {
           apiKey: loadedApiKey,
           transcriptionMode: loadedTranscriptionMode,
+          liveVoice: loadedLiveVoice,
+          livePlaybackVolume: loadedLivePlaybackVolume,
           model: loadedModel,
           languages: [...loadedLanguages],
           speechDomain: loadedSpeechDomain,
@@ -364,6 +375,8 @@ export function SettingsPage() {
       const success = await window.electronAPI.saveSettings({
         apiKey,
         transcriptionMode,
+        liveVoice,
+        livePlaybackVolume,
         model,
         languages,
         speechDomain,
@@ -386,6 +399,8 @@ export function SettingsPage() {
         initialSettingsRef.current = {
           apiKey,
           transcriptionMode,
+          liveVoice,
+          livePlaybackVolume,
           model,
           languages: [...languages],
           speechDomain,
@@ -634,6 +649,41 @@ export function SettingsPage() {
                   disabled
                 />
                 <span className="settings-hint">Live model (fixed)</span>
+              </div>
+            )}
+            {transcriptionMode === 'live' && (
+              <div className="settings-field">
+                <label htmlFor="live-voice">Voice</label>
+                <select
+                  id="live-voice"
+                  value={liveVoice}
+                  onChange={(e) => setLiveVoice(e.target.value)}
+                >
+                  {LIVE_VOICES.map((voice) => (
+                    <option key={voice} value={voice}>
+                      {voice} — {LIVE_VOICE_DESCRIPTIONS[voice]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {transcriptionMode === 'live' && (
+              <div className="settings-field">
+                <label htmlFor="live-volume">Playback Volume</label>
+                <div className="range-with-value">
+                  <input
+                    id="live-volume"
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={livePlaybackVolume}
+                    onChange={(e) => setLivePlaybackVolume(Number(e.target.value))}
+                  />
+                  <span className="range-value">{livePlaybackVolume}%</span>
+                </div>
+                <span className="settings-hint">
+                  Proportion of system volume. 100% = system level, 50% = half of system volume.
+                </span>
               </div>
             )}
 

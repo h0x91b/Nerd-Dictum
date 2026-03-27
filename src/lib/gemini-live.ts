@@ -44,7 +44,10 @@ export class LiveTranscriber {
   private chunksSent = 0;
   private systemPrompt: string;
   private playAudio: boolean;
+  private playbackVolume: number; // 0-1, proportion of system volume
+  private voiceName: string;
   private audioCtx: AudioContext | null = null;
+  private gainNode: GainNode | null = null;
   private nextPlayTime = 0;
 
   constructor(
@@ -53,11 +56,15 @@ export class LiveTranscriber {
     model?: string,
     systemPrompt?: string,
     playAudio = false,
+    voiceName = 'Schedar',
+    playbackVolume = 1.0,
   ) {
     this.ai = new GoogleGenAI({ apiKey });
     this.callbacks = callbacks;
     this.model = model || LIVE_MODEL;
     this.playAudio = playAudio;
+    this.voiceName = voiceName;
+    this.playbackVolume = Math.max(0, Math.min(1, playbackVolume));
     // Wrap the transcription prompt: tell the model to REPEAT the user's words
     const basePrompt = systemPrompt || 'Transcribe the provided audio to text faithfully.';
     this.systemPrompt = `${basePrompt}
@@ -77,7 +84,7 @@ CRITICAL: You are a transcription engine. Your ONLY job is to repeat EXACTLY wha
           speechConfig: {
             voiceConfig: {
               prebuiltVoiceConfig: {
-                voiceName: 'Schedar',
+                voiceName: this.voiceName,
               },
             },
           },
@@ -257,6 +264,9 @@ CRITICAL: You are a transcription engine. Your ONLY job is to repeat EXACTLY wha
 
       if (!this.audioCtx) {
         this.audioCtx = new AudioContext({ sampleRate });
+        this.gainNode = this.audioCtx.createGain();
+        this.gainNode.gain.value = this.playbackVolume;
+        this.gainNode.connect(this.audioCtx.destination);
         this.nextPlayTime = this.audioCtx.currentTime;
       }
 
@@ -280,7 +290,7 @@ CRITICAL: You are a transcription engine. Your ONLY job is to repeat EXACTLY wha
 
       const source = this.audioCtx.createBufferSource();
       source.buffer = buffer;
-      source.connect(this.audioCtx.destination);
+      source.connect(this.gainNode || this.audioCtx.destination);
 
       // Schedule seamlessly after previous chunk
       const startTime = Math.max(this.nextPlayTime, this.audioCtx.currentTime);
