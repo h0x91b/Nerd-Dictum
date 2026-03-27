@@ -136,7 +136,7 @@ export class LiveTranscriber {
 
     try {
       this.session.sendRealtimeInput({
-        media: {
+        audio: {
           data: pcmBase64,
           mimeType: `audio/pcm;rate=${sampleRate}`,
         },
@@ -174,12 +174,12 @@ export class LiveTranscriber {
       return this.getTranscript();
     }
 
-    // Signal end of input so the model knows we're done sending audio
+    // Signal end of audio stream so the model knows we're done
     try {
-      this.session.sendClientContent({ turnComplete: true });
-      console.log('[GeminiLive] Sent turnComplete signal to model');
+      this.session.sendRealtimeInput({ audioStreamEnd: true });
+      console.log('[GeminiLive] Sent audioStreamEnd signal');
     } catch (err) {
-      console.error('[GeminiLive] Error sending turnComplete:', err);
+      console.error('[GeminiLive] Error sending audioStreamEnd:', err);
     }
 
     // Wait for the model to complete its turn
@@ -240,48 +240,47 @@ export class LiveTranscriber {
   private handleMessage(message: LiveServerMessage): void {
     this.messagesReceived++;
 
-    // Log full message structure for debugging
-    const msg = message as Record<string, unknown>;
-    const keys = Object.keys(msg).filter(k => msg[k] != null);
-    console.log(`[GeminiLive] Message #${this.messagesReceived}:`, keys.join(', '), JSON.stringify(message).substring(0, 300));
-
-    // Extract text from model turn parts
-    if (message.serverContent?.modelTurn?.parts) {
-      for (const part of message.serverContent.modelTurn.parts) {
-        if (part.text) {
-          console.log(`[GeminiLive] Model text: "${part.text.substring(0, 100)}"`);
-          this.textParts.push(part.text);
-          this.callbacks.onPartialText?.(part.text);
-        }
-        if (part.inlineData) {
-          console.log(`[GeminiLive] Model audio chunk, mime: ${part.inlineData.mimeType}`);
-        }
-      }
+    // Log message structure for debugging (truncated to avoid flooding)
+    if (this.messagesReceived <= 5 || this.messagesReceived % 20 === 0) {
+      const msg = message as Record<string, unknown>;
+      const keys = Object.keys(msg).filter(k => msg[k] != null);
+      console.log(`[GeminiLive] Message #${this.messagesReceived}:`, keys.join(', '));
     }
 
-    // Check for input audio transcription (from inputAudioTranscription config)
-    const anyMsg = message as Record<string, unknown>;
-    if (anyMsg.inputTranscription || anyMsg.serverContent) {
-      // The transcription may come as inputTranscription or in serverContent
-      const inputTx = anyMsg.inputTranscription as { text?: string } | undefined;
+    // Extract input audio transcription (our primary source for speech-to-text)
+    // Docs: serverContent.inputTranscription.text
+    const sc = message.serverContent as Record<string, unknown> | undefined;
+    if (sc) {
+      const inputTx = sc.inputTranscription as { text?: string } | undefined;
       if (inputTx?.text) {
-        console.log(`[GeminiLive] Input transcription: "${inputTx.text.substring(0, 100)}"`);
+        console.log(`[GeminiLive] Input transcription: "${inputTx.text}"`);
         this.textParts.push(inputTx.text);
         this.callbacks.onPartialText?.(inputTx.text);
       }
-    }
 
-    // Check for output transcription
-    if (anyMsg.outputTranscription) {
-      const outputTx = anyMsg.outputTranscription as { text?: string } | undefined;
+      const outputTx = sc.outputTranscription as { text?: string } | undefined;
       if (outputTx?.text) {
         console.log(`[GeminiLive] Output transcription: "${outputTx.text.substring(0, 100)}"`);
       }
     }
 
+    // Also extract text from model turn parts (secondary source)
+    if (message.serverContent?.modelTurn?.parts) {
+      for (const part of message.serverContent.modelTurn.parts) {
+        if (part.text) {
+          console.log(`[GeminiLive] Model text: "${part.text.substring(0, 100)}"`);
+          // Only use model text if we have no input transcription
+          if (this.textParts.length === 0) {
+            this.textParts.push(part.text);
+            this.callbacks.onPartialText?.(part.text);
+          }
+        }
+      }
+    }
+
     // Check for turn completion
     if (message.serverContent?.turnComplete) {
-      console.log('[GeminiLive] Turn complete, collected', this.textParts.length, 'text parts');
+      console.log('[GeminiLive] Turn complete, collected', this.textParts.length, 'text parts, transcript:', this.getTranscript().substring(0, 80));
       this.turnCompleteResolve?.();
     }
 
