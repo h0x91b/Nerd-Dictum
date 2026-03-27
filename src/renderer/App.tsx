@@ -389,7 +389,7 @@ export function App() {
           console.warn('[Live] Session error during recording:', err.message);
           liveFailedRef.current = true;
         },
-      }, undefined, prompt);
+      }, undefined, prompt, settings.soundEnabled ?? true);
 
       await live.connect();
       window.electronAPI.trackEvent('live_session_connected');

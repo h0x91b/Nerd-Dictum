@@ -43,16 +43,21 @@ export class LiveTranscriber {
   private model: string;
   private chunksSent = 0;
   private systemPrompt: string;
+  private playAudio: boolean;
+  private audioCtx: AudioContext | null = null;
+  private nextPlayTime = 0;
 
   constructor(
     apiKey: string,
     callbacks: LiveTranscriberCallbacks = {},
     model?: string,
     systemPrompt?: string,
+    playAudio = false,
   ) {
     this.ai = new GoogleGenAI({ apiKey });
     this.callbacks = callbacks;
     this.model = model || LIVE_MODEL;
+    this.playAudio = playAudio;
     // Wrap the transcription prompt: tell the model to REPEAT the user's words
     const basePrompt = systemPrompt || 'Transcribe the provided audio to text faithfully.';
     this.systemPrompt = `${basePrompt}
@@ -189,6 +194,13 @@ CRITICAL: You are a transcription engine. Your ONLY job is to repeat EXACTLY wha
       }
       this.session = null;
     }
+    // Don't close audioCtx immediately — let queued audio finish playing
+    if (this.audioCtx) {
+      const ctx = this.audioCtx;
+      const closeDelay = Math.max(0, (this.nextPlayTime - ctx.currentTime) * 1000) + 500;
+      setTimeout(() => ctx.close().catch(() => {}), closeDelay);
+      this.audioCtx = null;
+    }
   }
 
   isConnected(): boolean {
@@ -203,13 +215,21 @@ CRITICAL: You are a transcription engine. Your ONLY job is to repeat EXACTLY wha
     const sc = message.serverContent as Record<string, unknown> | undefined;
     if (sc) {
       // outputTranscription = text of what the model says (our LLM-enhanced transcript)
-      // Arrives in streaming pieces — accumulate until turnComplete
       const outputTx = sc.outputTranscription as { text?: string } | undefined;
       if (outputTx?.text) {
         this.outputTextParts.push(outputTx.text);
         this.callbacks.onPartialText?.(outputTx.text);
         if (this.outputTextParts.length <= 3 || this.outputTextParts.length % 10 === 0) {
           console.log(`[GeminiLive] ${ts()} Output chunk #${this.outputTextParts.length}: "${outputTx.text}"`);
+        }
+      }
+    }
+
+    // Play audio chunks from model response
+    if (this.playAudio && message.serverContent?.modelTurn?.parts) {
+      for (const part of message.serverContent.modelTurn.parts) {
+        if (part.inlineData?.data && part.inlineData?.mimeType) {
+          this.playPcmChunk(part.inlineData.data, part.inlineData.mimeType);
         }
       }
     }
@@ -222,6 +242,52 @@ CRITICAL: You are a transcription engine. Your ONLY job is to repeat EXACTLY wha
 
     if (message.setupComplete) {
       console.log(`[GeminiLive] ${ts()} Setup complete`);
+    }
+  }
+
+  /**
+   * Play a base64-encoded PCM audio chunk through Web Audio API.
+   * Live API output is 24kHz 16-bit mono little-endian PCM.
+   */
+  private playPcmChunk(base64Data: string, mimeType: string): void {
+    try {
+      // Parse sample rate from mimeType (e.g., "audio/L16;rate=24000")
+      const rateMatch = mimeType.match(/rate=(\d+)/);
+      const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
+
+      if (!this.audioCtx) {
+        this.audioCtx = new AudioContext({ sampleRate });
+        this.nextPlayTime = this.audioCtx.currentTime;
+      }
+
+      // Decode base64 to Int16 PCM
+      const binaryStr = atob(base64Data);
+      const bytes = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+      }
+      const int16 = new Int16Array(bytes.buffer);
+
+      // Convert Int16 to Float32 for Web Audio
+      const float32 = new Float32Array(int16.length);
+      for (let i = 0; i < int16.length; i++) {
+        float32[i] = int16[i] / 32768;
+      }
+
+      // Create and schedule audio buffer
+      const buffer = this.audioCtx.createBuffer(1, float32.length, sampleRate);
+      buffer.getChannelData(0).set(float32);
+
+      const source = this.audioCtx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(this.audioCtx.destination);
+
+      // Schedule seamlessly after previous chunk
+      const startTime = Math.max(this.nextPlayTime, this.audioCtx.currentTime);
+      source.start(startTime);
+      this.nextPlayTime = startTime + buffer.duration;
+    } catch (err) {
+      console.error(`[GeminiLive] ${ts()} Error playing audio chunk:`, err);
     }
   }
 
