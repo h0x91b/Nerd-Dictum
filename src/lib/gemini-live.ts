@@ -53,6 +53,8 @@ export class LiveTranscriber {
   private callbacks: LiveTranscriberCallbacks;
   private options?: TranscribeOptions;
   private model: string;
+  private chunksSent = 0;
+  private messagesReceived = 0;
 
   constructor(
     apiKey: string,
@@ -129,6 +131,10 @@ export class LiveTranscriber {
           mimeType: `audio/pcm;rate=${sampleRate}`,
         },
       });
+      this.chunksSent++;
+      if (this.chunksSent % 50 === 1) {
+        console.log(`[GeminiLive] Sent chunk #${this.chunksSent}, rate=${sampleRate}, size=${pcmBase64.length}`);
+      }
     } catch (err) {
       console.error('[GeminiLive] Error sending audio chunk:', err);
     }
@@ -145,7 +151,25 @@ export class LiveTranscriber {
     this.finished = true;
 
     if (!this.session || !this.connected) {
+      console.warn('[GeminiLive] finish() called but session not connected, chunks sent:', this.chunksSent);
       throw this.error || new LiveTranscriptionError('Session not connected');
+    }
+
+    console.log(`[GeminiLive] finish() — chunks sent: ${this.chunksSent}, messages received: ${this.messagesReceived}, text parts so far: ${this.textParts.length}`);
+
+    // If we already have a turn complete (model responded during streaming), return immediately
+    if (this.textParts.length > 0) {
+      console.log('[GeminiLive] Already have text, returning immediately');
+      this.close();
+      return this.getTranscript();
+    }
+
+    // Signal end of input so the model knows we're done sending audio
+    try {
+      this.session.sendClientContent({ turnComplete: true });
+      console.log('[GeminiLive] Sent turnComplete signal to model');
+    } catch (err) {
+      console.error('[GeminiLive] Error sending turnComplete:', err);
     }
 
     // Wait for the model to complete its turn
@@ -167,6 +191,8 @@ export class LiveTranscriber {
       this.turnCompleteReject = null;
       this.close();
     }
+
+    console.log(`[GeminiLive] After wait — text parts: ${this.textParts.length}, transcript length: ${this.getTranscript().length}`);
 
     const transcript = this.getTranscript();
     if (!transcript) {
@@ -202,12 +228,22 @@ export class LiveTranscriber {
   }
 
   private handleMessage(message: LiveServerMessage): void {
+    this.messagesReceived++;
+
+    // Log all messages for debugging (summarized)
+    const keys = Object.keys(message).filter(k => (message as Record<string, unknown>)[k] != null);
+    console.log(`[GeminiLive] Message #${this.messagesReceived}:`, keys.join(', '));
+
     // Extract text parts from model turn
     if (message.serverContent?.modelTurn?.parts) {
       for (const part of message.serverContent.modelTurn.parts) {
         if (part.text) {
+          console.log(`[GeminiLive] Text part: "${part.text.substring(0, 100)}"`);
           this.textParts.push(part.text);
           this.callbacks.onPartialText?.(part.text);
+        }
+        if (part.inlineData) {
+          console.log(`[GeminiLive] Got inline data (audio?), mime: ${part.inlineData.mimeType}`);
         }
       }
     }
@@ -216,6 +252,11 @@ export class LiveTranscriber {
     if (message.serverContent?.turnComplete) {
       console.log('[GeminiLive] Turn complete, collected', this.textParts.length, 'text parts');
       this.turnCompleteResolve?.();
+    }
+
+    // Log setup complete message
+    if (message.setupComplete) {
+      console.log('[GeminiLive] Setup complete');
     }
   }
 
