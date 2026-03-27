@@ -5,7 +5,6 @@ import { exec } from 'child_process';
 import { fileURLToPath } from 'url';
 import { autoUpdater } from 'electron-updater';
 import electronLog from 'electron-log';
-import { decode as decodeBase65 } from '../lib/base65';
 import { initAnalytics, trackEvent, startHeartbeat, stopHeartbeat } from '../lib/analytics';
 import { getDisplayBounds, isPositionValid } from './window-position';
 import type { WindowPosition } from './window-position';
@@ -946,9 +945,6 @@ function createApplicationMenu() {
 }
 
 // Auto-updater setup
-// Obfuscated read-only token for accessing private GitHub releases (base65 encoded)
-const GH_RELEASES_TOKEN_ENCODED = 'ГцжАЦНудлуФмэЦрзееврфЯдаэЫзГФцекТЮхЦПшшЯЫцРцЯМЪШНьуУэРъыРЛЙегЗ__ЭЭЛРАЧцЙВонхзШнОаъпхЦЫГбодТКЦрфУрГчбюЫСуМахя_ыкхШшКЛДЛДлшЮЬы';
-
 // Update state tracking
 let updateDownloaded = false;
 let downloadedVersion: string | null = null;
@@ -1017,19 +1013,15 @@ function setupAutoUpdater() {
   }
 
   log('[AutoUpdater] Setting up auto-updater...');
-  const token = decodeBase65(GH_RELEASES_TOKEN_ENCODED);
-  // Log token prefix for debugging (don't log full token for security)
-  log('[AutoUpdater] Token decoded, prefix:', token.substring(0, 10) + '..., length:', token.length);
 
-  // Configure for private GitHub repo - use API instead of atom feed
+  // Configure GitHub Releases feed for the public repository
   autoUpdater.setFeedURL({
     provider: 'github',
     owner: 'h0x91b',
     repo: 'Nerd-Dictum',
-    private: true,
-    token: token,
+    private: false,
   });
-  log('[AutoUpdater] Feed URL configured for private repo');
+  log('[AutoUpdater] Feed URL configured for public repo');
 
   if (FORCE_UPDATE_CHECK && !app.isPackaged) {
     autoUpdater.forceDevUpdateConfig = true;

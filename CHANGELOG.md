@@ -2,6 +2,7 @@
 
 ## 2026-03-27
 
+[2026-03-27] Dev — Switch the macOS release job from a self-hosted runner to the standard GitHub-hosted `macos-15` runner now that the repository is public, and update release/auto-update GitHub config (`release.yml`, `package.json`, `dev-app-update.yml`, `main.ts`) from private to public
 [2026-03-27] Dev — Change `bun run dev:mac:tmux` to keep the logs pane in a top/bottom tmux layout by using `split-window -v` with `select-layout even-vertical` instead of the side-by-side `even-horizontal` layout
 [2026-03-27] Docs — Update `AGENTS.md` to require immediate commits for completed code/config/docs changes unless the user explicitly asks not to commit yet
 [2026-03-27] Docs — Update `AGENTS.md` to require terminal-only Git editors during rebase/merge/commit flows; agents must avoid opening GUI editors and prefer non-interactive Git commands such as `-m`, `--no-edit`, or `GIT_EDITOR=true`
