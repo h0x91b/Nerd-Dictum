@@ -7,10 +7,6 @@
 
 import { GoogleGenAI, Modality } from '@google/genai';
 import type { Session, LiveServerMessage } from '@google/genai';
-import type { TranscribeOptions } from './gemini';
-
-// Re-use prompt builder from the batch module
-import { buildPrompt } from './gemini';
 
 const LIVE_MODEL = 'models/gemini-3.1-flash-live-preview';
 const TURN_COMPLETE_TIMEOUT_MS = 10_000; // Max wait for model to finish after audio stops
@@ -51,19 +47,16 @@ export class LiveTranscriber {
   private finished = false;
   private error: Error | null = null;
   private callbacks: LiveTranscriberCallbacks;
-  private options?: TranscribeOptions;
   private model: string;
   private chunksSent = 0;
   private messagesReceived = 0;
 
   constructor(
     apiKey: string,
-    options?: TranscribeOptions,
     callbacks: LiveTranscriberCallbacks = {},
     model?: string,
   ) {
     this.ai = new GoogleGenAI({ apiKey });
-    this.options = options;
     this.callbacks = callbacks;
     this.model = model || LIVE_MODEL;
   }
@@ -73,15 +66,14 @@ export class LiveTranscriber {
    * Throws LiveTranscriptionError if the connection fails.
    */
   async connect(): Promise<void> {
-    const prompt = buildPrompt(this.options);
-
     try {
       this.session = await this.ai.live.connect({
         model: this.model,
         config: {
           responseModalities: [Modality.AUDIO],
+          // Minimal instruction — we only need inputAudioTranscription, not model's response
           systemInstruction: {
-            parts: [{ text: prompt }],
+            parts: [{ text: 'Do not respond. Stay silent.' }],
           },
           speechConfig: {
             voiceConfig: {
@@ -90,9 +82,8 @@ export class LiveTranscriber {
               },
             },
           },
-          // Request automatic transcription of input audio
+          // This is the key feature — server-side ASR transcription of our audio input
           inputAudioTranscription: {},
-          outputAudioTranscription: {},
         },
         callbacks: {
           onopen: () => {

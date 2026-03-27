@@ -375,8 +375,7 @@ export function App() {
         previousTranscripts = await window.electronAPI.getRecentTranscripts();
       }
 
-      const options = buildTranscribeOptions(settings, previousTranscripts);
-      const live = new LiveTranscriber(settings.apiKey, options, {
+      const live = new LiveTranscriber(settings.apiKey, {
         onConnected: () => {
           console.log('[Live] Session connected, streaming audio');
         },
@@ -436,10 +435,11 @@ export function App() {
       const recorderOptions = buildRecorderOptions(settings);
       recorderRef.current = new AudioRecorder(undefined, recorderOptions);
 
-      // Start live Gemini session in parallel (non-blocking)
+      // Start live Gemini session in parallel (truly non-blocking — don't await)
       liveFailedRef.current = false;
-      const liveTranscriber = await startLiveSession(settings);
-      liveTranscriberRef.current = liveTranscriber;
+      startLiveSession(settings).then((live) => {
+        liveTranscriberRef.current = live;
+      });
 
       // Set up silence detection callback for auto-stop
       recorderRef.current.setOnSilenceStop(() => {
