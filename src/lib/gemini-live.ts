@@ -79,10 +79,20 @@ export class LiveTranscriber {
       this.session = await this.ai.live.connect({
         model: this.model,
         config: {
-          responseModalities: [Modality.TEXT],
+          responseModalities: [Modality.AUDIO],
           systemInstruction: {
             parts: [{ text: prompt }],
           },
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: {
+                voiceName: 'Schedar',
+              },
+            },
+          },
+          // Request automatic transcription of input audio
+          inputAudioTranscription: {},
+          outputAudioTranscription: {},
         },
         callbacks: {
           onopen: () => {
@@ -230,21 +240,42 @@ export class LiveTranscriber {
   private handleMessage(message: LiveServerMessage): void {
     this.messagesReceived++;
 
-    // Log all messages for debugging (summarized)
-    const keys = Object.keys(message).filter(k => (message as Record<string, unknown>)[k] != null);
-    console.log(`[GeminiLive] Message #${this.messagesReceived}:`, keys.join(', '));
+    // Log full message structure for debugging
+    const msg = message as Record<string, unknown>;
+    const keys = Object.keys(msg).filter(k => msg[k] != null);
+    console.log(`[GeminiLive] Message #${this.messagesReceived}:`, keys.join(', '), JSON.stringify(message).substring(0, 300));
 
-    // Extract text parts from model turn
+    // Extract text from model turn parts
     if (message.serverContent?.modelTurn?.parts) {
       for (const part of message.serverContent.modelTurn.parts) {
         if (part.text) {
-          console.log(`[GeminiLive] Text part: "${part.text.substring(0, 100)}"`);
+          console.log(`[GeminiLive] Model text: "${part.text.substring(0, 100)}"`);
           this.textParts.push(part.text);
           this.callbacks.onPartialText?.(part.text);
         }
         if (part.inlineData) {
-          console.log(`[GeminiLive] Got inline data (audio?), mime: ${part.inlineData.mimeType}`);
+          console.log(`[GeminiLive] Model audio chunk, mime: ${part.inlineData.mimeType}`);
         }
+      }
+    }
+
+    // Check for input audio transcription (from inputAudioTranscription config)
+    const anyMsg = message as Record<string, unknown>;
+    if (anyMsg.inputTranscription || anyMsg.serverContent) {
+      // The transcription may come as inputTranscription or in serverContent
+      const inputTx = anyMsg.inputTranscription as { text?: string } | undefined;
+      if (inputTx?.text) {
+        console.log(`[GeminiLive] Input transcription: "${inputTx.text.substring(0, 100)}"`);
+        this.textParts.push(inputTx.text);
+        this.callbacks.onPartialText?.(inputTx.text);
+      }
+    }
+
+    // Check for output transcription
+    if (anyMsg.outputTranscription) {
+      const outputTx = anyMsg.outputTranscription as { text?: string } | undefined;
+      if (outputTx?.text) {
+        console.log(`[GeminiLive] Output transcription: "${outputTx.text.substring(0, 100)}"`);
       }
     }
 
