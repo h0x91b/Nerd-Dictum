@@ -60,6 +60,16 @@ function buildRecorderOptions(settings: AppSettings): AudioRecorderOptions {
   };
 }
 
+const BATCH_MODEL_DEFAULT = 'gemini-3-flash-preview';
+
+/** Live-only models don't support generateContent — fall back to default for batch API */
+function getBatchModel(settingsModel: string): string {
+  if (settingsModel.includes('-live-') || settingsModel.includes('-live')) {
+    return BATCH_MODEL_DEFAULT;
+  }
+  return settingsModel;
+}
+
 const AUDIO_EXTENSIONS: Record<string, string> = {
   '.mp3': 'audio/mp3',
   '.wav': 'audio/wav',
@@ -167,8 +177,8 @@ export function App() {
       }
 
       const options = buildTranscribeOptions(settings, previousTranscripts);
-      // Transcribe audio
-      const transcript = await transcribeAudio(audioBase64, settings.apiKey, settings.model, {
+      // Transcribe audio (use batch-compatible model — live-only models don't support generateContent)
+      const transcript = await transcribeAudio(audioBase64, settings.apiKey, getBatchModel(settings.model), {
         ...options,
         signal: controller.signal,
         ...(mimeType && { mimeType }),

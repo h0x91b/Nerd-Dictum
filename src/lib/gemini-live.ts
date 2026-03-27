@@ -12,7 +12,7 @@ import type { TranscribeOptions } from './gemini';
 // Re-use prompt builder from the batch module
 import { buildPrompt } from './gemini';
 
-const LIVE_MODEL = 'gemini-3.1-flash-live-preview';
+const LIVE_MODEL = 'models/gemini-3.1-flash-live-preview';
 const TURN_COMPLETE_TIMEOUT_MS = 10_000; // Max wait for model to finish after audio stops
 
 export interface LiveTranscriberCallbacks {
