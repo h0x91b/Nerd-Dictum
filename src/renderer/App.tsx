@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import './styles/App.css';
 import { AudioRecorder, AudioRecorderOptions, DEFAULT_SILENCE_DURATION_MS } from '../lib/audio';
-import { transcribeAudio, TranscribeOptions, TranscriptionCancelledError } from '../lib/gemini';
+import { transcribeAudio, TranscribeOptions, TranscriptionCancelledError, buildPrompt } from '../lib/gemini';
 import { LiveTranscriber, LiveTranscriptionError, float32ChunkToBase64PCM } from '../lib/gemini-live';
 import { classifyError, ClassifiedError } from '../lib/errors';
 import { playSuccessSound, playErrorSound } from '../lib/sounds';
@@ -367,6 +367,8 @@ export function App() {
   // Returns null if connection fails (caller should fall back to batch).
   const startLiveSession = useCallback(async (settings: AppSettings): Promise<LiveTranscriber | null> => {
     if (!settings.apiKey) return null;
+    // Skip live session in classic mode
+    if ((settings.transcriptionMode ?? 'live') !== 'live') return null;
 
     try {
       // Get previous transcripts for context
@@ -374,6 +376,10 @@ export function App() {
       if (settings.previousTranscriptContextEnabled ?? true) {
         previousTranscripts = await window.electronAPI.getRecentTranscripts();
       }
+
+      // Build prompt with domain hints, keywords, context — same as batch mode
+      const options = buildTranscribeOptions(settings, previousTranscripts);
+      const prompt = buildPrompt(options);
 
       const live = new LiveTranscriber(settings.apiKey, {
         onConnected: () => {
@@ -383,7 +389,7 @@ export function App() {
           console.warn('[Live] Session error during recording:', err.message);
           liveFailedRef.current = true;
         },
-      });
+      }, undefined, prompt);
 
       await live.connect();
       window.electronAPI.trackEvent('live_session_connected');

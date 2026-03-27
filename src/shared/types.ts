@@ -8,9 +8,12 @@ export type HoldToRecordKey =
   | 'LeftShift'
   | 'RightShift';
 
+export type TranscriptionMode = 'live' | 'classic';
+
 export interface AppSettings {
   apiKey: string;
   model: string;
+  transcriptionMode: TranscriptionMode;
   languages: string[];
   speechDomain: string;
   customDomainHint: string;

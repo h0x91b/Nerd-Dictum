@@ -5,6 +5,7 @@ import { ThemeProvider } from '../contexts/ThemeContext';
 
 const defaultSettings = {
   apiKey: 'test-api-key',
+  transcriptionMode: 'classic' as const,
   model: 'gemini-3-flash-preview',
   languages: ['en'],
   speechDomain: 'programming',

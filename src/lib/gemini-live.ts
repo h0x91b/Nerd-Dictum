@@ -42,15 +42,18 @@ export class LiveTranscriber {
   private callbacks: LiveTranscriberCallbacks;
   private model: string;
   private chunksSent = 0;
+  private systemPrompt: string;
 
   constructor(
     apiKey: string,
     callbacks: LiveTranscriberCallbacks = {},
     model?: string,
+    systemPrompt?: string,
   ) {
     this.ai = new GoogleGenAI({ apiKey });
     this.callbacks = callbacks;
     this.model = model || LIVE_MODEL;
+    this.systemPrompt = systemPrompt || 'Do not respond. Stay silent.';
   }
 
   async connect(): Promise<void> {
@@ -60,7 +63,7 @@ export class LiveTranscriber {
         config: {
           responseModalities: [Modality.AUDIO],
           systemInstruction: {
-            parts: [{ text: 'Do not respond. Stay silent.' }],
+            parts: [{ text: this.systemPrompt }],
           },
           speechConfig: {
             voiceConfig: {

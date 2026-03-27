@@ -117,6 +117,7 @@ interface AudioDevice {
 export function SettingsPage() {
   const { theme, setTheme, systemTheme } = useTheme();
   const [apiKey, setApiKey] = useState('');
+  const [transcriptionMode, setTranscriptionMode] = useState<'live' | 'classic'>('live');
   const [model, setModel] = useState('gemini-3-flash-preview');
   const [languages, setLanguages] = useState<string[]>([]);
   const [speechDomain, setSpeechDomain] = useState('programming');
@@ -174,6 +175,7 @@ export function SettingsPage() {
     const initial = initialSettingsRef.current;
     return (
       apiKey !== initial.apiKey ||
+      transcriptionMode !== initial.transcriptionMode ||
       model !== initial.model ||
       JSON.stringify(languages) !== JSON.stringify(initial.languages) ||
       speechDomain !== initial.speechDomain ||
@@ -236,6 +238,7 @@ export function SettingsPage() {
       try {
         const settings = await window.electronAPI.getSettings();
         const loadedApiKey = settings.apiKey;
+        const loadedTranscriptionMode = settings.transcriptionMode || 'live';
         const loadedModel = settings.model;
         const loadedSpeechDomain = settings.speechDomain || 'programming';
         const loadedCustomDomainHint = settings.customDomainHint || '';
@@ -252,6 +255,7 @@ export function SettingsPage() {
         const loadedWidgetHidden = settings.widgetHidden ?? false;
 
         setApiKey(loadedApiKey);
+        setTranscriptionMode(loadedTranscriptionMode);
         setModel(loadedModel);
         setSpeechDomain(loadedSpeechDomain);
         setCustomDomainHint(loadedCustomDomainHint);
@@ -270,6 +274,7 @@ export function SettingsPage() {
         // Store initial settings for unsaved changes comparison
         initialSettingsRef.current = {
           apiKey: loadedApiKey,
+          transcriptionMode: loadedTranscriptionMode,
           model: loadedModel,
           languages: [...loadedLanguages],
           speechDomain: loadedSpeechDomain,
@@ -358,6 +363,7 @@ export function SettingsPage() {
     try {
       const success = await window.electronAPI.saveSettings({
         apiKey,
+        transcriptionMode,
         model,
         languages,
         speechDomain,
@@ -379,6 +385,7 @@ export function SettingsPage() {
         // Update initial settings so hasUnsavedChanges becomes false
         initialSettingsRef.current = {
           apiKey,
+          transcriptionMode,
           model,
           languages: [...languages],
           speechDomain,
@@ -588,16 +595,47 @@ export function SettingsPage() {
             </div>
 
             <div className="settings-field">
-              <label htmlFor="model">Model</label>
-              <input
-                id="model"
-                type="text"
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                placeholder="gemini-3-flash-preview"
-              />
-              <span className="settings-hint">Default: gemini-3-flash-preview</span>
+              <label htmlFor="transcription-mode">Transcription Mode</label>
+              <select
+                id="transcription-mode"
+                value={transcriptionMode}
+                onChange={(e) => setTranscriptionMode(e.target.value as 'live' | 'classic')}
+              >
+                <option value="live">Live (faster)</option>
+                <option value="classic">Classic (smarter)</option>
+              </select>
+              <span className="settings-hint">
+                {transcriptionMode === 'live'
+                  ? 'Real-time streaming via Gemini Live API — fast but basic ASR'
+                  : 'Batch transcription with custom prompts, keywords, and domain hints'}
+              </span>
             </div>
+
+            {transcriptionMode === 'classic' && (
+              <div className="settings-field">
+                <label htmlFor="model">Model</label>
+                <input
+                  id="model"
+                  type="text"
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  placeholder="gemini-3-flash-preview"
+                />
+                <span className="settings-hint">Default: gemini-3-flash-preview</span>
+              </div>
+            )}
+            {transcriptionMode === 'live' && (
+              <div className="settings-field">
+                <label htmlFor="model">Model</label>
+                <input
+                  id="model"
+                  type="text"
+                  value="gemini-3.1-flash-live-preview"
+                  disabled
+                />
+                <span className="settings-hint">Live model (fixed)</span>
+              </div>
+            )}
 
             <div className="settings-field">
               <label className="checkbox-label">
