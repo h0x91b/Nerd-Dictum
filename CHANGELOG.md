@@ -2,6 +2,7 @@
 
 ## 2026-03-27
 
+[2026-03-27] Dev — Change `bun run dev:mac:tmux` to keep the logs pane in a top/bottom tmux layout by using `split-window -v` with `select-layout even-vertical` instead of the side-by-side `even-horizontal` layout
 [2026-03-27] Docs — Update `AGENTS.md` to require immediate commits for completed code/config/docs changes unless the user explicitly asks not to commit yet
 [2026-03-27] Docs — Update `AGENTS.md` to require terminal-only Git editors during rebase/merge/commit flows; agents must avoid opening GUI editors and prefer non-interactive Git commands such as `-m`, `--no-edit`, or `GIT_EDITOR=true`
 [2026-03-27] Dev — Add `LOCAL_DEV_BUILD` runtime mode for packaged local macOS builds: disables auto-updates, shows `dev` version label, and adds `bun run dev:mac` / `bun run dev:mac:build` workflow; `dev:mac` now launches via `open -W`, captures stdout/stderr to `.dev3/tmp`, stops an existing packaged dev instance before restart, and kills it again when the dev-server process exits, while `dev:mac:tmux` opens a split tmux pane for live logs; update `.dev3/config.json` to use the packaged dev app flow and stop deleting the committed `build/` directory during cleanup
