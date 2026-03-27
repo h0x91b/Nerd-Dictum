@@ -80,6 +80,22 @@ bun run dev         # Manual testing with hot reload
 
 For non-visible changes, use the `log()` function so changes can be verified.
 
+### Git Editor Behavior
+
+When running Git commands that may open an editor (`git rebase --continue`, merge commits, `git commit` without `-m`, etc.), always force a terminal-only editor or bypass the editor entirely.
+
+- Prefer non-interactive forms like `git commit -m`, `git rebase --continue --no-edit`, or `GIT_EDITOR=true git rebase --continue`
+- Never allow Git to open GUI editors like Xcode, VS Code, Cursor, or any desktop app during agent work
+- If manual message editing is unavoidable, use a terminal editor only
+
+### Git Commit Discipline
+
+After completing any code, config, or documentation change, commit it immediately unless the user explicitly says not to commit yet.
+
+- Do not leave finished work uncommitted by default
+- Prefer small, focused commits with clear messages over one giant dump at the end
+- If a task naturally produces multiple distinct changes, commit each completed chunk as you finish it
+
 ### Logging (Main Process)
 
 In `src/main/main.ts`, use the `log()` function instead of `console.log/error/warn`:

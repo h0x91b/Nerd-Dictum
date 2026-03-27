@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, clipboard, globalShortcut, Tray, Menu, nativeImage, screen, systemPreferences, shell, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, clipboard, globalShortcut, Tray, Menu, nativeImage, screen, systemPreferences, shell, dialog, session } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { exec } from 'child_process';
@@ -19,6 +19,7 @@ const __dirname = path.dirname(__filename);
 
 // Dev server port - must match VITE_PORT in vite.config.ts (default: 12000)
 const DEV_PORT = parseInt(process.env.VITE_PORT || '12000', 10);
+const IS_LOCAL_DEV_BUILD = process.env.LOCAL_DEV_BUILD === 'true';
 
 // Ensure single instance of the application
 const gotTheLock = app.requestSingleInstanceLock();
@@ -286,7 +287,7 @@ function createSettingsWindow() {
     },
   });
 
-  const isDev = process.env.ELECTRON_DEV === 'true' || (!app.isPackaged && !process.env.ELECTRON_FORCE_PROD);
+  const isDev = isRendererDevMode();
 
   if (isDev) {
     settingsWindow.loadURL(`http://localhost:${DEV_PORT}/settings.html`);
@@ -346,7 +347,7 @@ function createInfoWindow() {
     },
   });
 
-  const isDev = process.env.ELECTRON_DEV === 'true' || (!app.isPackaged && !process.env.ELECTRON_FORCE_PROD);
+  const isDev = isRendererDevMode();
 
   if (isDev) {
     infoWindow.loadURL(`http://localhost:${DEV_PORT}/info.html`);
@@ -406,7 +407,7 @@ function createHideWindow() {
     },
   });
 
-  const isDev = process.env.ELECTRON_DEV === 'true' || (!app.isPackaged && !process.env.ELECTRON_FORCE_PROD);
+  const isDev = isRendererDevMode();
 
   if (isDev) {
     hideWindow.loadURL(`http://localhost:${DEV_PORT}/hide.html`);
@@ -466,7 +467,7 @@ function createStatsWindow() {
     },
   });
 
-  const isDev = process.env.ELECTRON_DEV === 'true' || (!app.isPackaged && !process.env.ELECTRON_FORCE_PROD);
+  const isDev = isRendererDevMode();
 
   if (isDev) {
     statsWindow.loadURL(`http://localhost:${DEV_PORT}/stats.html`);
@@ -525,7 +526,7 @@ function createErrorDetailWindow() {
     },
   });
 
-  const isDev = process.env.ELECTRON_DEV === 'true' || (!app.isPackaged && !process.env.ELECTRON_FORCE_PROD);
+  const isDev = isRendererDevMode();
 
   if (isDev) {
     errorDetailWindow.loadURL(`http://localhost:${DEV_PORT}/error-detail.html`);
@@ -573,7 +574,7 @@ function createWindow() {
   }
 
   // Use ELECTRON_DEV env var to detect dev mode, or fall back to app.isPackaged
-  const isDev = process.env.ELECTRON_DEV === 'true' || (!app.isPackaged && !process.env.ELECTRON_FORCE_PROD);
+  const isDev = isRendererDevMode();
 
   if (isDev) {
     mainWindow.loadURL(`http://localhost:${DEV_PORT}`);
@@ -699,14 +700,14 @@ function updateTrayMenu() {
 
   // Build update menu items
   const updateMenuItems: Electron.MenuItemConstructorOptions[] = [];
-  if (updateDownloaded && downloadedVersion) {
+  if (!IS_LOCAL_DEV_BUILD && updateDownloaded && downloadedVersion) {
     updateMenuItems.push({
       label: `Install Update (v${downloadedVersion})`,
       click: () => {
         installUpdate();
       },
     });
-  } else {
+  } else if (!IS_LOCAL_DEV_BUILD) {
     updateMenuItems.push({
       label: 'Check for Updates',
       click: () => {
@@ -714,6 +715,10 @@ function updateTrayMenu() {
       },
     });
   }
+
+  const extraMenuItems: Electron.MenuItemConstructorOptions[] = IS_LOCAL_DEV_BUILD
+    ? []
+    : [{ type: 'separator' }, ...updateMenuItems];
 
   // Build clipboard history submenu
   const clipboardHistory = getClipboardHistory();
@@ -731,7 +736,7 @@ function updateTrayMenu() {
 
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: `Nerd Dictum v${app.getVersion()}`,
+      label: `Nerd Dictum ${getDisplayVersion() === 'dev' ? 'dev' : `v${getDisplayVersion()}`}`,
       enabled: false,
     },
     { type: 'separator' },
@@ -786,8 +791,7 @@ function updateTrayMenu() {
         }
       },
     },
-    { type: 'separator' },
-    ...updateMenuItems,
+    ...extraMenuItems,
     { type: 'separator' },
     {
       label: 'Quit',
@@ -953,10 +957,30 @@ let updateCheckInterval: NodeJS.Timeout | null = null;
 // Enable dev testing with: FORCE_UPDATE_CHECK=true bun run dev
 const FORCE_UPDATE_CHECK = process.env.FORCE_UPDATE_CHECK === 'true';
 
+function isRendererDevMode(): boolean {
+  return process.env.ELECTRON_DEV === 'true' || (!app.isPackaged && !process.env.ELECTRON_FORCE_PROD);
+}
+
+function isAutoUpdaterEnabled(): boolean {
+  if (IS_LOCAL_DEV_BUILD) {
+    return false;
+  }
+
+  return app.isPackaged || FORCE_UPDATE_CHECK;
+}
+
+function getDisplayVersion(): string {
+  if (IS_LOCAL_DEV_BUILD) {
+    return 'dev';
+  }
+
+  return app.getVersion();
+}
+
 function checkForUpdates() {
-  log('[AutoUpdater] checkForUpdates called, isPackaged:', app.isPackaged, 'FORCE_UPDATE_CHECK:', FORCE_UPDATE_CHECK);
-  if (!app.isPackaged && !FORCE_UPDATE_CHECK) {
-    log('[AutoUpdater] Skipping update check (not packaged)');
+  log('[AutoUpdater] checkForUpdates called, isPackaged:', app.isPackaged, 'FORCE_UPDATE_CHECK:', FORCE_UPDATE_CHECK, 'LOCAL_DEV_BUILD:', IS_LOCAL_DEV_BUILD);
+  if (!isAutoUpdaterEnabled()) {
+    log('[AutoUpdater] Skipping update check');
     return;
   }
   log('[AutoUpdater] Starting update check...');
@@ -986,9 +1010,9 @@ function installUpdate() {
 }
 
 function setupAutoUpdater() {
-  log('[AutoUpdater] setupAutoUpdater called, isPackaged:', app.isPackaged);
-  if (!app.isPackaged && !FORCE_UPDATE_CHECK) {
-    log('[AutoUpdater] Skipping setup (not packaged)');
+  log('[AutoUpdater] setupAutoUpdater called, isPackaged:', app.isPackaged, 'LOCAL_DEV_BUILD:', IS_LOCAL_DEV_BUILD);
+  if (!isAutoUpdaterEnabled()) {
+    log('[AutoUpdater] Skipping setup');
     return;
   }
 
@@ -1093,6 +1117,10 @@ async function requestMicrophonePermission(): Promise<boolean> {
     return true; // Only macOS needs explicit permission request
   }
 
+  if (process.platform !== 'darwin') {
+    return true;
+  }
+
   const status = systemPreferences.getMediaAccessStatus('microphone');
   log('[Permissions] Microphone access status:', status);
 
@@ -1101,19 +1129,43 @@ async function requestMicrophonePermission(): Promise<boolean> {
   }
 
   if (status === 'not-determined') {
-    // Request permission - this will show the macOS permission dialog
+    // Show dock temporarily — macOS won't show permission dialogs
+    // for apps without a dock presence
+    if (app.dock && !app.dock.isVisible()) {
+      await app.dock.show();
+    }
+
     const granted = await systemPreferences.askForMediaAccess('microphone');
     log('[Permissions] Microphone permission request result:', granted);
-    return granted;
+
+    if (app.dock) {
+      app.dock.hide();
+    }
+
+    if (granted) {
+      return true;
+    }
   }
 
-  // status is 'denied' or 'restricted'
-  log('[Permissions] Microphone access denied. Please enable in System Preferences > Privacy & Security > Microphone');
+  // Either denied, restricted, or askForMediaAccess silently failed (dev mode)
+  log('[Permissions] Microphone not granted — opening System Settings');
+  shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone');
   return false;
 }
 
 app.whenReady().then(() => {
-  log('[App] Starting Nerd Dictum v' + app.getVersion());
+  log('[App] Starting Nerd Dictum', getDisplayVersion());
+
+  // Allow microphone access from renderer (getUserMedia).
+  // Both handlers are needed: check runs first, then request.
+  session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
+    log('[Permissions] Check handler:', permission);
+    return true;
+  });
+  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+    log('[Permissions] Request handler:', permission);
+    callback(true);
+  });
 
   // Initialize analytics, track app start, and start hourly heartbeat
   initAnalytics(app.getVersion());
@@ -1198,6 +1250,7 @@ app.on('activate', () => {
 
 // IPC handlers
 ipcMain.handle('copy-to-clipboard', (_event, text: string) => {
+  log('[Clipboard] Copying transcript (' + text.length + ' chars):', text.substring(0, 200));
   // Capture current clipboard content before overwriting
   captureCurrentClipboard();
   clipboard.writeText(text);
@@ -1334,7 +1387,7 @@ ipcMain.handle('close-hide-window', () => {
 
 // Get app version
 ipcMain.handle('get-app-version', () => {
-  if (!app.isPackaged) {
+  if (!app.isPackaged || IS_LOCAL_DEV_BUILD) {
     return 'dev';
   }
   return app.getVersion();

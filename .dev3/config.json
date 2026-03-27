@@ -1,6 +1,9 @@
 {
   "setupScript": "bun install",
-  "devScript": "bun run dev",
+  "devScript": "bun run dev:mac:build && bun run dev:mac:tmux",
+  "cleanupScript": "rm -rf dist release node_modules/.cache",
   "clonePaths": ["node_modules"],
-  "defaultBaseBranch": "main"
+  "defaultBaseBranch": "main",
+  "defaultCompareRefMode": "remote",
+  "portCount": 0
 }
