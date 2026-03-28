@@ -119,8 +119,10 @@ export function SettingsPage() {
   const { theme, setTheme, systemTheme } = useTheme();
   const [apiKey, setApiKey] = useState('');
   const [transcriptionMode, setTranscriptionMode] = useState<'live' | 'classic'>('live');
+  const [liveModel, setLiveModel] = useState('gemini-3.1-flash-live-preview');
   const [liveVoice, setLiveVoice] = useState('Schedar');
   const [livePlaybackVolume, setLivePlaybackVolume] = useState(100);
+  const [liveSkipPlayback, setLiveSkipPlayback] = useState(false);
   const [model, setModel] = useState('gemini-3-flash-preview');
   const [languages, setLanguages] = useState<string[]>([]);
   const [speechDomain, setSpeechDomain] = useState('programming');
@@ -179,8 +181,10 @@ export function SettingsPage() {
     return (
       apiKey !== initial.apiKey ||
       transcriptionMode !== initial.transcriptionMode ||
+      liveModel !== initial.liveModel ||
       liveVoice !== initial.liveVoice ||
       livePlaybackVolume !== initial.livePlaybackVolume ||
+      liveSkipPlayback !== initial.liveSkipPlayback ||
       model !== initial.model ||
       JSON.stringify(languages) !== JSON.stringify(initial.languages) ||
       speechDomain !== initial.speechDomain ||
@@ -244,8 +248,10 @@ export function SettingsPage() {
         const settings = await window.electronAPI.getSettings();
         const loadedApiKey = settings.apiKey;
         const loadedTranscriptionMode = settings.transcriptionMode || 'live';
+        const loadedLiveModel = settings.liveModel || 'gemini-3.1-flash-live-preview';
         const loadedLiveVoice = settings.liveVoice || 'Schedar';
         const loadedLivePlaybackVolume = settings.livePlaybackVolume ?? 100;
+        const loadedLiveSkipPlayback = settings.liveSkipPlayback ?? false;
         const loadedModel = settings.model;
         const loadedSpeechDomain = settings.speechDomain || 'programming';
         const loadedCustomDomainHint = settings.customDomainHint || '';
@@ -263,8 +269,10 @@ export function SettingsPage() {
 
         setApiKey(loadedApiKey);
         setTranscriptionMode(loadedTranscriptionMode);
+        setLiveModel(loadedLiveModel);
         setLiveVoice(loadedLiveVoice);
         setLivePlaybackVolume(loadedLivePlaybackVolume);
+        setLiveSkipPlayback(loadedLiveSkipPlayback);
         setModel(loadedModel);
         setSpeechDomain(loadedSpeechDomain);
         setCustomDomainHint(loadedCustomDomainHint);
@@ -284,8 +292,10 @@ export function SettingsPage() {
         initialSettingsRef.current = {
           apiKey: loadedApiKey,
           transcriptionMode: loadedTranscriptionMode,
+          liveModel: loadedLiveModel,
           liveVoice: loadedLiveVoice,
           livePlaybackVolume: loadedLivePlaybackVolume,
+          liveSkipPlayback: loadedLiveSkipPlayback,
           model: loadedModel,
           languages: [...loadedLanguages],
           speechDomain: loadedSpeechDomain,
@@ -375,8 +385,10 @@ export function SettingsPage() {
       const success = await window.electronAPI.saveSettings({
         apiKey,
         transcriptionMode,
+        liveModel,
         liveVoice,
         livePlaybackVolume,
+        liveSkipPlayback,
         model,
         languages,
         speechDomain,
@@ -626,31 +638,25 @@ export function SettingsPage() {
               </span>
             </div>
 
-            {transcriptionMode === 'classic' && (
-              <div className="settings-field">
-                <label htmlFor="model">Model</label>
-                <input
-                  id="model"
-                  type="text"
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  placeholder="gemini-3-flash-preview"
-                />
-                <span className="settings-hint">Default: gemini-3-flash-preview</span>
-              </div>
-            )}
-            {transcriptionMode === 'live' && (
-              <div className="settings-field">
-                <label htmlFor="model">Model</label>
-                <input
-                  id="model"
-                  type="text"
-                  value="gemini-3.1-flash-live-preview"
-                  disabled
-                />
-                <span className="settings-hint">Live model (fixed)</span>
-              </div>
-            )}
+            <div className="settings-field">
+              <label htmlFor="model">Model</label>
+              <input
+                id="model"
+                type="text"
+                value={transcriptionMode === 'live' ? liveModel : model}
+                onChange={(e) => transcriptionMode === 'live'
+                  ? setLiveModel(e.target.value)
+                  : setModel(e.target.value)}
+                placeholder={transcriptionMode === 'live'
+                  ? 'gemini-3.1-flash-live-preview'
+                  : 'gemini-3-flash-preview'}
+              />
+              <span className="settings-hint">
+                {transcriptionMode === 'live'
+                  ? 'Default: gemini-3.1-flash-live-preview'
+                  : 'Default: gemini-3-flash-preview'}
+              </span>
+            </div>
             {transcriptionMode === 'live' && (
               <div className="settings-field">
                 <label htmlFor="live-voice">Voice</label>
@@ -683,6 +689,21 @@ export function SettingsPage() {
                 </div>
                 <span className="settings-hint">
                   Proportion of system volume. 100% = system level, 50% = half of system volume.
+                </span>
+              </div>
+            )}
+            {transcriptionMode === 'live' && (
+              <div className="settings-field">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={liveSkipPlayback}
+                    onChange={(e) => setLiveSkipPlayback(e.target.checked)}
+                  />
+                  Skip audio playback
+                </label>
+                <span className="settings-hint">
+                  Don't play back the model's voice response — just get the transcript
                 </span>
               </div>
             )}

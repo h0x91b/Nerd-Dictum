@@ -35,8 +35,10 @@ export interface AppSettings {
   apiKey: string;
   model: string;
   transcriptionMode: TranscriptionMode;
+  liveModel: string;
   liveVoice: string;
   livePlaybackVolume: number; // 0-100, proportion of system volume
+  liveSkipPlayback: boolean;
   languages: string[];
   speechDomain: string;
   customDomainHint: string;

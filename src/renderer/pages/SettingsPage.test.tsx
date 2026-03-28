@@ -6,6 +6,10 @@ import { ThemeProvider } from '../contexts/ThemeContext';
 const defaultSettings = {
   apiKey: 'test-api-key',
   transcriptionMode: 'classic' as const,
+  liveModel: 'gemini-3.1-flash-live-preview',
+  liveVoice: 'Schedar',
+  livePlaybackVolume: 100,
+  liveSkipPlayback: false,
   model: 'gemini-3-flash-preview',
   languages: ['en'],
   speechDomain: 'programming',

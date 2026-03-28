@@ -389,8 +389,8 @@ export function App() {
           console.warn('[Live] Session error during recording:', err.message);
           liveFailedRef.current = true;
         },
-      }, undefined, prompt,
-        settings.soundEnabled ?? true,
+      }, settings.liveModel || undefined, prompt,
+        (settings.soundEnabled ?? true) && !(settings.liveSkipPlayback ?? false),
         settings.liveVoice || 'Schedar',
         (settings.livePlaybackVolume ?? 100) / 100,
       );
