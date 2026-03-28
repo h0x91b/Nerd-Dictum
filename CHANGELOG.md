@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-03-28
+
+[2026-03-28] Bug — Fix Gemini Live integration regressions: add missing live-mode settings defaults/mocks so the app typechecks again, correctly track unsaved live settings in the Settings window, and close stale live sessions that finish connecting after recording has already failed or stopped
+
 ## 2026-03-27
 
 [2026-03-27] Dev — Switch the macOS release job from a self-hosted runner to the standard GitHub-hosted `macos-15` runner now that the repository is public, and update release/auto-update GitHub config (`release.yml`, `package.json`, `dev-app-update.yml`, `main.ts`) from private to public

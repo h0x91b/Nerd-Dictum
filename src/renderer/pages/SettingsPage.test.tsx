@@ -254,6 +254,23 @@ describe('SettingsPage - Unsaved Changes Dialog', () => {
     expect(screen.getByText('Unsaved Changes')).toBeTruthy();
   });
 
+  it('should detect changes to live transcription settings', async () => {
+    const mockAPI = createMockElectronAPI();
+    renderSettingsPage(mockAPI);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Loading...')).toBeNull();
+    });
+
+    const modeSelect = screen.getByLabelText('Transcription Mode');
+    fireEvent.change(modeSelect, { target: { value: 'live' } });
+
+    const cancelButton = screen.getByRole('button', { name: 'Cancel' });
+    fireEvent.click(cancelButton);
+
+    expect(screen.getByText('Unsaved Changes')).toBeTruthy();
+  });
+
   it('should detect changes to language selection', async () => {
     const mockAPI = createMockElectronAPI();
     renderSettingsPage(mockAPI);

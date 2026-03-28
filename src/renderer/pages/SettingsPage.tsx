@@ -115,6 +115,37 @@ interface AudioDevice {
   label: string;
 }
 
+type SettingsSnapshot = Pick<
+  AppSettings,
+  | 'apiKey'
+  | 'model'
+  | 'transcriptionMode'
+  | 'liveModel'
+  | 'liveVoice'
+  | 'livePlaybackVolume'
+  | 'liveSkipPlayback'
+  | 'languages'
+  | 'speechDomain'
+  | 'customDomainHint'
+  | 'customKeywords'
+  | 'microphoneDeviceId'
+  | 'silenceDetectionEnabled'
+  | 'silenceDurationMs'
+  | 'launchAtStartup'
+  | 'clarificationEnabled'
+  | 'previousTranscriptContextEnabled'
+  | 'soundEnabled'
+  | 'hotkey'
+  | 'widgetHidden'
+>;
+
+function createSettingsSnapshot(settings: SettingsSnapshot): SettingsSnapshot {
+  return {
+    ...settings,
+    languages: [...settings.languages],
+  };
+}
+
 export function SettingsPage() {
   const { theme, setTheme, systemTheme } = useTheme();
   const [apiKey, setApiKey] = useState('');
@@ -150,23 +181,7 @@ export function SettingsPage() {
   const hotkeyInputRef = useRef<HTMLButtonElement>(null);
 
   // Store initial settings for comparison
-  const initialSettingsRef = useRef<{
-    apiKey: string;
-    model: string;
-    languages: string[];
-    speechDomain: string;
-    customDomainHint: string;
-    customKeywords: string;
-    microphoneDeviceId: string;
-    silenceDetectionEnabled: boolean;
-    silenceDurationMs: number;
-    launchAtStartup: boolean;
-    clarificationEnabled: boolean;
-    previousTranscriptContextEnabled: boolean;
-    soundEnabled: boolean;
-    hotkey: string;
-    widgetHidden: boolean;
-  } | null>(null);
+  const initialSettingsRef = useRef<SettingsSnapshot | null>(null);
 
   const themeOptions: Array<{ value: ThemeMode; label: string; previewTheme: 'dark' | 'light' }> = [
     { value: 'light', label: 'Light', previewTheme: 'light' },
@@ -202,6 +217,11 @@ export function SettingsPage() {
     );
   }, [
     apiKey,
+    transcriptionMode,
+    liveModel,
+    liveVoice,
+    livePlaybackVolume,
+    liveSkipPlayback,
     model,
     languages,
     speechDomain,
@@ -289,7 +309,7 @@ export function SettingsPage() {
         setWidgetHidden(loadedWidgetHidden);
 
         // Store initial settings for unsaved changes comparison
-        initialSettingsRef.current = {
+        initialSettingsRef.current = createSettingsSnapshot({
           apiKey: loadedApiKey,
           transcriptionMode: loadedTranscriptionMode,
           liveModel: loadedLiveModel,
@@ -310,7 +330,7 @@ export function SettingsPage() {
           soundEnabled: loadedSoundEnabled,
           hotkey: loadedHotkey,
           widgetHidden: loadedWidgetHidden,
-        };
+        });
       } catch (error) {
         console.error('[Settings] Failed to load:', error);
       } finally {
@@ -382,7 +402,7 @@ export function SettingsPage() {
     setSaveMessage('');
 
     try {
-      const success = await window.electronAPI.saveSettings({
+      const settingsToSave: AppSettings = {
         apiKey,
         transcriptionMode,
         liveModel,
@@ -405,29 +425,11 @@ export function SettingsPage() {
         widgetHidden,
         holdToRecordEnabled: false,
         holdToRecordKey: 'RightMeta',
-      });
+      };
+      const success = await window.electronAPI.saveSettings(settingsToSave);
       if (success) {
         // Update initial settings so hasUnsavedChanges becomes false
-        initialSettingsRef.current = {
-          apiKey,
-          transcriptionMode,
-          liveVoice,
-          livePlaybackVolume,
-          model,
-          languages: [...languages],
-          speechDomain,
-          customDomainHint: customDomainHint.trim(),
-          customKeywords: customKeywords.trim(),
-          microphoneDeviceId,
-          silenceDetectionEnabled,
-          silenceDurationMs,
-          launchAtStartup,
-          clarificationEnabled,
-          previousTranscriptContextEnabled,
-          soundEnabled,
-          hotkey,
-          widgetHidden,
-        };
+        initialSettingsRef.current = createSettingsSnapshot(settingsToSave);
         setSaveMessage('Saved!');
         setTimeout(() => {
           isClosingRef.current = true;

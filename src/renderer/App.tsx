@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import './styles/App.css';
 import { AudioRecorder, AudioRecorderOptions, DEFAULT_SILENCE_DURATION_MS } from '../lib/audio';
 import { transcribeAudio, TranscribeOptions, TranscriptionCancelledError, buildPrompt } from '../lib/gemini';
-import { LiveTranscriber, LiveTranscriptionError, float32ChunkToBase64PCM } from '../lib/gemini-live';
+import { LiveTranscriber, float32ChunkToBase64PCM } from '../lib/gemini-live';
 import { classifyError, ClassifiedError } from '../lib/errors';
 import { playSuccessSound, playErrorSound } from '../lib/sounds';
 import { SettingsButton } from './components/Settings';
@@ -98,6 +98,7 @@ export function App() {
   const recorderRef = useRef<AudioRecorder | null>(null);
   const liveTranscriberRef = useRef<LiveTranscriber | null>(null);
   const liveFailedRef = useRef<boolean>(false); // Track if live session failed during recording
+  const liveSessionGenerationRef = useRef(0);
   const lastAudioRef = useRef<string | null>(null);
   const lastRecordingDurationRef = useRef<number>(0); // For stats tracking
   const recordingStartTimeRef = useRef<number>(0); // For tracking recording duration
@@ -288,6 +289,18 @@ export function App() {
     }
   }, []);
 
+  const invalidatePendingLiveSession = useCallback(() => {
+    liveSessionGenerationRef.current += 1;
+  }, []);
+
+  const closeActiveLiveSession = useCallback(() => {
+    if (liveTranscriberRef.current) {
+      liveTranscriberRef.current.close();
+      liveTranscriberRef.current = null;
+    }
+    liveFailedRef.current = false;
+  }, []);
+
   const stopRecordingAndTranscribe = useCallback(async () => {
     // Use recorder's internal state to avoid stale closure issues
     if (!recorderRef.current || !recorderRef.current.getIsRecording()) return;
@@ -296,9 +309,11 @@ export function App() {
     audioLevelRef.current = 0;
     setAudioLevel(0);
 
+    invalidatePendingLiveSession();
     const liveTranscriber = liveTranscriberRef.current;
     liveTranscriberRef.current = null;
     const liveFailed = liveFailedRef.current;
+    liveFailedRef.current = false;
 
     try {
       const audioBase64 = await recorderRef.current.stop();
@@ -339,7 +354,7 @@ export function App() {
       window.electronAPI.resumeMedia();
       setState('idle');
     }
-  }, [transcribeWithRetry, showError, handleTranscriptSuccess]);
+  }, [invalidatePendingLiveSession, transcribeWithRetry, showError, handleTranscriptSuccess]);
 
   const cancelTranscription = useCallback(() => {
     if (state !== 'transcribing') return;
@@ -354,14 +369,12 @@ export function App() {
     }
 
     // Close live session if active
-    if (liveTranscriberRef.current) {
-      liveTranscriberRef.current.close();
-      liveTranscriberRef.current = null;
-    }
+    invalidatePendingLiveSession();
+    closeActiveLiveSession();
 
     console.log('[TEST] Transcription cancelled by user');
     setState('idle');
-  }, [state]);
+  }, [closeActiveLiveSession, invalidatePendingLiveSession, state]);
 
   // Start a Gemini Live session for real-time transcription.
   // Returns null if connection fails (caller should fall back to batch).
@@ -446,8 +459,23 @@ export function App() {
       recorderRef.current = new AudioRecorder(undefined, recorderOptions);
 
       // Start live Gemini session in parallel (truly non-blocking — don't await)
+      const liveSessionGeneration = liveSessionGenerationRef.current + 1;
+      liveSessionGenerationRef.current = liveSessionGeneration;
       liveFailedRef.current = false;
       startLiveSession(settings).then((live) => {
+        if (!live) {
+          return;
+        }
+
+        const isStale =
+          liveSessionGenerationRef.current !== liveSessionGeneration ||
+          !recorderRef.current?.getIsRecording();
+
+        if (isStale) {
+          live.close();
+          return;
+        }
+
         liveTranscriberRef.current = live;
       });
 
@@ -487,10 +515,12 @@ export function App() {
       window.electronAPI.trackEvent('recording_start');
       setState('recording');
     } catch (error) {
+      invalidatePendingLiveSession();
+      closeActiveLiveSession();
       showError(error);
       window.electronAPI.resumeMedia();
     }
-  }, [state, showError, showMessage, stopRecordingAndTranscribe, startLiveSession]);
+  }, [closeActiveLiveSession, invalidatePendingLiveSession, state, showError, showMessage, stopRecordingAndTranscribe, startLiveSession]);
 
   const handleFileDrop = useCallback(async (filePath: string) => {
     console.log('[Drop] handleFileDrop called, state:', state, 'filePath:', filePath);
@@ -647,14 +677,12 @@ export function App() {
   // Cleanup recorder and live session on unmount or window close
   useEffect(() => {
     const cleanup = () => {
+      invalidatePendingLiveSession();
       if (recorderRef.current?.getIsRecording()) {
         recorderRef.current.cancel();
         recorderRef.current = null;
       }
-      if (liveTranscriberRef.current) {
-        liveTranscriberRef.current.close();
-        liveTranscriberRef.current = null;
-      }
+      closeActiveLiveSession();
     };
 
     window.addEventListener('beforeunload', cleanup);
@@ -662,7 +690,7 @@ export function App() {
       window.removeEventListener('beforeunload', cleanup);
       cleanup();
     };
-  }, []);
+  }, [closeActiveLiveSession, invalidatePendingLiveSession]);
 
   return (
     <div
