@@ -392,7 +392,7 @@ export function App() {
       }, settings.liveModel || undefined, prompt,
         (settings.soundEnabled ?? true) && !(settings.liveSkipPlayback ?? false),
         settings.liveVoice || 'Schedar',
-        (settings.livePlaybackVolume ?? 100) / 100,
+        (settings.livePlaybackVolume ?? 50) / 100,
       );
 
       await live.connect();

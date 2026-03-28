@@ -8,7 +8,7 @@ const defaultSettings = {
   transcriptionMode: 'classic' as const,
   liveModel: 'gemini-3.1-flash-live-preview',
   liveVoice: 'Schedar',
-  livePlaybackVolume: 100,
+  livePlaybackVolume: 50,
   liveSkipPlayback: false,
   model: 'gemini-3-flash-preview',
   languages: ['en'],

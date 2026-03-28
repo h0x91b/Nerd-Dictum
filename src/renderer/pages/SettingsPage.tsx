@@ -121,7 +121,7 @@ export function SettingsPage() {
   const [transcriptionMode, setTranscriptionMode] = useState<'live' | 'classic'>('live');
   const [liveModel, setLiveModel] = useState('gemini-3.1-flash-live-preview');
   const [liveVoice, setLiveVoice] = useState('Schedar');
-  const [livePlaybackVolume, setLivePlaybackVolume] = useState(100);
+  const [livePlaybackVolume, setLivePlaybackVolume] = useState(50);
   const [liveSkipPlayback, setLiveSkipPlayback] = useState(false);
   const [model, setModel] = useState('gemini-3-flash-preview');
   const [languages, setLanguages] = useState<string[]>([]);
@@ -250,7 +250,7 @@ export function SettingsPage() {
         const loadedTranscriptionMode = settings.transcriptionMode || 'live';
         const loadedLiveModel = settings.liveModel || 'gemini-3.1-flash-live-preview';
         const loadedLiveVoice = settings.liveVoice || 'Schedar';
-        const loadedLivePlaybackVolume = settings.livePlaybackVolume ?? 100;
+        const loadedLivePlaybackVolume = settings.livePlaybackVolume ?? 50;
         const loadedLiveSkipPlayback = settings.liveSkipPlayback ?? false;
         const loadedModel = settings.model;
         const loadedSpeechDomain = settings.speechDomain || 'programming';
