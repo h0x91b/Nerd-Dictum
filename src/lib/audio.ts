@@ -58,6 +58,7 @@ const defaultDeps: AudioRecorderDeps = {
 
 export type SilenceStopCallback = () => void;
 export type AudioLevelCallback = (rms: number) => void;
+export type AudioChunkCallback = (chunk: Float32Array, sampleRate: number) => void;
 
 export interface AudioRecorderOptions {
   deviceId?: string;
@@ -78,6 +79,7 @@ export class AudioRecorder {
   private silenceStartTime: number | null = null;
   private onSilenceStop: SilenceStopCallback | null = null;
   private onAudioLevel: AudioLevelCallback | null = null;
+  private onAudioChunk: AudioChunkCallback | null = null;
   private silenceStopFired: boolean = false;
   private options: AudioRecorderOptions;
   private lastSilenceLogTime: number = Number.NEGATIVE_INFINITY;
@@ -105,6 +107,15 @@ export class AudioRecorder {
    */
   setOnAudioLevel(callback: AudioLevelCallback | null): void {
     this.onAudioLevel = callback;
+  }
+
+  /**
+   * Set callback to receive raw audio chunks during recording.
+   * Called with Float32Array data and the actual sample rate.
+   * Used for real-time streaming to the Gemini Live API.
+   */
+  setOnAudioChunk(callback: AudioChunkCallback | null): void {
+    this.onAudioChunk = callback;
   }
 
   /**
@@ -200,7 +211,13 @@ export class AudioRecorder {
 
         const inputData = data as Float32Array;
         // Clone the data since the buffer may be reused
-        this.audioChunks.push(new Float32Array(inputData));
+        const cloned = new Float32Array(inputData);
+        this.audioChunks.push(cloned);
+
+        // Fire audio chunk callback for live streaming
+        if (this.onAudioChunk) {
+          this.onAudioChunk(cloned, this.originalSampleRate);
+        }
 
         // Calculate RMS for audio level callback and silence detection
         const rms = this.calculateRMS(inputData);

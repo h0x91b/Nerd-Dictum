@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import type { AppSettings } from '../../shared/types';
+import { LIVE_VOICES, LIVE_VOICE_DESCRIPTIONS } from '../../shared/types';
 import { useTheme, ThemeMode } from '../contexts/ThemeContext';
 import { Welcome } from '../components/Welcome';
 import { ApiKeyHelp } from '../components/ApiKeyHelp';
@@ -114,9 +115,45 @@ interface AudioDevice {
   label: string;
 }
 
+type SettingsSnapshot = Pick<
+  AppSettings,
+  | 'apiKey'
+  | 'model'
+  | 'transcriptionMode'
+  | 'liveModel'
+  | 'liveVoice'
+  | 'livePlaybackVolume'
+  | 'liveSkipPlayback'
+  | 'languages'
+  | 'speechDomain'
+  | 'customDomainHint'
+  | 'customKeywords'
+  | 'microphoneDeviceId'
+  | 'silenceDetectionEnabled'
+  | 'silenceDurationMs'
+  | 'launchAtStartup'
+  | 'clarificationEnabled'
+  | 'previousTranscriptContextEnabled'
+  | 'soundEnabled'
+  | 'hotkey'
+  | 'widgetHidden'
+>;
+
+function createSettingsSnapshot(settings: SettingsSnapshot): SettingsSnapshot {
+  return {
+    ...settings,
+    languages: [...settings.languages],
+  };
+}
+
 export function SettingsPage() {
   const { theme, setTheme, systemTheme } = useTheme();
   const [apiKey, setApiKey] = useState('');
+  const [transcriptionMode, setTranscriptionMode] = useState<'live' | 'classic'>('live');
+  const [liveModel, setLiveModel] = useState('gemini-3.1-flash-live-preview');
+  const [liveVoice, setLiveVoice] = useState('Schedar');
+  const [livePlaybackVolume, setLivePlaybackVolume] = useState(50);
+  const [liveSkipPlayback, setLiveSkipPlayback] = useState(false);
   const [model, setModel] = useState('gemini-3-flash-preview');
   const [languages, setLanguages] = useState<string[]>([]);
   const [speechDomain, setSpeechDomain] = useState('programming');
@@ -144,23 +181,7 @@ export function SettingsPage() {
   const hotkeyInputRef = useRef<HTMLButtonElement>(null);
 
   // Store initial settings for comparison
-  const initialSettingsRef = useRef<{
-    apiKey: string;
-    model: string;
-    languages: string[];
-    speechDomain: string;
-    customDomainHint: string;
-    customKeywords: string;
-    microphoneDeviceId: string;
-    silenceDetectionEnabled: boolean;
-    silenceDurationMs: number;
-    launchAtStartup: boolean;
-    clarificationEnabled: boolean;
-    previousTranscriptContextEnabled: boolean;
-    soundEnabled: boolean;
-    hotkey: string;
-    widgetHidden: boolean;
-  } | null>(null);
+  const initialSettingsRef = useRef<SettingsSnapshot | null>(null);
 
   const themeOptions: Array<{ value: ThemeMode; label: string; previewTheme: 'dark' | 'light' }> = [
     { value: 'light', label: 'Light', previewTheme: 'light' },
@@ -174,6 +195,11 @@ export function SettingsPage() {
     const initial = initialSettingsRef.current;
     return (
       apiKey !== initial.apiKey ||
+      transcriptionMode !== initial.transcriptionMode ||
+      liveModel !== initial.liveModel ||
+      liveVoice !== initial.liveVoice ||
+      livePlaybackVolume !== initial.livePlaybackVolume ||
+      liveSkipPlayback !== initial.liveSkipPlayback ||
       model !== initial.model ||
       JSON.stringify(languages) !== JSON.stringify(initial.languages) ||
       speechDomain !== initial.speechDomain ||
@@ -191,6 +217,11 @@ export function SettingsPage() {
     );
   }, [
     apiKey,
+    transcriptionMode,
+    liveModel,
+    liveVoice,
+    livePlaybackVolume,
+    liveSkipPlayback,
     model,
     languages,
     speechDomain,
@@ -236,6 +267,11 @@ export function SettingsPage() {
       try {
         const settings = await window.electronAPI.getSettings();
         const loadedApiKey = settings.apiKey;
+        const loadedTranscriptionMode = settings.transcriptionMode || 'live';
+        const loadedLiveModel = settings.liveModel || 'gemini-3.1-flash-live-preview';
+        const loadedLiveVoice = settings.liveVoice || 'Schedar';
+        const loadedLivePlaybackVolume = settings.livePlaybackVolume ?? 50;
+        const loadedLiveSkipPlayback = settings.liveSkipPlayback ?? false;
         const loadedModel = settings.model;
         const loadedSpeechDomain = settings.speechDomain || 'programming';
         const loadedCustomDomainHint = settings.customDomainHint || '';
@@ -252,6 +288,11 @@ export function SettingsPage() {
         const loadedWidgetHidden = settings.widgetHidden ?? false;
 
         setApiKey(loadedApiKey);
+        setTranscriptionMode(loadedTranscriptionMode);
+        setLiveModel(loadedLiveModel);
+        setLiveVoice(loadedLiveVoice);
+        setLivePlaybackVolume(loadedLivePlaybackVolume);
+        setLiveSkipPlayback(loadedLiveSkipPlayback);
         setModel(loadedModel);
         setSpeechDomain(loadedSpeechDomain);
         setCustomDomainHint(loadedCustomDomainHint);
@@ -268,8 +309,13 @@ export function SettingsPage() {
         setWidgetHidden(loadedWidgetHidden);
 
         // Store initial settings for unsaved changes comparison
-        initialSettingsRef.current = {
+        initialSettingsRef.current = createSettingsSnapshot({
           apiKey: loadedApiKey,
+          transcriptionMode: loadedTranscriptionMode,
+          liveModel: loadedLiveModel,
+          liveVoice: loadedLiveVoice,
+          livePlaybackVolume: loadedLivePlaybackVolume,
+          liveSkipPlayback: loadedLiveSkipPlayback,
           model: loadedModel,
           languages: [...loadedLanguages],
           speechDomain: loadedSpeechDomain,
@@ -284,7 +330,7 @@ export function SettingsPage() {
           soundEnabled: loadedSoundEnabled,
           hotkey: loadedHotkey,
           widgetHidden: loadedWidgetHidden,
-        };
+        });
       } catch (error) {
         console.error('[Settings] Failed to load:', error);
       } finally {
@@ -356,8 +402,13 @@ export function SettingsPage() {
     setSaveMessage('');
 
     try {
-      const success = await window.electronAPI.saveSettings({
+      const settingsToSave: AppSettings = {
         apiKey,
+        transcriptionMode,
+        liveModel,
+        liveVoice,
+        livePlaybackVolume,
+        liveSkipPlayback,
         model,
         languages,
         speechDomain,
@@ -374,26 +425,11 @@ export function SettingsPage() {
         widgetHidden,
         holdToRecordEnabled: false,
         holdToRecordKey: 'RightMeta',
-      });
+      };
+      const success = await window.electronAPI.saveSettings(settingsToSave);
       if (success) {
         // Update initial settings so hasUnsavedChanges becomes false
-        initialSettingsRef.current = {
-          apiKey,
-          model,
-          languages: [...languages],
-          speechDomain,
-          customDomainHint: customDomainHint.trim(),
-          customKeywords: customKeywords.trim(),
-          microphoneDeviceId,
-          silenceDetectionEnabled,
-          silenceDurationMs,
-          launchAtStartup,
-          clarificationEnabled,
-          previousTranscriptContextEnabled,
-          soundEnabled,
-          hotkey,
-          widgetHidden,
-        };
+        initialSettingsRef.current = createSettingsSnapshot(settingsToSave);
         setSaveMessage('Saved!');
         setTimeout(() => {
           isClosingRef.current = true;
@@ -588,16 +624,91 @@ export function SettingsPage() {
             </div>
 
             <div className="settings-field">
+              <label htmlFor="transcription-mode">Transcription Mode</label>
+              <select
+                id="transcription-mode"
+                value={transcriptionMode}
+                onChange={(e) => setTranscriptionMode(e.target.value as 'live' | 'classic')}
+              >
+                <option value="live">Live (faster)</option>
+                <option value="classic">Classic (smarter)</option>
+              </select>
+              <span className="settings-hint">
+                {transcriptionMode === 'live'
+                  ? 'Real-time streaming via Gemini Live API — fast but basic ASR'
+                  : 'Batch transcription with custom prompts, keywords, and domain hints'}
+              </span>
+            </div>
+
+            <div className="settings-field">
               <label htmlFor="model">Model</label>
               <input
                 id="model"
                 type="text"
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                placeholder="gemini-3-flash-preview"
+                value={transcriptionMode === 'live' ? liveModel : model}
+                onChange={(e) => transcriptionMode === 'live'
+                  ? setLiveModel(e.target.value)
+                  : setModel(e.target.value)}
+                placeholder={transcriptionMode === 'live'
+                  ? 'gemini-3.1-flash-live-preview'
+                  : 'gemini-3-flash-preview'}
               />
-              <span className="settings-hint">Default: gemini-3-flash-preview</span>
+              <span className="settings-hint">
+                {transcriptionMode === 'live'
+                  ? 'Default: gemini-3.1-flash-live-preview'
+                  : 'Default: gemini-3-flash-preview'}
+              </span>
             </div>
+            {transcriptionMode === 'live' && (
+              <div className="settings-field">
+                <label htmlFor="live-voice">Voice</label>
+                <select
+                  id="live-voice"
+                  value={liveVoice}
+                  onChange={(e) => setLiveVoice(e.target.value)}
+                >
+                  {LIVE_VOICES.map((voice) => (
+                    <option key={voice} value={voice}>
+                      {voice} — {LIVE_VOICE_DESCRIPTIONS[voice]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {transcriptionMode === 'live' && (
+              <div className="settings-field">
+                <label htmlFor="live-volume">Playback Volume</label>
+                <div className="range-with-value">
+                  <input
+                    id="live-volume"
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={livePlaybackVolume}
+                    onChange={(e) => setLivePlaybackVolume(Number(e.target.value))}
+                  />
+                  <span className="range-value">{livePlaybackVolume}%</span>
+                </div>
+                <span className="settings-hint">
+                  Proportion of system volume. 100% = system level, 50% = half of system volume.
+                </span>
+              </div>
+            )}
+            {transcriptionMode === 'live' && (
+              <div className="settings-field">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={liveSkipPlayback}
+                    onChange={(e) => setLiveSkipPlayback(e.target.checked)}
+                  />
+                  Skip audio playback
+                </label>
+                <span className="settings-hint">
+                  Don't play back the model's voice response — just get the transcript
+                </span>
+              </div>
+            )}
 
             <div className="settings-field">
               <label className="checkbox-label">

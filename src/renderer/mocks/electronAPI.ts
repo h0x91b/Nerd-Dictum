@@ -7,6 +7,11 @@ import type { AppSettings, MicrophonePermissionStatus, StatsWithDerived, ErrorDe
 const defaultSettings: AppSettings = {
   apiKey: '',
   model: 'gemini-2.0-flash',
+  transcriptionMode: 'live',
+  liveModel: 'gemini-3.1-flash-live-preview',
+  liveVoice: 'Schedar',
+  livePlaybackVolume: 50,
+  liveSkipPlayback: false,
   languages: ['en', 'he', 'ru'],
   speechDomain: 'general',
   customDomainHint: '',

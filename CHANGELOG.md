@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-03-28
+
+[2026-03-28] Bug — Fix Gemini Live integration regressions: add missing live-mode settings defaults/mocks so the app typechecks again, correctly track unsaved live settings in the Settings window, and close stale live sessions that finish connecting after recording has already failed or stopped
+
 ## 2026-03-27
 
 [2026-03-27] Dev — Switch the macOS release job from a self-hosted runner to the standard GitHub-hosted `macos-15` runner now that the repository is public, and update release/auto-update GitHub config (`release.yml`, `package.json`, `dev-app-update.yml`, `main.ts`) from private to public
@@ -7,6 +11,7 @@
 [2026-03-27] Docs — Update `AGENTS.md` to require immediate commits for completed code/config/docs changes unless the user explicitly asks not to commit yet
 [2026-03-27] Docs — Update `AGENTS.md` to require terminal-only Git editors during rebase/merge/commit flows; agents must avoid opening GUI editors and prefer non-interactive Git commands such as `-m`, `--no-edit`, or `GIT_EDITOR=true`
 [2026-03-27] Dev — Add `LOCAL_DEV_BUILD` runtime mode for packaged local macOS builds: disables auto-updates, shows `dev` version label, and adds `bun run dev:mac` / `bun run dev:mac:build` workflow; `dev:mac` now launches via `open -W`, captures stdout/stderr to `.dev3/tmp`, stops an existing packaged dev instance before restart, and kills it again when the dev-server process exits, while `dev:mac:tmux` opens a split tmux pane for live logs; update `.dev3/config.json` to use the packaged dev app flow and stop deleting the committed `build/` directory during cleanup
+[2026-03-27] Feature — Gemini Live API integration: real-time audio streaming via WebSocket for significantly faster transcription; audio chunks are streamed to the `gemini-3.1-flash-live-preview` model during recording instead of waiting for recording to finish; automatically falls back to batch API if the live session fails to connect
 
 ## 2026-02-08
 

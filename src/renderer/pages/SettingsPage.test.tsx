@@ -5,6 +5,11 @@ import { ThemeProvider } from '../contexts/ThemeContext';
 
 const defaultSettings = {
   apiKey: 'test-api-key',
+  transcriptionMode: 'classic' as const,
+  liveModel: 'gemini-3.1-flash-live-preview',
+  liveVoice: 'Schedar',
+  livePlaybackVolume: 50,
+  liveSkipPlayback: false,
   model: 'gemini-3-flash-preview',
   languages: ['en'],
   speechDomain: 'programming',
@@ -243,6 +248,23 @@ describe('SettingsPage - Unsaved Changes Dialog', () => {
     fireEvent.click(launchCheckbox);
 
     // Click Cancel - should show dialog
+    const cancelButton = screen.getByRole('button', { name: 'Cancel' });
+    fireEvent.click(cancelButton);
+
+    expect(screen.getByText('Unsaved Changes')).toBeTruthy();
+  });
+
+  it('should detect changes to live transcription settings', async () => {
+    const mockAPI = createMockElectronAPI();
+    renderSettingsPage(mockAPI);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Loading...')).toBeNull();
+    });
+
+    const modeSelect = screen.getByLabelText('Transcription Mode');
+    fireEvent.change(modeSelect, { target: { value: 'live' } });
+
     const cancelButton = screen.getByRole('button', { name: 'Cancel' });
     fireEvent.click(cancelButton);
 
