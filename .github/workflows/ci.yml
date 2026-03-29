@@ -48,38 +48,45 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const fs = require('fs');
-            let body = '## 🔍 Trivy Vulnerability Scan\n\n';
-            if (fs.existsSync('trivy-results.txt')) {
-              const results = fs.readFileSync('trivy-results.txt', 'utf8').trim();
-              if (results.length === 0) {
-                body += '✅ No vulnerabilities found.\n';
-              } else {
-                body += '```\n' + results + '\n```\n';
-              }
-            } else {
-              body += '⚠️ Trivy results file not found.\n';
-            }
+            const { pathToFileURL } = require('node:url');
+            const helperModuleUrl = pathToFileURL(`${process.env.GITHUB_WORKSPACE}/scripts/trivy-pr-comment.js`).href;
+            const { readTrivyCommentAction, TRIVY_COMMENT_HEADER } = await import(helperModuleUrl);
+            const action = readTrivyCommentAction('trivy-results.txt');
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
             });
-            const trivyComment = comments.find(c => c.body.includes('Trivy Vulnerability Scan'));
+            const trivyComment = comments.find(c => c.body.includes(TRIVY_COMMENT_HEADER));
+
+            if (action.type === 'delete') {
+              if (trivyComment) {
+                await github.rest.issues.deleteComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: trivyComment.id,
+                });
+                console.log('Deleted stale Trivy comment because no vulnerabilities were found.');
+              } else {
+                console.log('No vulnerabilities found; skipping PR comment.');
+              }
+              return;
+            }
+
             if (trivyComment) {
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 comment_id: trivyComment.id,
-                body,
+                body: action.body,
               });
             } else {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body,
+                body: action.body,
               });
             }
         continue-on-error: true

@@ -2,6 +2,7 @@
 
 ## 2026-03-29
 
+[2026-03-29] Dev — Stop the CI Trivy PR comment from posting "no vulnerabilities found" noise; empty reports now skip PR comments and delete any stale Trivy comment instead
 [2026-03-29] Revert — Remove Gemini Live transcription mode and restore the classic batch-only Gemini transcription flow; deletes live-specific settings, audio playback, and live session handling introduced on 2026-03-28
 
 ## 2026-03-27
