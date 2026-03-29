@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-03-29
+
+[2026-03-29] Revert — Remove Gemini Live transcription mode and restore the classic batch-only Gemini transcription flow; deletes live-specific settings, audio playback, and live session handling introduced on 2026-03-28
+
 ## 2026-03-27
 
 [2026-03-27] Dev — Switch the macOS release job from a self-hosted runner to the standard GitHub-hosted `macos-15` runner now that the repository is public, and update release/auto-update GitHub config (`release.yml`, `package.json`, `dev-app-update.yml`, `main.ts`) from private to public
