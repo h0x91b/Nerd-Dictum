@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
 import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
 import { App } from './App';
-import { LiveTranscriber } from '../lib/gemini-live';
 
 // Mock audio infrastructure
 const createMockMediaStream = (): MediaStream =>
@@ -60,11 +59,6 @@ const createMockAudioWorkletNode = () => {
 const defaultSettings = {
   apiKey: 'test-api-key',
   model: 'gemini-3-flash-preview',
-  transcriptionMode: 'classic' as const,
-  liveModel: 'gemini-3.1-flash-live-preview',
-  liveVoice: 'Schedar',
-  livePlaybackVolume: 50,
-  liveSkipPlayback: false,
   languages: [] as string[],
   speechDomain: 'programming',
   customDomainHint: '',
@@ -266,76 +260,6 @@ describe('App', () => {
   });
 
   describe('error handling', () => {
-    it('should close a late live session when recording start fails', async () => {
-      const permissionError = new Error('NotAllowedError');
-      permissionError.name = 'NotAllowedError';
-
-      Object.defineProperty(navigator, 'mediaDevices', {
-        value: {
-          getUserMedia: mock(() => Promise.reject(permissionError)),
-        },
-        writable: true,
-        configurable: true,
-      });
-
-      const originalConnect = LiveTranscriber.prototype.connect;
-      const originalClose = LiveTranscriber.prototype.close;
-      let resolveConnect: (() => void) | null = null;
-      let closeCalls = 0;
-
-      LiveTranscriber.prototype.connect = mock(function (this: LiveTranscriber) {
-        return new Promise<void>((resolve) => {
-          resolveConnect = () => {
-            (this as unknown as { connected: boolean; finished: boolean }).connected = true;
-            (this as unknown as { connected: boolean; finished: boolean }).finished = false;
-            resolve();
-          };
-        });
-      });
-
-      LiveTranscriber.prototype.close = mock(function (this: LiveTranscriber) {
-        closeCalls += 1;
-        (this as unknown as { connected: boolean; finished: boolean }).connected = false;
-        (this as unknown as { connected: boolean; finished: boolean }).finished = true;
-      });
-
-      window.electronAPI = createMockElectronAPI({
-        getSettings: mock(() =>
-          Promise.resolve({
-            ...defaultSettings,
-            transcriptionMode: 'live' as const,
-          })
-        ),
-      });
-
-      try {
-        await act(async () => {
-          render(<App />);
-        });
-
-        await act(async () => {
-          fireEvent.click(screen.getByRole('button', { name: /start recording/i }));
-        });
-
-        await waitFor(() => {
-          expect(screen.getByText('Microphone access denied')).toBeDefined();
-        });
-
-        expect(resolveConnect).not.toBeNull();
-
-        await act(async () => {
-          resolveConnect?.();
-        });
-
-        await waitFor(() => {
-          expect(closeCalls).toBe(1);
-        });
-      } finally {
-        LiveTranscriber.prototype.connect = originalConnect;
-        LiveTranscriber.prototype.close = originalClose;
-      }
-    });
-
     it('should show error message when microphone permission denied', async () => {
       // Mock permission denied error
       const permissionError = new Error('NotAllowedError');
