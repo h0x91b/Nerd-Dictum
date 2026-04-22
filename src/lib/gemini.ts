@@ -106,7 +106,13 @@ interface GeminiResponse {
         text?: string;
       }>;
     };
+    finishReason?: string;
+    safetyRatings?: Array<{ category: string; probability: string; blocked?: boolean }>;
   }>;
+  promptFeedback?: {
+    blockReason?: string;
+    safetyRatings?: Array<{ category: string; probability: string; blocked?: boolean }>;
+  };
   error?: {
     message: string;
     code: number;
@@ -227,6 +233,14 @@ ${transcriptsBlock}
   return prompt;
 }
 
+const PERMISSIVE_SAFETY_SETTINGS = [
+  { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+  { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+  { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+  { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+  { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' },
+];
+
 function buildRequestBody(prompt: string, audioBase64: string, mimeType: string = 'audio/wav') {
   return {
     contents: [
@@ -242,6 +256,7 @@ function buildRequestBody(prompt: string, audioBase64: string, mimeType: string 
         ],
       },
     ],
+    safetySettings: PERMISSIVE_SAFETY_SETTINGS,
   };
 }
 
@@ -250,7 +265,25 @@ function extractTranscript(data: GeminiResponse): string {
     throw new Error(data.error.message);
   }
 
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  // Prompt-level block (e.g. PROHIBITED_CONTENT safety filter)
+  if (data.promptFeedback?.blockReason) {
+    const reason = data.promptFeedback.blockReason;
+    throw new Error(
+      `Transcription failed: blocked by safety filter (${reason}). ` +
+      `Try a different model (e.g. gemini-2.5-flash) or adjust prompt/keywords.`
+    );
+  }
+
+  // Candidate-level block (finishReason = SAFETY / PROHIBITED_CONTENT / etc.)
+  const candidate = data.candidates?.[0];
+  if (candidate?.finishReason && candidate.finishReason !== 'STOP' && !candidate.content?.parts?.length) {
+    throw new Error(
+      `Transcription failed: model stopped with finishReason=${candidate.finishReason}. ` +
+      `Try a different model or adjust prompt.`
+    );
+  }
+
+  const text = candidate?.content?.parts?.[0]?.text;
   if (!text) {
     throw new Error('Empty response from API');
   }
@@ -293,6 +326,15 @@ function waitForRetryDelayMs(delayMs: number, signal?: AbortSignal): Promise<voi
   });
 }
 
+function isSafetyBlockError(error: Error): boolean {
+  const msg = error.message || '';
+  return (
+    msg.includes('blocked by safety filter') ||
+    msg.includes('finishReason=SAFETY') ||
+    msg.includes('finishReason=PROHIBITED_CONTENT')
+  );
+}
+
 export async function transcribeAudio(
   audioBase64: string,
   apiKey: string,
@@ -300,13 +342,17 @@ export async function transcribeAudio(
   options?: TranscribeRequestOptions
 ): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-  const prompt = buildPrompt(options);
   const requestSignal = options?.signal;
 
-  const requestBody = buildRequestBody(prompt, audioBase64, options?.mimeType);
+  let currentOptions: TranscribeRequestOptions | undefined = options;
+  let prompt = buildPrompt(currentOptions);
+  let requestBody = buildRequestBody(prompt, audioBase64, currentOptions?.mimeType);
+  let droppedContextForSafety = false;
+
   console.log('[TEST] Gemini transcription request:', {
     model,
     promptLength: prompt.length,
+    previousTranscriptsCount: currentOptions?.previousTranscripts?.length ?? 0,
   });
 
   let lastError: Error | null = null;
@@ -383,9 +429,40 @@ export async function transcribeAudio(
 
       lastError = error as Error;
 
+      const errDetails: Record<string, unknown> = {
+        name: lastError.name,
+        message: lastError.message,
+      };
+      if (lastError instanceof ApiResponseError) {
+        errDetails.statusCode = lastError.statusCode;
+        errDetails.responseBody = lastError.responseBody?.slice(0, 2000);
+      }
+      console.error(`[Gemini] Attempt ${attempt + 1} failed:`, errDetails, lastError);
+
       // Don't retry on auth errors or bad requests
       if (isNonRetryableError(lastError)) {
         throw lastError;
+      }
+
+      // Safety filter triggered — drop previous_transcripts context and retry
+      // immediately (don't waste a full delay). Only try this once per call.
+      if (
+        isSafetyBlockError(lastError) &&
+        !droppedContextForSafety &&
+        (currentOptions?.previousTranscripts?.length ?? 0) > 0
+      ) {
+        console.warn(
+          '[Gemini] Safety filter triggered — flushing previous_transcripts context and retrying'
+        );
+        droppedContextForSafety = true;
+        currentOptions = { ...currentOptions, previousTranscripts: [] };
+        prompt = buildPrompt(currentOptions);
+        requestBody = buildRequestBody(prompt, audioBase64, currentOptions.mimeType);
+
+        if (attempt < MAX_ATTEMPTS - 1) {
+          // No delay — we're retrying with a different body, not waiting on a flaky network
+          continue;
+        }
       }
 
       if (attempt < MAX_ATTEMPTS - 1) {
@@ -395,5 +472,6 @@ export async function transcribeAudio(
     }
   }
 
+  console.error('[Gemini] All attempts failed. Final error:', lastError);
   throw lastError || new Error('Transcription failed');
 }

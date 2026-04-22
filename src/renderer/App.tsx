@@ -209,7 +209,9 @@ export function App() {
         return;
       }
 
+      console.error('[Transcribe] Failed:', error);
       const classified = showError(error);
+      console.error('[Transcribe] Classified error:', classified);
       window.electronAPI.trackEvent('transcription_error', { error_type: classified.type });
 
       // Auto-open error detail popup when API returns a response body
