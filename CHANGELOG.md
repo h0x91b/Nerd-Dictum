@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-04-22
+
+[2026-04-22] Bug — Fix `PROHIBITED_CONTENT` safety-filter false positives from Gemini: on safety block, automatically flush the `<previous_transcripts>` context and retry the request once without it before surfacing the error
+[2026-04-22] Dev — Surface transcription failures: log every failed Gemini attempt with name/message/statusCode/responseBody (first 2000 chars) in renderer console, and log the final classified error in `App.tsx` — previously errors were silently swallowed between retries
+[2026-04-22] Dev — Pass permissive `safetySettings` (`BLOCK_NONE` on all categories) in Gemini requests to reduce spurious safety blocks, and handle `promptFeedback.blockReason` / candidate `finishReason` in the response so blocks produce actionable error messages instead of "Empty response from API"
+
 ## 2026-03-29
 
 [2026-03-29] Dev — Stop the CI Trivy PR comment from posting "no vulnerabilities found" noise; empty reports now skip PR comments and delete any stale Trivy comment instead
