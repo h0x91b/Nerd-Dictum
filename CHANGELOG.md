@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-04-24
+
+[2026-04-24] Bug — Tighten the Gemini transcription prompt so commands addressed to another person stay in the speaker's perspective and imperative mood instead of being rewritten as first-person assistant responses
+
 ## 2026-04-22
 
 [2026-04-22] Bug — Fix `PROHIBITED_CONTENT` safety-filter false positives from Gemini: on safety block, automatically flush the `<previous_transcripts>` context and retry the request once without it before surfacing the error
