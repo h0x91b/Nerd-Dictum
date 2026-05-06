@@ -131,6 +131,10 @@ export function SettingsPage() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [hotkey, setHotkey] = useState(DEFAULT_HOTKEY);
   const [widgetHidden, setWidgetHidden] = useState(false);
+  const [geminiModels, setGeminiModels] = useState<Array<{ id: string; displayName: string; description: string }>>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [modelsError, setModelsError] = useState('');
+  const [modelManualOverride, setModelManualOverride] = useState(false);
   const [isRecordingHotkey, setIsRecordingHotkey] = useState(false);
   const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
   const [languageSearch, setLanguageSearch] = useState('');
@@ -208,6 +212,23 @@ export function SettingsPage() {
   ]);
 
   // Load audio devices
+  // Best-effort: try to populate the Gemini model list once at mount. Will
+  // silently fail if API key isn't set yet — user can hit "Refresh" later.
+  useEffect(() => {
+    let cancelled = false;
+    window.electronAPI.listGeminiModels?.().then((result) => {
+      if (cancelled || !result) return;
+      if (result.ok) {
+        setGeminiModels(result.models);
+      } else {
+        setModelsError(result.error || '');
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     async function loadAudioDevices() {
       try {
@@ -589,14 +610,74 @@ export function SettingsPage() {
 
             <div className="settings-field">
               <label htmlFor="model">Model</label>
-              <input
-                id="model"
-                type="text"
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                placeholder="gemini-3-flash-preview"
-              />
-              <span className="settings-hint">Default: gemini-3-flash-preview</span>
+              {geminiModels.length > 0 && !modelManualOverride ? (
+                <select
+                  id="model"
+                  value={geminiModels.some((m) => m.id === model) ? model : '__custom__'}
+                  onChange={(e) => {
+                    if (e.target.value === '__custom__') {
+                      setModelManualOverride(true);
+                    } else {
+                      setModel(e.target.value);
+                    }
+                  }}
+                  className="settings-select"
+                >
+                  {geminiModels.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.id}
+                    </option>
+                  ))}
+                  <option value="__custom__">Custom (type model id)…</option>
+                </select>
+              ) : (
+                <input
+                  id="model"
+                  type="text"
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  placeholder="gemini-3-flash-preview"
+                />
+              )}
+              <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                <button
+                  type="button"
+                  className="settings-btn settings-btn-secondary"
+                  onClick={async () => {
+                    setIsLoadingModels(true);
+                    try {
+                      const result = await window.electronAPI.listGeminiModels?.();
+                      if (result?.ok) {
+                        setGeminiModels(result.models);
+                        setModelsError('');
+                      } else {
+                        setModelsError(result?.error || 'failed to fetch models');
+                      }
+                    } finally {
+                      setIsLoadingModels(false);
+                    }
+                  }}
+                  disabled={isLoadingModels}
+                >
+                  {isLoadingModels ? 'Loading…' : 'Refresh model list'}
+                </button>
+                {modelManualOverride && (
+                  <button
+                    type="button"
+                    className="settings-btn settings-btn-secondary"
+                    onClick={() => setModelManualOverride(false)}
+                  >
+                    Use dropdown
+                  </button>
+                )}
+              </div>
+              <span className="settings-hint">
+                {modelsError
+                  ? `List fetch error: ${modelsError}. Type the id manually.`
+                  : geminiModels.length === 0
+                    ? 'Set API key and click "Refresh model list" to populate the dropdown.'
+                    : `${geminiModels.length} models available. Default: gemini-3-flash-preview.`}
+              </span>
             </div>
 
             <div className="settings-field">

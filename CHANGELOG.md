@@ -15,6 +15,8 @@
 
 [2026-05-06] UX — Redesigned audio feedback: a new ascending blip on record start (600→900 Hz), a band-pass-filtered noise burst on success (subtle click), and a low double-blip square wave on error.
 
+[2026-05-06] Settings — Dynamic Gemini model list. Settings now fetches `generativelanguage.googleapis.com/v1beta/models` and surfaces a dropdown filtered to entries that support `generateContent` and start with `gemini-`. "Refresh model list" button to re-fetch; manual override remains available.
+
 ## 2026-04-22
 
 [2026-04-22] Bug — Fix `PROHIBITED_CONTENT` safety-filter false positives from Gemini: on safety block, automatically flush the `<previous_transcripts>` context and retry the request once without it before surfacing the error
