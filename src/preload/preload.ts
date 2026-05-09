@@ -2,7 +2,10 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { AppSettings } from '../shared/types';
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  copyToClipboard: (text: string) => ipcRenderer.invoke('copy-to-clipboard', text),
+  copyToClipboard: (text: string, autoPaste = false) =>
+    ipcRenderer.invoke('copy-to-clipboard', text, autoPaste),
+  requestAccessibilityPermission: (ask = true) =>
+    ipcRenderer.invoke('request-accessibility-permission', ask),
   listGeminiModels: () => ipcRenderer.invoke('list-gemini-models'),
   getApiKey: () => ipcRenderer.invoke('get-api-key'),
   getModel: () => ipcRenderer.invoke('get-model'),
