@@ -2,6 +2,7 @@
 
 ## 2026-05-09
 
+[2026-05-09] UX — Hook up `playStartSound` to the recording-start path in `App.tsx` so the new ascending blip from the May 6 audio-feedback redesign now actually plays when recording starts (previously the helper was exported but unused)
 [2026-05-09] Dev — Stop CI Trivy from spamming PR comments with clean reports: when the Trivy summary table shows `0`/`-` for all targets in both Vulnerabilities and Secrets columns, skip the PR comment and add a 👍 reaction to the PR instead; if findings reappear later, the reaction is removed and a fresh comment is posted. Earlier "skip empty file" logic missed reports that contained only the summary table with zero counts
 [2026-05-09] Security — Upgrade Electron from 35.7.5 to 42.0.1 to fix 13 vulnerabilities reported by Trivy on PR #11 (4 HIGH, 9 MEDIUM): CVE-2026-34769 through CVE-2026-34779 — covers RCE/security-bypass via undocumented command-line switches, multiple use-after-free issues (PowerMonitor, permission requests, offscreen rendering), HTTP response header injection, protocol handler hijacking, IPC channel spoofing, AppleScript injection in `app.moveToApplicationsFolder`, and information disclosure via crafted second-instance message and iframe origin handling
 

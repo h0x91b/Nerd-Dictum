@@ -3,7 +3,7 @@ import './styles/App.css';
 import { AudioRecorder, AudioRecorderOptions, DEFAULT_SILENCE_DURATION_MS } from '../lib/audio';
 import { transcribeAudio, TranscribeOptions, TranscriptionCancelledError } from '../lib/gemini';
 import { classifyError, ClassifiedError } from '../lib/errors';
-import { playSuccessSound, playErrorSound } from '../lib/sounds';
+import { playStartSound, playSuccessSound, playErrorSound } from '../lib/sounds';
 import { SettingsButton } from './components/Settings';
 import { InfoButton } from './components/InfoButton';
 import { HideButton } from './components/HideButton';
@@ -360,6 +360,7 @@ export function App() {
         setAudioLevel(smoothed);
       });
       await recorderRef.current.start();
+      playStartSound();
       console.log('[Recording] Started');
       recordingStartTimeRef.current = Date.now();
       window.electronAPI.trackEvent('recording_start');
