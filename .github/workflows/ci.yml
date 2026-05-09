@@ -10,6 +10,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      issues: write
 
     steps:
       - name: Checkout
@@ -60,6 +61,15 @@ jobs:
             });
             const trivyComment = comments.find(c => c.body.includes(TRIVY_COMMENT_HEADER));
 
+            const { data: reactions } = await github.rest.reactions.listForIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const ourThumbsUp = reactions.find(
+              r => r.content === '+1' && r.user?.login === 'github-actions[bot]'
+            );
+
             if (action.type === 'delete') {
               if (trivyComment) {
                 await github.rest.issues.deleteComment({
@@ -71,7 +81,27 @@ jobs:
               } else {
                 console.log('No vulnerabilities found; skipping PR comment.');
               }
+
+              if (!ourThumbsUp) {
+                await github.rest.reactions.createForIssue({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  content: '+1',
+                });
+                console.log('Added 👍 reaction to PR.');
+              }
               return;
+            }
+
+            if (ourThumbsUp) {
+              await github.rest.reactions.deleteForIssue({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                reaction_id: ourThumbsUp.id,
+              });
+              console.log('Removed stale 👍 reaction because new findings were detected.');
             }
 
             if (trivyComment) {
