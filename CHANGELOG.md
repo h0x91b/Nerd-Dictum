@@ -8,6 +8,9 @@
 ## 2026-04-24
 
 [2026-04-24] Bug — Tighten the Gemini transcription prompt so commands addressed to another person stay in the speaker's perspective and imperative mood instead of being rewritten as first-person assistant responses
+## 2026-05-06 (diverru fork)
+
+[2026-05-06] Audio — Switched the recorder output format from raw WAV PCM to opus (`audio/webm;codecs=opus`, 24 kbps) for ~10× smaller uploads to Gemini. Optional `retainPcmForWav` flag still produces a 16 kHz mono WAV for downstream local pipelines.
 
 ## 2026-04-22
 

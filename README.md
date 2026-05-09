@@ -93,3 +93,12 @@ Output: `release/` folder containing AppImage and `.deb` package.
 - **Retry logic:** 3 attempts with exponential backoff
 
 See [CLAUDE.md](./CLAUDE.md) for full technical documentation.
+
+## Contributors
+
+Thanks to everyone who has contributed to Nerd Dictum:
+
+- [Arseny Pavlenko](https://github.com/h0x91b)
+- [Alexander Kiselyov](https://github.com/diverru)
+
+Want to contribute? Open a PR or an issue on [GitHub](https://github.com/h0x91b/Nerd-Dictum).

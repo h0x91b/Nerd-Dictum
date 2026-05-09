@@ -44,6 +44,8 @@ export interface ElectronAPI {
   // File operations
   getPathForFile: (file: File) => string;
   readFileAsBase64: (filePath: string) => Promise<string>;
+  // Diagnostic logging (renderer → main → main.log)
+  log?: (message: string) => void;
 }
 
 declare global {
