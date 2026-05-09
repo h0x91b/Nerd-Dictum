@@ -26,6 +26,73 @@ describe('buildTrivyCommentAction', () => {
       body: `${TRIVY_COMMENT_HEADER}\n\n\`\`\`\nCRITICAL: example vulnerability\n\`\`\`\n`,
     });
   });
+
+  it('returns delete when the Trivy summary shows no vulnerabilities and no secrets', () => {
+    const cleanReport = `Report Summary
+
+┌──────────┬──────┬─────────────────┬─────────┐
+│  Target  │ Type │ Vulnerabilities │ Secrets │
+├──────────┼──────┼─────────────────┼─────────┤
+│ bun.lock │ bun  │        0        │    -    │
+└──────────┴──────┴─────────────────┴─────────┘
+Legend:
+- '-': Not scanned
+- '0': Clean (no security findings detected)
+`;
+
+    expect(buildTrivyCommentAction({ exists: true, content: cleanReport })).toEqual({
+      type: 'delete',
+    });
+  });
+
+  it('returns delete when every target in a multi-row summary is clean', () => {
+    const cleanReport = `Report Summary
+
+┌──────────────┬──────┬─────────────────┬─────────┐
+│    Target    │ Type │ Vulnerabilities │ Secrets │
+├──────────────┼──────┼─────────────────┼─────────┤
+│ bun.lock     │ bun  │        0        │    0    │
+│ package.json │ npm  │        -        │    0    │
+└──────────────┴──────┴─────────────────┴─────────┘
+`;
+
+    expect(buildTrivyCommentAction({ exists: true, content: cleanReport })).toEqual({
+      type: 'delete',
+    });
+  });
+
+  it('returns upsert when the summary reports any vulnerabilities', () => {
+    const dirtyReport = `Report Summary
+
+┌──────────┬──────┬─────────────────┬─────────┐
+│  Target  │ Type │ Vulnerabilities │ Secrets │
+├──────────┼──────┼─────────────────┼─────────┤
+│ bun.lock │ bun  │       13        │    -    │
+└──────────┴──────┴─────────────────┴─────────┘
+
+bun.lock (bun)
+==============
+Total: 13 (MEDIUM: 9, HIGH: 4, CRITICAL: 0)
+`;
+
+    const action = buildTrivyCommentAction({ exists: true, content: dirtyReport });
+    expect(action.type).toBe('upsert');
+    expect(action.body).toContain('Total: 13');
+  });
+
+  it('returns upsert when the summary reports any secrets', () => {
+    const secretsReport = `Report Summary
+
+┌──────────┬──────┬─────────────────┬─────────┐
+│  Target  │ Type │ Vulnerabilities │ Secrets │
+├──────────┼──────┼─────────────────┼─────────┤
+│ .env     │ env  │        -        │    2    │
+└──────────┴──────┴─────────────────┴─────────┘
+`;
+
+    const action = buildTrivyCommentAction({ exists: true, content: secretsReport });
+    expect(action.type).toBe('upsert');
+  });
 });
 
 describe('readTrivyCommentAction', () => {
