@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-05-09
+
+[2026-05-09] Security — Upgrade Electron from 35.7.5 to 42.0.1 to fix 13 vulnerabilities reported by Trivy on PR #11 (4 HIGH, 9 MEDIUM): CVE-2026-34769 through CVE-2026-34779 — covers RCE/security-bypass via undocumented command-line switches, multiple use-after-free issues (PowerMonitor, permission requests, offscreen rendering), HTTP response header injection, protocol handler hijacking, IPC channel spoofing, AppleScript injection in `app.moveToApplicationsFolder`, and information disclosure via crafted second-instance message and iframe origin handling
+
 ## 2026-04-24
 
 [2026-04-24] Bug — Tighten the Gemini transcription prompt so commands addressed to another person stay in the speaker's perspective and imperative mood instead of being rewritten as first-person assistant responses
