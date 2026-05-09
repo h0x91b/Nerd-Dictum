@@ -11,6 +11,10 @@ export interface ErrorDetail {
 
 export interface ElectronAPI {
   copyToClipboard: (text: string) => Promise<boolean>;
+  listGeminiModels?: () => Promise<
+    | { ok: true; models: Array<{ id: string; displayName: string; description: string }> }
+    | { ok: false; error: string; models: [] }
+  >;
   getApiKey: () => Promise<string>;
   getModel: () => Promise<string>;
   onToggleRecording: (callback: () => void) => () => void;

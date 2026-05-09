@@ -109,7 +109,7 @@ const DEFAULT_HOTKEY = 'CommandOrControl+Shift+R';
 
 const DEFAULT_SETTINGS: AppSettings = {
   apiKey: '',
-  model: 'gemini-3-flash-preview',
+  model: 'gemini-3.1-flash-lite',
   languages: ['en', 'he'],
   speechDomain: 'programming',
   customDomainHint: '',
@@ -1255,6 +1255,46 @@ ipcMain.handle('copy-to-clipboard', (_event, text: string) => {
   return true;
 });
 
+ipcMain.handle('list-gemini-models', async () => {
+  const apiKey = appSettings.apiKey || process.env.GEMINI_API_KEY || '';
+  if (!apiKey) {
+    return { ok: false, error: 'API key not set', models: [] };
+  }
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}&pageSize=200`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      return { ok: false, error: `HTTP ${response.status}`, models: [] };
+    }
+    const data = (await response.json()) as {
+      models?: Array<{
+        name?: string;
+        displayName?: string;
+        description?: string;
+        supportedGenerationMethods?: string[];
+      }>;
+    };
+    const models = (data.models || [])
+      .filter((m) => m.supportedGenerationMethods?.includes('generateContent'))
+      .map((m) => {
+        const id = (m.name || '').replace(/^models\//, '');
+        return {
+          id,
+          displayName: m.displayName || id,
+          description: m.description || '',
+        };
+      })
+      .filter((m) => m.id.startsWith('gemini-'))
+      .sort((a, b) => a.id.localeCompare(b.id));
+    log(`[Models] fetched ${models.length} Gemini models`);
+    return { ok: true, models };
+  } catch (error) {
+    const err = error as Error;
+    log(`[Models] fetch failed: ${err.message}`);
+    return { ok: false, error: err.message, models: [] };
+  }
+});
+
 // API key: prefer saved settings, fallback to env var
 ipcMain.handle('get-api-key', () => {
   return appSettings.apiKey || process.env.GEMINI_API_KEY || '';
@@ -1262,7 +1302,7 @@ ipcMain.handle('get-api-key', () => {
 
 // Model: prefer saved settings, fallback to env var
 ipcMain.handle('get-model', () => {
-  return appSettings.model || process.env.GEMINI_MODEL || 'gemini-3-flash-preview';
+  return appSettings.model || process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
 });
 
 // Settings management
@@ -1272,7 +1312,7 @@ ipcMain.handle('get-settings', () => {
   // For apiKey and model: prefer saved settings, fallback to env var
   return {
     apiKey: appSettings.apiKey || process.env.GEMINI_API_KEY || '',
-    model: appSettings.model || process.env.GEMINI_MODEL || 'gemini-3-flash-preview',
+    model: appSettings.model || process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite',
     languages: appSettings.languages,
     speechDomain: appSettings.speechDomain,
     customDomainHint: appSettings.customDomainHint,

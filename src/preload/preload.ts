@@ -3,6 +3,7 @@ import type { AppSettings } from '../shared/types';
 
 contextBridge.exposeInMainWorld('electronAPI', {
   copyToClipboard: (text: string) => ipcRenderer.invoke('copy-to-clipboard', text),
+  listGeminiModels: () => ipcRenderer.invoke('list-gemini-models'),
   getApiKey: () => ipcRenderer.invoke('get-api-key'),
   getModel: () => ipcRenderer.invoke('get-model'),
   onToggleRecording: (callback: () => void) => {
