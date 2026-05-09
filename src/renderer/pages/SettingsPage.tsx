@@ -131,6 +131,7 @@ export function SettingsPage() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [hotkey, setHotkey] = useState(DEFAULT_HOTKEY);
   const [widgetHidden, setWidgetHidden] = useState(false);
+  const [autoPasteEnabled, setAutoPasteEnabled] = useState(false);
   const [geminiModels, setGeminiModels] = useState<Array<{ id: string; displayName: string; description: string }>>([]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [modelsError, setModelsError] = useState('');
@@ -164,6 +165,7 @@ export function SettingsPage() {
     soundEnabled: boolean;
     hotkey: string;
     widgetHidden: boolean;
+    autoPasteEnabled: boolean;
   } | null>(null);
 
   const themeOptions: Array<{ value: ThemeMode; label: string; previewTheme: 'dark' | 'light' }> = [
@@ -191,7 +193,8 @@ export function SettingsPage() {
       previousTranscriptContextEnabled !== initial.previousTranscriptContextEnabled ||
       soundEnabled !== initial.soundEnabled ||
       hotkey !== initial.hotkey ||
-      widgetHidden !== initial.widgetHidden
+      widgetHidden !== initial.widgetHidden ||
+      autoPasteEnabled !== initial.autoPasteEnabled
     );
   }, [
     apiKey,
@@ -209,6 +212,7 @@ export function SettingsPage() {
     soundEnabled,
     hotkey,
     widgetHidden,
+    autoPasteEnabled,
   ]);
 
   // Load audio devices
@@ -271,6 +275,7 @@ export function SettingsPage() {
         const loadedSoundEnabled = settings.soundEnabled ?? true;
         const loadedHotkey = settings.hotkey || DEFAULT_HOTKEY;
         const loadedWidgetHidden = settings.widgetHidden ?? false;
+        const loadedAutoPasteEnabled = settings.autoPasteEnabled ?? false;
 
         setApiKey(loadedApiKey);
         setModel(loadedModel);
@@ -287,6 +292,7 @@ export function SettingsPage() {
         setSoundEnabled(loadedSoundEnabled);
         setHotkey(loadedHotkey);
         setWidgetHidden(loadedWidgetHidden);
+        setAutoPasteEnabled(loadedAutoPasteEnabled);
 
         // Store initial settings for unsaved changes comparison
         initialSettingsRef.current = {
@@ -305,6 +311,7 @@ export function SettingsPage() {
           soundEnabled: loadedSoundEnabled,
           hotkey: loadedHotkey,
           widgetHidden: loadedWidgetHidden,
+          autoPasteEnabled: loadedAutoPasteEnabled,
         };
       } catch (error) {
         console.error('[Settings] Failed to load:', error);
@@ -395,6 +402,7 @@ export function SettingsPage() {
         widgetHidden,
         holdToRecordEnabled: false,
         holdToRecordKey: 'RightMeta',
+        autoPasteEnabled,
       });
       if (success) {
         // Update initial settings so hasUnsavedChanges becomes false
@@ -414,6 +422,7 @@ export function SettingsPage() {
           soundEnabled,
           hotkey,
           widgetHidden,
+          autoPasteEnabled,
         };
         setSaveMessage('Saved!');
         setTimeout(() => {
@@ -719,6 +728,33 @@ export function SettingsPage() {
               </label>
               <span className="settings-hint">
                 The widget will be hidden. Use tray menu to show it.
+              </span>
+            </div>
+
+            <div className="settings-field">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={autoPasteEnabled}
+                  onChange={async (e) => {
+                    const next = e.target.checked;
+                    setAutoPasteEnabled(next);
+                    // When enabling, surface the macOS Accessibility prompt
+                    // immediately so the user can grant access without having
+                    // to discover the requirement after a failed paste.
+                    if (next) {
+                      try {
+                        await window.electronAPI.requestAccessibilityPermission?.(true);
+                      } catch (err) {
+                        console.error('[Settings] Accessibility prompt failed:', err);
+                      }
+                    }
+                  }}
+                />
+                <span>Auto-paste transcript</span>
+              </label>
+              <span className="settings-hint">
+                After transcription, simulate ⌘V into the active window. Requires Accessibility permission on macOS — when you enable this, the system prompt will appear so you can grant it.
               </span>
             </div>
 

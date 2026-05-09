@@ -177,8 +177,9 @@ export function App() {
 
       console.log('[Transcript]', transcript);
 
-      // Copy to clipboard
-      await window.electronAPI.copyToClipboard(transcript);
+      // Copy to clipboard. autoPaste=true asks main to dispatch ⌘V into the
+      // focused window when the autoPasteEnabled setting is on.
+      await window.electronAPI.copyToClipboard(transcript, true);
       if (requestId !== transcribeRequestIdRef.current) {
         return;
       }

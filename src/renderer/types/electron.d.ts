@@ -10,7 +10,8 @@ export interface ErrorDetail {
 }
 
 export interface ElectronAPI {
-  copyToClipboard: (text: string) => Promise<boolean>;
+  copyToClipboard: (text: string, autoPaste?: boolean) => Promise<boolean>;
+  requestAccessibilityPermission?: (ask?: boolean) => Promise<boolean>;
   listGeminiModels?: () => Promise<
     | { ok: true; models: Array<{ id: string; displayName: string; description: string }> }
     | { ok: false; error: string; models: [] }

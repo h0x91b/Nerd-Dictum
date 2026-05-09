@@ -125,6 +125,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   widgetHidden: false,
   holdToRecordEnabled: true,
   holdToRecordKey: 'RightMeta',
+  autoPasteEnabled: false,
 };
 
 function getSettingsPath(): string {
@@ -1241,7 +1242,7 @@ app.on('activate', () => {
 });
 
 // IPC handlers
-ipcMain.handle('copy-to-clipboard', (_event, text: string) => {
+ipcMain.handle('copy-to-clipboard', (_event, text: string, autoPaste = false) => {
   log('[Clipboard] Copying transcript (' + text.length + ' chars):', text.substring(0, 200));
   // Capture current clipboard content before overwriting
   captureCurrentClipboard();
@@ -1252,8 +1253,69 @@ ipcMain.handle('copy-to-clipboard', (_event, text: string) => {
   addTranscriptToHistory(text);
   // Update tray menu to show new history
   updateTrayMenu();
+
+  if (autoPaste && appSettings.autoPasteEnabled) {
+    log('[Clipboard] Auto-paste branch hit — dispatching keystroke');
+    pasteIntoActiveWindow();
+  }
   return true;
 });
+
+// Accessibility permission: ask=true triggers the macOS system dialog
+// directing the user to System Settings → Privacy & Security → Accessibility.
+ipcMain.handle('request-accessibility-permission', (_event, ask = true) => {
+  if (process.platform !== 'darwin') return true;
+  const trusted = systemPreferences.isTrustedAccessibilityClient(ask);
+  log(`[AutoPaste] Accessibility check (ask=${ask}) → trusted=${trusted}`);
+  return trusted;
+});
+
+/**
+ * Simulate Cmd+V into the currently-focused window so the just-copied
+ * transcript lands at the user's cursor without keyboard interaction.
+ *
+ * Uses `key code 9 using command down` rather than `keystroke "v"` because
+ * Electron-based targets (Cursor, VS Code, Slack) ignore character-level
+ * events but consume the real keyDown / keyUp pairs that `key code` produces.
+ *
+ * Requires Accessibility permission. We pass ask=false here so the system
+ * dialog only surfaces from the explicit settings toggle, not on every
+ * paste attempt.
+ */
+function pasteIntoActiveWindow(): void {
+  if (process.platform === 'darwin') {
+    const trusted = systemPreferences.isTrustedAccessibilityClient(false);
+    if (!trusted) {
+      log('[AutoPaste] Accessibility permission missing — skipping paste');
+      return;
+    }
+    setTimeout(() => {
+      exec(
+        `osascript -e 'tell application "System Events" to key code 9 using command down'`,
+        (error, _stdout, stderr) => {
+          if (error) {
+            log('[AutoPaste] Failed:', error.message, '| stderr:', stderr);
+          } else {
+            log('[AutoPaste] keystroke dispatched OK');
+          }
+        }
+      );
+    }, 50);
+  } else if (process.platform === 'win32') {
+    setTimeout(() => {
+      const psScript = "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^v')";
+      exec(`powershell -NoProfile -Command "${psScript}"`, (error) => {
+        if (error) log('[AutoPaste] Failed:', error.message);
+      });
+    }, 50);
+  } else {
+    setTimeout(() => {
+      exec('xdotool key --clearmodifiers ctrl+v', (error) => {
+        if (error) log('[AutoPaste] xdotool not available or failed:', error.message);
+      });
+    }, 50);
+  }
+}
 
 ipcMain.handle('list-gemini-models', async () => {
   const apiKey = appSettings.apiKey || process.env.GEMINI_API_KEY || '';
@@ -1324,6 +1386,7 @@ ipcMain.handle('get-settings', () => {
     clarificationEnabled: appSettings.clarificationEnabled,
     previousTranscriptContextEnabled: appSettings.previousTranscriptContextEnabled,
     hotkey: appSettings.hotkey || DEFAULT_HOTKEY,
+    autoPasteEnabled: appSettings.autoPasteEnabled,
   };
 });
 
