@@ -83,7 +83,7 @@ Output: `release/` folder containing AppImage and `.deb` package.
 | Environment Variable | Default | Description |
 |---------------------|---------|-------------|
 | `GEMINI_API_KEY` | (required) | Google Gemini API key |
-| `GEMINI_MODEL` | `gemini-3-flash-preview` | AI model to use |
+| `GEMINI_MODEL` | `gemini-3.1-flash-lite` | AI model to use |
 
 ## Technical Details
 

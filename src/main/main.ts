@@ -109,7 +109,7 @@ const DEFAULT_HOTKEY = 'CommandOrControl+Shift+R';
 
 const DEFAULT_SETTINGS: AppSettings = {
   apiKey: '',
-  model: 'gemini-3-flash-preview',
+  model: 'gemini-3.1-flash-lite',
   languages: ['en', 'he'],
   speechDomain: 'programming',
   customDomainHint: '',
@@ -1302,7 +1302,7 @@ ipcMain.handle('get-api-key', () => {
 
 // Model: prefer saved settings, fallback to env var
 ipcMain.handle('get-model', () => {
-  return appSettings.model || process.env.GEMINI_MODEL || 'gemini-3-flash-preview';
+  return appSettings.model || process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
 });
 
 // Settings management
@@ -1312,7 +1312,7 @@ ipcMain.handle('get-settings', () => {
   // For apiKey and model: prefer saved settings, fallback to env var
   return {
     apiKey: appSettings.apiKey || process.env.GEMINI_API_KEY || '',
-    model: appSettings.model || process.env.GEMINI_MODEL || 'gemini-3-flash-preview',
+    model: appSettings.model || process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite',
     languages: appSettings.languages,
     speechDomain: appSettings.speechDomain,
     customDomainHint: appSettings.customDomainHint,

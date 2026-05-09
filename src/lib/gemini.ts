@@ -348,7 +348,7 @@ function isSafetyBlockError(error: Error): boolean {
 export async function transcribeAudio(
   audioBase64: string,
   apiKey: string,
-  model: string = 'gemini-3-flash-preview',
+  model: string = 'gemini-3.1-flash-lite',
   options?: TranscribeRequestOptions
 ): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;

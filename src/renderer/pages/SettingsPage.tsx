@@ -117,7 +117,7 @@ interface AudioDevice {
 export function SettingsPage() {
   const { theme, setTheme, systemTheme } = useTheme();
   const [apiKey, setApiKey] = useState('');
-  const [model, setModel] = useState('gemini-3-flash-preview');
+  const [model, setModel] = useState('gemini-3.1-flash-lite');
   const [languages, setLanguages] = useState<string[]>([]);
   const [speechDomain, setSpeechDomain] = useState('programming');
   const [customDomainHint, setCustomDomainHint] = useState('');
@@ -636,7 +636,7 @@ export function SettingsPage() {
                   type="text"
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
-                  placeholder="gemini-3-flash-preview"
+                  placeholder="gemini-3.1-flash-lite"
                 />
               )}
               <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
@@ -676,7 +676,7 @@ export function SettingsPage() {
                   ? `List fetch error: ${modelsError}. Type the id manually.`
                   : geminiModels.length === 0
                     ? 'Set API key and click "Refresh model list" to populate the dropdown.'
-                    : `${geminiModels.length} models available. Default: gemini-3-flash-preview.`}
+                    : `${geminiModels.length} models available. Default: gemini-3.1-flash-lite.`}
               </span>
             </div>
 
