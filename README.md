@@ -98,7 +98,7 @@ See [CLAUDE.md](./CLAUDE.md) for full technical documentation.
 
 Thanks to everyone who has contributed to Nerd Dictum:
 
-- [Arseny Pavlenko](https://github.com/h0x91b) — creator and maintainer
-- [Alexander Kiselyov](https://github.com/diverru) — opus recorder pipeline ([6f27c30](https://github.com/h0x91b/Nerd-Dictum/commit/6f27c30fef690794d8366cdfcd66a00145f77cf8))
+- [Arseny Pavlenko](https://github.com/h0x91b)
+- [Alexander Kiselyov](https://github.com/diverru)
 
 Want to contribute? Open a PR or an issue on [GitHub](https://github.com/h0x91b/Nerd-Dictum).
