@@ -310,9 +310,6 @@ export function App() {
       successTimeoutRef.current = null;
     }
 
-    // Pause any playing media
-    window.electronAPI.pauseMedia();
-
     try {
       // Check and request microphone permission on macOS
       const permissionStatus = await window.electronAPI.getMicrophonePermissionStatus();
@@ -320,7 +317,6 @@ export function App() {
 
       if (permissionStatus === 'denied' || permissionStatus === 'restricted') {
         showMessage('Microphone access denied. Enable in System Preferences.', 'error', false);
-        window.electronAPI.resumeMedia();
         return;
       }
 
@@ -328,7 +324,6 @@ export function App() {
         const granted = await window.electronAPI.requestMicrophonePermission();
         if (!granted) {
           showMessage('Microphone permission required', 'error', false);
-          window.electronAPI.resumeMedia();
           return;
         }
       }
@@ -361,6 +356,10 @@ export function App() {
       });
       await recorderRef.current.start();
       playStartSound();
+      // Duck system volume after the start blip has begun playing so the
+      // confirmation tone is audible at full volume; the blip is ~150 ms,
+      // which is short enough to ignore in the recorded audio.
+      window.electronAPI.pauseMedia();
       console.log('[Recording] Started');
       recordingStartTimeRef.current = Date.now();
       window.electronAPI.trackEvent('recording_start');
