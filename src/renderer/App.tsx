@@ -85,8 +85,7 @@ export function App() {
   const [isDragOver, setIsDragOver] = useState(false);
   const audioLevelRef = useRef<number>(0); // For lerp smoothing
   const recorderRef = useRef<AudioRecorder | null>(null);
-  const lastAudioRef = useRef<string | null>(null);
-  const lastAudioMimeTypeRef = useRef<string | undefined>(undefined);
+  const lastAudioRef = useRef<{ base64: string; mimeType?: string } | null>(null);
   const lastRecordingDurationRef = useRef<number>(0); // For stats tracking
   const recordingStartTimeRef = useRef<number>(0); // For tracking recording duration
   const messageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -153,8 +152,7 @@ export function App() {
         showMessage('Set API key in settings', 'error', true);
         window.electronAPI.openSettingsWindow();
         // Save audio for retry after setting API key
-        lastAudioRef.current = audioBase64;
-        lastAudioMimeTypeRef.current = mimeType;
+        lastAudioRef.current = { base64: audioBase64, mimeType };
         setState('idle');
         return;
       }
@@ -197,7 +195,6 @@ export function App() {
 
       // Clear saved audio on success
       lastAudioRef.current = null;
-      lastAudioMimeTypeRef.current = undefined;
 
       // Show success state for 5 seconds, then fade to idle
       setState('success');
@@ -233,11 +230,9 @@ export function App() {
 
       // Save audio for retry only if error is retryable
       if (classified.isRetryable) {
-        lastAudioRef.current = audioBase64;
-        lastAudioMimeTypeRef.current = mimeType;
+        lastAudioRef.current = { base64: audioBase64, mimeType };
       } else {
         lastAudioRef.current = null;
-        lastAudioMimeTypeRef.current = undefined;
       }
       setState('idle');
     } finally {
@@ -249,7 +244,8 @@ export function App() {
 
   const handleRetry = useCallback(async () => {
     if (lastAudioRef.current && state === 'idle') {
-      await transcribeWithRetry(lastAudioRef.current, lastAudioMimeTypeRef.current);
+      const { base64, mimeType } = lastAudioRef.current;
+      await transcribeWithRetry(base64, mimeType);
     }
   }, [state, transcribeWithRetry]);
 
@@ -293,7 +289,6 @@ export function App() {
     transcribeAbortRef.current = null;
     transcribeRequestIdRef.current += 1;
     lastAudioRef.current = null;
-    lastAudioMimeTypeRef.current = undefined;
 
     if (controller) {
       controller.abort();
@@ -309,7 +304,6 @@ export function App() {
 
     // Clear any pending retry audio when starting new recording
     lastAudioRef.current = null;
-    lastAudioMimeTypeRef.current = undefined;
     // Clear success timeout if transitioning from success state
     if (successTimeoutRef.current) {
       clearTimeout(successTimeoutRef.current);
