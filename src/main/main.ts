@@ -8,7 +8,6 @@ import electronLog from 'electron-log';
 import { initAnalytics, trackEvent, startHeartbeat, stopHeartbeat } from '../lib/analytics';
 import { getDisplayBounds, isPositionValid } from './window-position';
 import type { WindowPosition } from './window-position';
-import { captureCurrentClipboard, addTranscriptionToHistory, restoreClipboardEntry, getClipboardHistory, getEntryLabel } from './clipboard-history';
 import { loadTranscriptHistory, addTranscriptToHistory, getRecentTranscripts } from './transcript-history';
 import { loadStats, recordTranscription, getStatsWithDerived, resetStats } from './stats';
 import type { AppSettings } from '../shared/types';
@@ -720,20 +719,6 @@ function updateTrayMenu() {
     ? []
     : [{ type: 'separator' }, ...updateMenuItems];
 
-  // Build clipboard history submenu
-  const clipboardHistory = getClipboardHistory();
-  const clipboardSubmenu: Electron.MenuItemConstructorOptions[] = clipboardHistory.length > 0
-    ? clipboardHistory.map((entry, index) => ({
-        label: getEntryLabel(entry),
-        click: () => {
-          restoreClipboardEntry(entry.id);
-          log('[Clipboard] Restored entry:', entry.id);
-        },
-        // Add keyboard accelerator for first item (previous clipboard)
-        ...(index === 0 ? { accelerator: 'CommandOrControl+Shift+V' } : {}),
-      }))
-    : [{ label: 'No history', enabled: false }];
-
   const contextMenu = Menu.buildFromTemplate([
     {
       label: `Nerd Dictum ${getDisplayVersion() === 'dev' ? 'dev' : `v${getDisplayVersion()}`}`,
@@ -765,11 +750,6 @@ function updateTrayMenu() {
           updateTrayMenu();
         }
       },
-    },
-    { type: 'separator' },
-    {
-      label: 'Previous Clipboard',
-      submenu: clipboardSubmenu,
     },
     { type: 'separator' },
     {
@@ -814,8 +794,6 @@ function updateTrayMenu() {
   tray.setContextMenu(contextMenu);
 }
 
-const RESTORE_CLIPBOARD_SHORTCUT = 'CommandOrControl+Shift+V';
-
 // Track currently registered hotkey for re-registration
 let currentRegisteredHotkey: string | null = null;
 
@@ -840,21 +818,6 @@ function registerGlobalShortcuts() {
   } else {
     log('[Shortcut] Failed to register global shortcut:', hotkey);
     currentRegisteredHotkey = null;
-  }
-
-  // Register shortcut to restore previous clipboard (only once)
-  if (!globalShortcut.isRegistered(RESTORE_CLIPBOARD_SHORTCUT)) {
-    const clipboardRestoreRegistered = globalShortcut.register(RESTORE_CLIPBOARD_SHORTCUT, () => {
-      const history = getClipboardHistory();
-      if (history.length > 0) {
-        restoreClipboardEntry(history[0].id);
-        log('[Clipboard] Restored previous clipboard via shortcut');
-      }
-    });
-
-    if (!clipboardRestoreRegistered) {
-      log('[Shortcut] Failed to register clipboard restore shortcut:', RESTORE_CLIPBOARD_SHORTCUT);
-    }
   }
 
   // Hold-to-record feature temporarily disabled due to uiohook-napi
@@ -1244,15 +1207,9 @@ app.on('activate', () => {
 // IPC handlers
 ipcMain.handle('copy-to-clipboard', (_event, text: string, autoPaste = false) => {
   log('[Clipboard] Copying transcript (' + text.length + ' chars):', text.substring(0, 200));
-  // Capture current clipboard content before overwriting
-  captureCurrentClipboard();
   clipboard.writeText(text);
-  // Add our transcribed text to history too
-  addTranscriptionToHistory(text);
   // Store transcript for context feature
   addTranscriptToHistory(text);
-  // Update tray menu to show new history
-  updateTrayMenu();
 
   if (autoPaste && appSettings.autoPasteEnabled) {
     log('[Clipboard] Auto-paste branch hit — dispatching keystroke');
