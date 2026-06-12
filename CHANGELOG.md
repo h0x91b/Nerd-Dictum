@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-06-12
+
+[2026-06-12] Security — Force `shell-quote` to ^1.8.4 via `overrides` in package.json to fix CVE-2026-9277 (shell command injection, CRITICAL) flagged by Trivy. The vulnerable 1.8.3 was pinned exactly by `concurrently@9.2.1`; since `bun.lock` is gitignored and CI resolves fresh on every run, an override is the only way to guarantee the fixed version.
+
 ## 2026-05-16
 
 [2026-05-16] Remove — Clipboard history / multi-clipboard feature: the 20-entry "Previous Clipboard" tray submenu and the `Cmd+Shift+V` global shortcut to restore the prior clipboard are gone. Deleted `src/main/clipboard-history.ts` (and its tests) and stripped `captureCurrentClipboard` / `addTranscriptionToHistory` / `restoreClipboardEntry` / `getClipboardHistory` / `getEntryLabel` and the `RESTORE_CLIPBOARD_SHORTCUT` registration from `main.ts`. Recognition still copies the transcript to the system clipboard and auto-pastes — that flow is untouched; only the side-history is removed.
