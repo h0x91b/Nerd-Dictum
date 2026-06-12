@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-05-16
+
+[2026-05-16] Remove — Clipboard history / multi-clipboard feature: the 20-entry "Previous Clipboard" tray submenu and the `Cmd+Shift+V` global shortcut to restore the prior clipboard are gone. Deleted `src/main/clipboard-history.ts` (and its tests) and stripped `captureCurrentClipboard` / `addTranscriptionToHistory` / `restoreClipboardEntry` / `getClipboardHistory` / `getEntryLabel` and the `RESTORE_CLIPBOARD_SHORTCUT` registration from `main.ts`. Recognition still copies the transcript to the system clipboard and auto-pastes — that flow is untouched; only the side-history is removed.
+
 ## 2026-05-09
 
 [2026-05-09] Feature — Auto-paste the transcript into the active window via `osascript` (`key code 9 using command down`, the `key code` form so Electron-based targets like Cursor/VS Code accept it). New `autoPasteEnabled` setting, **default off**. Toggle lives in Settings → General; flipping it on triggers `systemPreferences.isTrustedAccessibilityClient(true)` so the macOS Accessibility prompt surfaces immediately instead of after a silently-failed paste. Adds `com.apple.security.automation.apple-events` entitlement and `NSAppleEventsUsageDescription`. Based on @diverru's PR (commit 307cc74) with default flipped to off and explicit permission request on enable.
