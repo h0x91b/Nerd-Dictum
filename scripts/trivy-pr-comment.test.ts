@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   buildTrivyCommentAction,
+  hasBlockingFindings,
   readTrivyCommentAction,
   TRIVY_COMMENT_HEADER,
 } from './trivy-pr-comment.js';
@@ -121,4 +122,65 @@ describe('readTrivyCommentAction', () => {
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
+});
+
+describe('hasBlockingFindings', () => {
+  const cleanReport = `Report Summary
+
+┌──────────┬──────┬─────────────────┬─────────┐
+│  Target  │ Type │ Vulnerabilities │ Secrets │
+├──────────┼──────┼─────────────────┼─────────┤
+│ bun.lock │ bun  │        0        │    -    │
+└──────────┴──────┴─────────────────┴─────────┘
+`;
+
+  const dirtyReport = `Report Summary
+
+┌──────────┬──────┬─────────────────┬─────────┐
+│  Target  │ Type │ Vulnerabilities │ Secrets │
+├──────────┼──────┼─────────────────┼─────────┤
+│ bun.lock │ bun  │        1        │    -    │
+└──────────┴──────┴─────────────────┴─────────┘
+
+bun.lock (bun)
+==============
+Total: 1 (MEDIUM: 0, HIGH: 0, CRITICAL: 1)
+`;
+
+  it('returns false for a clean report', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'trivy-gate-'));
+    const resultsPath = join(tempDir, 'trivy-results.txt');
+
+    try {
+      writeFileSync(resultsPath, cleanReport);
+
+      expect(hasBlockingFindings(resultsPath)).toBe(false);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns true when vulnerabilities are reported', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'trivy-gate-'));
+    const resultsPath = join(tempDir, 'trivy-results.txt');
+
+    try {
+      writeFileSync(resultsPath, dirtyReport);
+
+      expect(hasBlockingFindings(resultsPath)).toBe(true);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns true (fail-closed) when the results file is missing', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'trivy-gate-'));
+
+    try {
+      expect(hasBlockingFindings(join(tempDir, 'missing.txt'))).toBe(true);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
 });

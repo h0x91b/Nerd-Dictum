@@ -61,3 +61,8 @@ export function readTrivyCommentAction(resultsPath = 'trivy-results.txt') {
     content: readFileSync(resultsPath, 'utf8'),
   });
 }
+
+// Fail-closed: a missing results file also counts as blocking.
+export function hasBlockingFindings(resultsPath = 'trivy-results.txt') {
+  return readTrivyCommentAction(resultsPath).type === 'upsert';
+}

@@ -3,6 +3,7 @@
 ## 2026-06-12
 
 [2026-06-12] Security — Force `shell-quote` to ^1.8.4 via `overrides` in package.json to fix CVE-2026-9277 (shell command injection, CRITICAL) flagged by Trivy. The vulnerable 1.8.3 was pinned exactly by `concurrently@9.2.1`; since `bun.lock` is gitignored and CI resolves fresh on every run, an override is the only way to guarantee the fixed version.
+[2026-06-12] Dev — Block auto-merge when Trivy finds vulnerabilities or secrets: new `Block merge on Trivy findings` CI step runs `scripts/trivy-gate.ts` after the PR comment is posted and fails the `build-and-test` job (a required status check) whenever the report is dirty. Reuses the same clean/dirty detection as the PR comment logic (`hasBlockingFindings` in `scripts/trivy-pr-comment.js`); a missing results file fails closed. Previously the scan ran with `exit-code: '0'` + `continue-on-error: true`, so CRITICAL findings still allowed auto-merge.
 
 ## 2026-05-16
 
