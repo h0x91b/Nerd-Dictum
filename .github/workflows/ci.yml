@@ -120,3 +120,6 @@ jobs:
               });
             }
         continue-on-error: true
+
+      - name: Block merge on Trivy findings
+        run: bun scripts/trivy-gate.ts trivy-results.txt
