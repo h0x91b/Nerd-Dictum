@@ -6,6 +6,8 @@
 
 [2026-08-29] Dev — `bun run dev:mac:stop` now runs `scripts/stop-app.ts`, which kills **every** running Nerd Dictum (the installed `/Applications` copy included) and waits for the process to actually exit before returning. Electron's single-instance lock is keyed on userData, which both copies share, so a running installed copy made `bun run dev:mac` launch and quit again silently. The old `pkill -f` only matched the `release/mac-arm64` build.
 
+[2026-08-29] Dev — Fix the documented log path. `electron-log` writes to `~/Library/Logs/nerd-dictum/main.log` — the directory is `app.name` from package.json, not `productName` — but `bun run dev:mac:logs`, `AGENTS.md` and two source comments all pointed at `~/Library/Logs/Nerd Dictum/main.log`, a stale directory last written to in January. Tailing it made a perfectly healthy app look dead. All five references corrected, and startup now logs `[App] Log file: <path>` so the question cannot come up again.
+
 ## 2026-06-12
 
 [2026-06-12] Security — Force `shell-quote` to ^1.8.4 via `overrides` in package.json to fix CVE-2026-9277 (shell command injection, CRITICAL) flagged by Trivy. The vulnerable 1.8.3 was pinned exactly by `concurrently@9.2.1`; since `bun.lock` is gitignored and CI resolves fresh on every run, an override is the only way to guarantee the fixed version.
