@@ -1,5 +1,5 @@
 import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
-import { transcribeAudio, TranscriptionCancelledError, ApiResponseError, shouldSimulateFailure } from './gemini';
+import { transcribeAudio, TranscriptionCancelledError } from './gemini';
 
 describe('transcribeAudio', () => {
   const originalFetch = globalThis.fetch;
@@ -544,88 +544,5 @@ describe('transcribeAudio', () => {
     );
 
     expect(capturedPrompt).toContain('- Kubernetes (aliases: cube, k8s, kube, kubernetes)');
-  });
-});
-
-describe('simulated failures (SIMULATE_ERROR_RATE)', () => {
-  const originalFetch = globalThis.fetch;
-  const originalRandom = Math.random;
-
-  afterEach(() => {
-    globalThis.fetch = originalFetch;
-    Math.random = originalRandom;
-  });
-
-  it('is off when no rate is given, and never touches Math.random', () => {
-    expect(shouldSimulateFailure(undefined, 0)).toBe(false);
-    expect(shouldSimulateFailure(0, 0)).toBe(false);
-  });
-
-  it('fires exactly when the roll lands under the rate', () => {
-    expect(shouldSimulateFailure(0.5, 0.49)).toBe(true);
-    expect(shouldSimulateFailure(0.5, 0.5)).toBe(false);
-    expect(shouldSimulateFailure(0.5, 0.9)).toBe(false);
-    expect(shouldSimulateFailure(1, 0.999)).toBe(true);
-  });
-
-  it('throws a 503 ApiResponseError without sending a request', async () => {
-    const fetchMock = mock(() => Promise.reject(new Error('fetch must not be called')));
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
-    Math.random = () => 0;
-
-    let caught: unknown;
-    try {
-      await transcribeAudio('base64audio', 'test-api-key', 'gemini-3-flash-preview', {
-        simulatedErrorRate: 1,
-      });
-    } catch (error) {
-      caught = error;
-    }
-
-    expect(caught).toBeInstanceOf(ApiResponseError);
-    expect((caught as ApiResponseError).statusCode).toBe(503);
-    expect((caught as ApiResponseError).responseBody).toContain('503 Service Unavailable');
-    expect(fetchMock).not.toHaveBeenCalled();
-  }, 10000);
-
-  it('rolls once per call, so the built-in retry cannot rescue a doomed attempt', async () => {
-    const rolls: number[] = [];
-    // 0.4 < 0.5 → doomed. A second roll would return 0.9 and "recover".
-    const sequence = [0.4, 0.9, 0.9];
-    Math.random = () => {
-      const value = sequence[rolls.length] ?? 0.9;
-      rolls.push(value);
-      return value;
-    };
-    const fetchMock = mock(() => Promise.reject(new Error('fetch must not be called')));
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
-
-    await expect(
-      transcribeAudio('base64audio', 'test-api-key', 'gemini-3-flash-preview', {
-        simulatedErrorRate: 0.5,
-      })
-    ).rejects.toBeInstanceOf(ApiResponseError);
-
-    expect(rolls.length).toBe(1);
-    expect(fetchMock).not.toHaveBeenCalled();
-  }, 10000);
-
-  it('leaves the real request path alone when the roll misses', async () => {
-    Math.random = () => 0.99;
-    const fetchMock = mock(() =>
-      Promise.resolve({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
-      } as Response)
-    );
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
-
-    const result = await transcribeAudio('base64audio', 'test-api-key', 'gemini-3-flash-preview', {
-      simulatedErrorRate: 0.5,
-    });
-
-    expect(result).toBe('ok');
-    expect(fetchMock).toHaveBeenCalled();
   });
 });

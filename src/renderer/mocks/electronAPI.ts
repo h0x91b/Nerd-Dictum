@@ -2,7 +2,7 @@
  * Mock implementation of electronAPI for browser development.
  * This allows the UI to be developed and tested without Electron.
  */
-import type { AppSettings, MicrophonePermissionStatus, StatsWithDerived, ErrorDetail, SavedRecording, DebugFlags } from '../types/electron';
+import type { AppSettings, MicrophonePermissionStatus, StatsWithDerived, ErrorDetail, SavedRecording } from '../types/electron';
 
 const defaultSettings: AppSettings = {
   apiKey: '',
@@ -222,10 +222,6 @@ export function setupElectronAPIMock() {
 
     getErrorDetail: async (): Promise<ErrorDetail> => {
       return { message: 'Mock error' };
-    },
-
-    getDebugFlags: async (): Promise<DebugFlags> => {
-      return { simulatedErrorRate: 0 };
     },
 
     saveFailedRecording: async (audioBase64: string, mimeType?: string): Promise<SavedRecording | null> => {

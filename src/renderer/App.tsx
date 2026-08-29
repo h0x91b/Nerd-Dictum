@@ -186,15 +186,11 @@ export function App() {
       }
 
       const options = buildTranscribeOptions(settings, previousTranscripts);
-      // Debug: SIMULATE_ERROR_RATE makes a share of transcriptions fail on
-      // purpose so the failed-recording + retry flow can be tried on demand.
-      const debugFlags = await window.electronAPI.getDebugFlags?.();
       // Transcribe audio
       const transcript = await transcribeAudio(audioBase64, settings.apiKey, settings.model, {
         ...options,
         signal: controller.signal,
         ...(mimeType && { mimeType }),
-        ...(debugFlags?.simulatedErrorRate ? { simulatedErrorRate: debugFlags.simulatedErrorRate } : {}),
       });
 
       if (requestId !== transcribeRequestIdRef.current) {

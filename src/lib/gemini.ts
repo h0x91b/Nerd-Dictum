@@ -87,27 +87,6 @@ export interface TranscribeOptions {
 export interface TranscribeRequestOptions extends TranscribeOptions {
   signal?: AbortSignal;
   mimeType?: string;
-  /**
-   * Debug aid: probability (0..1) that an attempt fails with a fake 503
-   * instead of hitting the network. Off (0) unless SIMULATE_ERROR_RATE is set
-   * — see `bun run dev:mac:flaky`. Lets the failed-recording + retry flow be
-   * exercised without waiting for Gemini to actually fall over.
-   */
-  simulatedErrorRate?: number;
-}
-
-const SIMULATED_ERROR_BODY = [
-  '<!DOCTYPE html>',
-  '<html><head><title>Service Unavailable</title></head>',
-  '<body><h1>503 Service Unavailable</h1>',
-  '<p>Simulated failure injected by SIMULATE_ERROR_RATE — no request was sent.</p>',
-  '</body></html>',
-].join('\n');
-
-/** True when this attempt should be sabotaged. Extracted so tests can reason about it. */
-export function shouldSimulateFailure(rate: number | undefined, roll: number): boolean {
-  if (!rate || rate <= 0) return false;
-  return roll < rate;
 }
 
 export class TranscriptionCancelledError extends Error {
@@ -388,11 +367,6 @@ export async function transcribeAudio(
 
   let lastError: Error | null = null;
 
-  // Rolled once per call, not per attempt, so SIMULATE_ERROR_RATE=0.5 really
-  // means "half of my dictations end in the error window" — a per-attempt roll
-  // would square to 25% because of the built-in retry.
-  const simulateFailure = shouldSimulateFailure(options?.simulatedErrorRate, Math.random());
-
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const timeoutMs = getTimeoutForAttempt(attempt);
     console.log(`[Gemini] Attempt ${attempt + 1}/${MAX_ATTEMPTS}, timeout: ${timeoutMs / 1000}s`);
@@ -413,13 +387,6 @@ export async function transcribeAudio(
       try {
         if (requestSignal?.aborted) {
           throw new TranscriptionCancelledError();
-        }
-
-        if (simulateFailure) {
-          console.warn(
-            `[Gemini] Simulating a 503 (SIMULATE_ERROR_RATE=${options?.simulatedErrorRate}) — no request sent`
-          );
-          throw new ApiResponseError('HTTP error: 503', 503, SIMULATED_ERROR_BODY);
         }
 
         const response = await fetch(url, {

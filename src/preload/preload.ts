@@ -64,8 +64,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     audioSizeBytes?: number;
   }) => ipcRenderer.invoke('open-error-detail-window', detail),
   getErrorDetail: () => ipcRenderer.invoke('get-error-detail'),
-  // Debug flags (SIMULATE_ERROR_RATE and friends)
-  getDebugFlags: () => ipcRenderer.invoke('get-debug-flags'),
   // Failed recordings
   saveFailedRecording: (audioBase64: string, mimeType?: string) =>
     ipcRenderer.invoke('save-failed-recording', audioBase64, mimeType),
