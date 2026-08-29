@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-29
+
+[2026-08-29] Feature — A failed transcription no longer costs you the recording. When Gemini returns 503 (or anything else fails) the audio is written to `<userData>/failed-recordings/recording-<ISO timestamp>.<ext>` before the error is shown, and the error window now carries a **Retry** button plus a clickable file name that reveals the file in Finder. Retry sends the path back to the widget via the new `retry-transcription` IPC message and re-runs the normal transcription flow. The error window now opens for **every** failed transcription, not only those with an API response body — previously a network error just flashed a 4-second toast and the audio was dropped on the next recording. New `src/main/failed-recordings.ts` keeps the 20 most recent files and prunes the rest. Audio is also persisted when transcription is blocked by a missing API key.
+
+[2026-08-29] Dev — `bun run dev:mac:stop` now runs `scripts/stop-app.ts`, which kills **every** running Nerd Dictum (the installed `/Applications` copy included) and waits for the process to actually exit before returning. Electron's single-instance lock is keyed on userData, which both copies share, so a running installed copy made `bun run dev:mac` launch and quit again silently. The old `pkill -f` only matched the `release/mac-arm64` build.
+
+[2026-08-29] Dev — Fix the documented log path. `electron-log` writes to `~/Library/Logs/nerd-dictum/main.log` — the directory is `app.name` from package.json, not `productName` — but `bun run dev:mac:logs`, `AGENTS.md` and two source comments all pointed at `~/Library/Logs/Nerd Dictum/main.log`, a stale directory last written to in January. Tailing it made a perfectly healthy app look dead. All five references corrected, and startup now logs `[App] Log file: <path>` so the question cannot come up again.
+
 ## 2026-06-12
 
 [2026-06-12] Security — Force `shell-quote` to ^1.8.4 via `overrides` in package.json to fix CVE-2026-9277 (shell command injection, CRITICAL) flagged by Trivy. The vulnerable 1.8.3 was pinned exactly by `concurrently@9.2.1`; since `bun.lock` is gitignored and CI resolves fresh on every run, an override is the only way to guarantee the fixed version.
