@@ -9,7 +9,7 @@ import { InfoButton } from './components/InfoButton';
 import { HideButton } from './components/HideButton';
 import { StatsButton } from './components/StatsButton';
 import { AudioLevelRing } from './components/AudioLevelRing';
-import type { AppSettings } from './types/electron';
+import type { AppSettings, ErrorDetail } from './types/electron';
 
 const MESSAGE_TIMEOUT_MS = 2000;
 const RETRY_MESSAGE_TIMEOUT_MS = 4000;
@@ -64,7 +64,14 @@ const AUDIO_EXTENSIONS: Record<string, string> = {
   '.wav': 'audio/wav',
   '.ogg': 'audio/ogg',
   '.mp4': 'video/mp4',
+  '.webm': 'audio/webm',
+  '.m4a': 'audio/mp4',
 };
+
+function mimeTypeForPath(filePath: string): string | undefined {
+  const ext = filePath.slice(filePath.lastIndexOf('.')).toLowerCase();
+  return AUDIO_EXTENSIONS[ext];
+}
 
 type AppState = 'idle' | 'recording' | 'transcribing' | 'success';
 type MessageType = 'success' | 'error';
@@ -104,7 +111,20 @@ export function App() {
     messageTimeoutRef.current = setTimeout(() => setMessage(null), duration);
   }, []);
 
-  const lastErrorDetailRef = useRef<{ message: string; statusCode?: number; responseBody?: string } | null>(null);
+  const lastErrorDetailRef = useRef<ErrorDetail | null>(null);
+
+  /**
+   * Write the audio to disk so a failed transcription does not evaporate.
+   * Never throws — losing the file is bad, but crashing the error path is worse.
+   */
+  const persistFailedAudio = useCallback(async (audioBase64: string, mimeType?: string) => {
+    try {
+      return await window.electronAPI.saveFailedRecording(audioBase64, mimeType);
+    } catch (error) {
+      console.error('[FailedRecording] Could not save audio:', error);
+      return null;
+    }
+  }, []);
 
   const showError = useCallback((error: unknown) => {
     const classified: ClassifiedError = classifyError(error);
@@ -151,8 +171,10 @@ export function App() {
       if (!settings.apiKey) {
         showMessage('Set API key in settings', 'error', true);
         window.electronAPI.openSettingsWindow();
-        // Save audio for retry after setting API key
+        // Save audio for retry after setting API key — in memory for the
+        // tap-to-retry flash, and on disk so it survives the next recording.
         lastAudioRef.current = { base64: audioBase64, mimeType };
+        await persistFailedAudio(audioBase64, mimeType);
         setState('idle');
         return;
       }
@@ -215,14 +237,24 @@ export function App() {
       console.error('[Transcribe] Classified error:', classified);
       window.electronAPI.trackEvent('transcription_error', { error_type: classified.type });
 
-      // Auto-open error detail popup when API returns a response body
-      if (classified.responseBody) {
-        window.electronAPI.openErrorDetailWindow({
-          message: classified.message,
-          statusCode: classified.statusCode,
-          responseBody: classified.responseBody,
-        });
-      }
+      // Persist the audio before anything else: a 503 (or any other failure)
+      // must not cost the user a long dictation.
+      const saved = await persistFailedAudio(audioBase64, mimeType);
+
+      // Open the error window for every failed transcription, not just the
+      // ones with a response body — it is where Retry and the saved file live.
+      const detail: ErrorDetail = {
+        message: classified.message,
+        statusCode: classified.statusCode,
+        responseBody: classified.responseBody,
+        ...(saved && {
+          audioFilePath: saved.filePath,
+          audioFileName: saved.fileName,
+          audioSizeBytes: saved.sizeBytes,
+        }),
+      };
+      lastErrorDetailRef.current = detail;
+      window.electronAPI.openErrorDetailWindow(detail);
 
       // Play error sound if enabled
       if (soundEnabled) {
@@ -241,7 +273,7 @@ export function App() {
         transcribeAbortRef.current = null;
       }
     }
-  }, [showError, showMessage]);
+  }, [showError, showMessage, persistFailedAudio]);
 
   const handleRetry = useCallback(async () => {
     if (lastAudioRef.current && state === 'idle') {
@@ -249,6 +281,21 @@ export function App() {
       await transcribeWithRetry(base64, mimeType);
     }
   }, [state, transcribeWithRetry]);
+
+  /** Re-send a recording that was saved to disk after an earlier failure. */
+  const retryFromFile = useCallback(async (filePath: string) => {
+    try {
+      const audioBase64 = await window.electronAPI.readFileAsBase64(filePath);
+      if (!audioBase64) {
+        showMessage('Saved recording is empty', 'error', false);
+        return;
+      }
+      window.electronAPI.trackEvent('transcription_retry_from_file');
+      await transcribeWithRetry(audioBase64, mimeTypeForPath(filePath));
+    } catch (error) {
+      showError(error);
+    }
+  }, [transcribeWithRetry, showError, showMessage]);
 
   const handleShowErrorDetail = useCallback(() => {
     if (lastErrorDetailRef.current) {
@@ -437,6 +484,16 @@ export function App() {
       unsubscribe();
     };
   }, [handleToggleRecording, state]);
+
+  // Retry requested from the error detail window
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.onRetryTranscription?.((filePath: string) => {
+      retryFromFile(filePath);
+    });
+    return () => {
+      unsubscribe?.();
+    };
+  }, [retryFromFile]);
 
   // Load app version on mount
   useEffect(() => {

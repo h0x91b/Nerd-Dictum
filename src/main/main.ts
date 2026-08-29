@@ -10,6 +10,7 @@ import { getDisplayBounds, isPositionValid } from './window-position';
 import type { WindowPosition } from './window-position';
 import { loadTranscriptHistory, addTranscriptToHistory, getRecentTranscripts } from './transcript-history';
 import { loadStats, recordTranscription, getStatsWithDerived, resetStats } from './stats';
+import { saveFailedRecording, FAILED_RECORDINGS_DIR_NAME } from './failed-recordings';
 import type { AppSettings } from '../shared/types';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -218,7 +219,16 @@ let infoWindow: BrowserWindow | null = null;
 let hideWindow: BrowserWindow | null = null;
 let statsWindow: BrowserWindow | null = null;
 let errorDetailWindow: BrowserWindow | null = null;
-let pendingErrorDetail: { message: string; statusCode?: number; responseBody?: string } | null = null;
+interface ErrorDetailPayload {
+  message: string;
+  statusCode?: number;
+  responseBody?: string;
+  /** Absolute path to the recording that failed, when it could be saved */
+  audioFilePath?: string;
+  audioFileName?: string;
+  audioSizeBytes?: number;
+}
+let pendingErrorDetail: ErrorDetailPayload | null = null;
 let tray: Tray | null = null;
 let hideTimer: NodeJS.Timeout | null = null;
 
@@ -1534,7 +1544,7 @@ ipcMain.handle('record-transcription-stats', (_event, transcript: string, record
 });
 
 // Error detail window handlers
-ipcMain.handle('open-error-detail-window', (_event, detail: { message: string; statusCode?: number; responseBody?: string }) => {
+ipcMain.handle('open-error-detail-window', (_event, detail: ErrorDetailPayload) => {
   pendingErrorDetail = detail;
   createErrorDetailWindow();
   return true;
@@ -1542,6 +1552,48 @@ ipcMain.handle('open-error-detail-window', (_event, detail: { message: string; s
 
 ipcMain.handle('get-error-detail', () => {
   return pendingErrorDetail || { message: 'Unknown error' };
+});
+
+// Failed-recording persistence: keep the audio around so a 503 does not
+// destroy a long dictation.
+ipcMain.handle('save-failed-recording', (_event, audioBase64: string, mimeType?: string) => {
+  try {
+    const dir = path.join(app.getPath('userData'), FAILED_RECORDINGS_DIR_NAME);
+    const saved = saveFailedRecording(dir, audioBase64, mimeType);
+    log('[FailedRecording] Saved', saved.filePath, `${saved.sizeBytes} bytes`);
+    return saved;
+  } catch (error) {
+    log('[FailedRecording] Failed to save recording:', error);
+    return null;
+  }
+});
+
+ipcMain.handle('show-item-in-folder', (_event, filePath: string) => {
+  if (!fs.existsSync(filePath)) {
+    log('[FailedRecording] Cannot reveal missing file:', filePath);
+    return false;
+  }
+  shell.showItemInFolder(filePath);
+  return true;
+});
+
+// Retry from the error window: hand the file back to the main widget, which
+// owns the transcription flow, then get the error window out of the way.
+ipcMain.handle('retry-failed-recording', (_event, filePath: string) => {
+  if (!fs.existsSync(filePath)) {
+    log('[FailedRecording] Cannot retry missing file:', filePath);
+    return false;
+  }
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    log('[FailedRecording] Cannot retry, main window is gone');
+    return false;
+  }
+  log('[FailedRecording] Retrying', filePath);
+  mainWindow.webContents.send('retry-transcription', filePath);
+  if (errorDetailWindow && !errorDetailWindow.isDestroyed()) {
+    errorDetailWindow.close();
+  }
+  return true;
 });
 
 // Read a file and return its contents as base64

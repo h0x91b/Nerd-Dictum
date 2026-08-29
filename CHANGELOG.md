@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-08-29
+
+[2026-08-29] Feature — A failed transcription no longer costs you the recording. When Gemini returns 503 (or anything else fails) the audio is written to `<userData>/failed-recordings/recording-<ISO timestamp>.<ext>` before the error is shown, and the error window now carries a **Retry** button plus a clickable file name that reveals the file in Finder. Retry sends the path back to the widget via the new `retry-transcription` IPC message and re-runs the normal transcription flow. The error window now opens for **every** failed transcription, not only those with an API response body — previously a network error just flashed a 4-second toast and the audio was dropped on the next recording. New `src/main/failed-recordings.ts` keeps the 20 most recent files and prunes the rest. Audio is also persisted when transcription is blocked by a missing API key.
+
 ## 2026-06-12
 
 [2026-06-12] Security — Force `shell-quote` to ^1.8.4 via `overrides` in package.json to fix CVE-2026-9277 (shell command injection, CRITICAL) flagged by Trivy. The vulnerable 1.8.3 was pinned exactly by `concurrently@9.2.1`; since `bun.lock` is gitignored and CI resolves fresh on every run, an override is the only way to guarantee the fixed version.

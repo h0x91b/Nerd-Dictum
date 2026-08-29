@@ -130,6 +130,16 @@ const createMockElectronAPI = (overrides: Partial<typeof window.electronAPI> = {
   getErrorDetail: mock(() => Promise.resolve({ message: 'Unknown error' })),
   getPathForFile: mock((file: File) => `/mock/path/${file.name}`),
   readFileAsBase64: mock(() => Promise.resolve('')),
+  saveFailedRecording: mock(() => Promise.resolve({
+    filePath: '/mock/failed-recordings/recording-test.wav',
+    fileName: 'recording-test.wav',
+    sizeBytes: 1024,
+  })),
+  showItemInFolder: mock(() => Promise.resolve(true)),
+  retryFailedRecording: mock(() => Promise.resolve(true)),
+  onRetryTranscription: mock((_callback: (filePath: string) => void) => {
+    return () => {};
+  }),
   ...overrides,
 });
 
@@ -721,6 +731,111 @@ describe('App', () => {
       await waitFor(() => {
         const recordingButton = screen.getByRole('button', { name: /stop recording/i });
         expect(recordingButton.className).toContain('recording');
+      });
+    });
+  });
+
+  describe('failed transcription is recoverable', () => {
+    const originalFetch = globalThis.fetch;
+
+    afterEach(() => {
+      globalThis.fetch = originalFetch;
+    });
+
+    /** Record just past MIN_RECORDING_MS, then stop, so the audio survives validation. */
+    async function recordAndStop() {
+      await act(async () => {
+        render(<App />);
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /start recording/i }));
+      });
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /stop recording/i })).toBeDefined();
+      });
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /stop recording/i }));
+      });
+    }
+
+    it('saves the recording to disk and opens the error window with it on a 503', async () => {
+      globalThis.fetch = mock(() =>
+        Promise.resolve(new Response('<html><body>Service Unavailable</body></html>', { status: 503 }))
+      ) as unknown as typeof fetch;
+
+      const saveFailedRecording = mock(() => Promise.resolve({
+        filePath: '/mock/failed-recordings/recording-test.wav',
+        fileName: 'recording-test.wav',
+        sizeBytes: 4,
+      }));
+      const openErrorDetailWindow = mock(() => Promise.resolve(true));
+      window.electronAPI = createMockElectronAPI({ saveFailedRecording, openErrorDetailWindow });
+
+      await recordAndStop();
+
+      await waitFor(() => {
+        expect(saveFailedRecording).toHaveBeenCalled();
+      }, { timeout: 5000 });
+
+      await waitFor(() => {
+        expect(openErrorDetailWindow).toHaveBeenCalled();
+      }, { timeout: 5000 });
+
+      const detail = (openErrorDetailWindow.mock.calls[0] as unknown as [Record<string, unknown>])[0];
+      expect(detail.audioFilePath).toBe('/mock/failed-recordings/recording-test.wav');
+      expect(detail.statusCode).toBe(503);
+    }, 15000);
+
+    it('still opens the error window when the audio could not be saved', async () => {
+      globalThis.fetch = mock(() =>
+        Promise.resolve(new Response('boom', { status: 503 }))
+      ) as unknown as typeof fetch;
+
+      const openErrorDetailWindow = mock(() => Promise.resolve(true));
+      window.electronAPI = createMockElectronAPI({
+        saveFailedRecording: mock(() => Promise.resolve(null)),
+        openErrorDetailWindow,
+      });
+
+      await recordAndStop();
+
+      await waitFor(() => {
+        expect(openErrorDetailWindow).toHaveBeenCalled();
+      }, { timeout: 5000 });
+
+      const detail = (openErrorDetailWindow.mock.calls[0] as unknown as [Record<string, unknown>])[0];
+      expect(detail.audioFilePath).toBeUndefined();
+    }, 15000);
+
+    it('re-transcribes a saved file when the error window asks for a retry', async () => {
+      let retryCallback: ((filePath: string) => void) | null = null;
+      const readFileAsBase64 = mock(() => Promise.resolve(''));
+      window.electronAPI = createMockElectronAPI({
+        readFileAsBase64,
+        onRetryTranscription: mock((callback: (filePath: string) => void) => {
+          retryCallback = callback;
+          return () => {};
+        }),
+      });
+
+      await act(async () => {
+        render(<App />);
+      });
+
+      expect(retryCallback).not.toBeNull();
+
+      await act(async () => {
+        retryCallback!('/mock/failed-recordings/recording-test.wav');
+      });
+
+      await waitFor(() => {
+        expect(readFileAsBase64).toHaveBeenCalledWith('/mock/failed-recordings/recording-test.wav');
       });
     });
   });
