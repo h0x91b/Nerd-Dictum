@@ -13,6 +13,11 @@ export interface ErrorDetail {
   audioSizeBytes?: number;
 }
 
+export interface DebugFlags {
+  /** Fraction (0..1) of transcriptions that fail with a fake 503; 0 = off */
+  simulatedErrorRate: number;
+}
+
 export interface SavedRecording {
   filePath: string;
   fileName: string;
@@ -56,6 +61,8 @@ export interface ElectronAPI {
   // Error detail
   openErrorDetailWindow: (detail: ErrorDetail) => Promise<boolean>;
   getErrorDetail: () => Promise<ErrorDetail>;
+  // Debug flags
+  getDebugFlags?: () => Promise<DebugFlags>;
   // Failed recordings
   saveFailedRecording: (audioBase64: string, mimeType?: string) => Promise<SavedRecording | null>;
   showItemInFolder: (filePath: string) => Promise<boolean>;

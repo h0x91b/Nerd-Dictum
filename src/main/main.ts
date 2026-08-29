@@ -20,6 +20,19 @@ const __dirname = path.dirname(__filename);
 const DEV_PORT = parseInt(process.env.VITE_PORT || '12000', 10);
 const IS_LOCAL_DEV_BUILD = process.env.LOCAL_DEV_BUILD === 'true';
 
+/**
+ * Debug aid: fraction of transcriptions (0..1) that fail with a fake 503 so
+ * the failed-recording + retry flow can be exercised on demand.
+ * Set via `SIMULATE_ERROR_RATE=0.5` — see `bun run dev:mac:flaky`.
+ */
+function getSimulatedErrorRate(): number {
+  const raw = process.env.SIMULATE_ERROR_RATE;
+  if (!raw) return 0;
+  const parsed = parseFloat(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 0;
+  return Math.min(parsed, 1);
+}
+
 // Ensure single instance of the application
 const gotTheLock = app.requestSingleInstanceLock();
 
@@ -1122,6 +1135,13 @@ async function requestMicrophonePermission(): Promise<boolean> {
 app.whenReady().then(() => {
   log('[App] Starting Nerd Dictum', getDisplayVersion());
 
+  const simulatedErrorRate = getSimulatedErrorRate();
+  if (simulatedErrorRate > 0) {
+    log(
+      `[Debug] SIMULATE_ERROR_RATE=${simulatedErrorRate} — ${Math.round(simulatedErrorRate * 100)}% of transcriptions will fail with a fake 503`
+    );
+  }
+
   // Allow microphone access from renderer (getUserMedia).
   // Both handlers are needed: check runs first, then request.
   session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
@@ -1552,6 +1572,10 @@ ipcMain.handle('open-error-detail-window', (_event, detail: ErrorDetailPayload) 
 
 ipcMain.handle('get-error-detail', () => {
   return pendingErrorDetail || { message: 'Unknown error' };
+});
+
+ipcMain.handle('get-debug-flags', () => {
+  return { simulatedErrorRate: getSimulatedErrorRate() };
 });
 
 // Failed-recording persistence: keep the audio around so a 503 does not
